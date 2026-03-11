@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize } from 'lucide-react';
+import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -16,6 +16,7 @@ export function Home() {
   const [maxPrice, setMaxPrice] = useState('');
   const [bedrooms, setBedrooms] = useState('');
   const [minArea, setMinArea] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(true);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -38,104 +39,126 @@ export function Home() {
       <section className="relative bg-[#cb6ce6] py-20 sm:py-32">
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1973&q=80"
-            alt="Background"
-            className="w-full h-full object-cover opacity-30"
+            src="https://i.ibb.co/9HtKhj7v/Chat-GPT-Image-Mar-5-2026-10-33-16-AM.png"
+            alt="Família feliz"
+            className="w-full h-full object-cover opacity-70"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#cb6ce6]/60 to-[#cb6ce6]/90" />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
             O Maior Shopping de imóveis em <span className="text-brand-green">Moçambique</span>
           </h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
-            A forma mais simples e segura de comprar, vender ou arrendar imóveis.
+          <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10">
+            A forma mais simples e segura de comprar, vender ou arrendar o teu place.
           </p>
 
           {/* Search Box */}
-          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-xl p-4 sm:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              <div className="col-span-1 sm:col-span-2 relative">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input 
-                  placeholder="O que procura? (ex: Apartamento T3)" 
-                  className="pl-10 h-12 text-base"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <select 
-                  className="w-full h-12 pl-10 pr-4 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                >
-                  <option value="">Localização</option>
-                  {LOCATIONS.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="relative">
-                <HomeIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <select 
-                  className="w-full h-12 pl-10 pr-4 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                >
-                  <option value="">Categoria</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input 
-                  type="number"
-                  placeholder="Preço Máx (MZN)" 
-                  className="pl-10 h-12 text-base"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                />
-              </div>
-              <div className="relative">
-                <Bed className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <select 
-                  className="w-full h-12 pl-10 pr-4 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={bedrooms}
-                  onChange={(e) => setBedrooms(e.target.value)}
-                >
-                  <option value="">Quartos</option>
-                  <option value="1">1+</option>
-                  <option value="2">2+</option>
-                  <option value="3">3+</option>
-                  <option value="4">4+</option>
-                  <option value="5">5+</option>
-                </select>
-              </div>
-              <div className="relative">
-                <Maximize className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <Input 
-                  type="number"
-                  placeholder="Área Mín (m²)" 
-                  className="pl-10 h-12 text-base"
-                  value={minArea}
-                  onChange={(e) => setMinArea(e.target.value)}
-                />
+          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-gray-700 font-medium">
+                <Search className="h-4 w-4" />
+                <span>Encontre seu imóvel ideal</span>
               </div>
               <Button 
-                className="h-12 bg-brand-green hover:bg-brand-green-hover text-lg font-medium w-full"
-                onClick={handleSearch}
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
               >
-                Pesquisar
+                {isSearchExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </Button>
             </div>
+            
+            {isSearchExpanded && (
+              <div className="p-4 sm:p-6 animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-1 sm:col-span-2 relative">
+                    <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Input 
+                      placeholder="O que procura? (ex: Apartamento T3)" 
+                      className="pl-10 h-12 text-base"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                    <select 
+                      className="w-full h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                    >
+                      <option value="">Localização</option>
+                      {LOCATIONS.map((loc) => (
+                        <option key={loc} value={loc}>{loc}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                  </div>
+                  <div className="relative">
+                    <HomeIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                    <select 
+                      className="w-full h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    >
+                      <option value="">Categoria</option>
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Input 
+                      type="number"
+                      placeholder="Preço Máx (MZN)" 
+                      className="pl-10 h-12 text-base"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="relative">
+                    <Bed className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                    <select 
+                      className="w-full h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(e.target.value)}
+                    >
+                      <option value="">Quartos</option>
+                      <option value="1">1+</option>
+                      <option value="2">2+</option>
+                      <option value="3">3+</option>
+                      <option value="4">4+</option>
+                      <option value="5">5+</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
+                  </div>
+                  <div className="relative">
+                    <Maximize className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Input 
+                      type="number"
+                      placeholder="Área Mín (m²)" 
+                      className="pl-10 h-12 text-base"
+                      value={minArea}
+                      onChange={(e) => setMinArea(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    className="h-12 bg-brand-green hover:bg-brand-green-hover text-lg font-medium w-full"
+                    onClick={handleSearch}
+                  >
+                    Pesquisar
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -146,7 +169,7 @@ export function Home() {
           <div className="flex justify-between items-end mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-900">Destaques da Semana</h2>
-              <p className="mt-2 text-gray-600">Imóveis mais visitados e recomendados.</p>
+              <p className="mt-2 text-gray-600">Imóveis promovidos e recomendados.</p>
             </div>
             <Link to="/properties" className="hidden sm:block text-brand-green font-medium hover:text-brand-green-hover">
               Ver todos os imóveis &rarr;
@@ -154,7 +177,7 @@ export function Home() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {FEATURED_PROPERTIES.map((property) => (
+            {FEATURED_PROPERTIES.filter(p => p.isPromoted).map((property) => (
               <PropertyCard key={property.id} property={property} />
             ))}
           </div>

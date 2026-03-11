@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { User, Lock, Building2, Mail, Phone, MapPin, FileText } from 'lucide-react';
+import { playNotificationSound } from '@/utils/sound';
 
 export function Register() {
   const navigate = useNavigate();
@@ -16,19 +17,88 @@ export function Register() {
     license: '',
     address: ''
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateField = (name: string, value: string) => {
+    let error = '';
+    switch (name) {
+      case 'name':
+        if (!value.trim()) error = 'O nome é obrigatório.';
+        else if (value.trim().length < 3) error = 'O nome deve ter pelo menos 3 caracteres.';
+        break;
+      case 'email':
+        if (!value) error = 'O email é obrigatório.';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Por favor, insira um email válido.';
+        else {
+          const existingEmails = ['admin@meuplace.co.mz', 'teste@teste.com', 'agente@meuplace.co.mz'];
+          if (existingEmails.includes(value.toLowerCase())) error = 'Este email já está em uso.';
+        }
+        break;
+      case 'phone':
+        if (!value.trim()) error = 'O telefone é obrigatório.';
+        break;
+      case 'password':
+        if (!value) error = 'A senha é obrigatória.';
+        else if (value.length < 6) error = 'A senha deve ter pelo menos 6 caracteres.';
+        break;
+      case 'confirmPassword':
+        if (!value) error = 'A confirmação de senha é obrigatória.';
+        else if (value !== formData.password) error = 'As senhas não coincidem.';
+        break;
+      default:
+        break;
+    }
+    
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return !error;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      // If changing password, revalidate confirmPassword if it exists
+      if (name === 'password' && newData.confirmPassword) {
+        if (value !== newData.confirmPassword) {
+          setErrors(prevErrors => ({ ...prevErrors, confirmPassword: 'As senhas não coincidem.' }));
+        } else {
+          setErrors(prevErrors => ({ ...prevErrors, confirmPassword: '' }));
+        }
+      }
+      return newData;
+    });
+    
+    // Only validate on change if there's already an error (to provide immediate feedback when fixing)
+    if (errors[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    validateField(name, value);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all fields
+    const fieldsToValidate = ['name', 'email', 'phone', 'password', 'confirmPassword'];
+    let isValid = true;
+    
+    fieldsToValidate.forEach(field => {
+      if (!validateField(field, formData[field as keyof typeof formData])) {
+        isValid = false;
+      }
+    });
+
+    if (!isValid) return;
+
     // Handle registration logic here
     console.log('Registration attempt:', { ...formData, userType });
+    playNotificationSound();
     
     // Simulate successful registration and redirect to pending approval
-    // In a real app, this would create the user and then redirect
     navigate('/pending-approval');
   };
 
@@ -100,12 +170,16 @@ export function Register() {
                   name="name"
                   type="text"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder={userType === 'agent' ? 'Seu nome completo' : 'Nome da sua agência'}
                   value={formData.name}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 />
               </div>
+              {errors.name && (
+                <p className="mt-2 text-sm text-red-600">{errors.name}</p>
+              )}
             </div>
 
             <div>
@@ -122,12 +196,18 @@ export function Register() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${errors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder="seu@email.com"
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 />
               </div>
+              {errors.email && (
+                <p className="mt-2 text-sm text-red-600">
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             <div>
@@ -144,12 +224,16 @@ export function Register() {
                   type="tel"
                   autoComplete="tel"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${errors.phone ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder="+258 84 123 4567"
                   value={formData.phone}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 />
               </div>
+              {errors.phone && (
+                <p className="mt-2 text-sm text-red-600">{errors.phone}</p>
+              )}
             </div>
 
             <div>
@@ -205,12 +289,16 @@ export function Register() {
                   name="password"
                   type="password"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 />
               </div>
+              {errors.password && (
+                <p className="mt-2 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
             <div>
@@ -226,12 +314,16 @@ export function Register() {
                   name="confirmPassword"
                   type="password"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                 />
               </div>
+              {errors.confirmPassword && (
+                <p className="mt-2 text-sm text-red-600">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <div className="flex items-center">

@@ -1,9 +1,10 @@
-import { useState, FormEvent, useEffect } from 'react';
+import React, { useState, FormEvent, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LOCATIONS, CATEGORIES } from '@/types';
-import { Upload, CheckCircle, Star, Zap, Crown, Check } from 'lucide-react';
+import { Upload, CheckCircle, Star, Zap, Crown, Check, X } from 'lucide-react';
+import { playNotificationSound } from '@/utils/sound';
 
 export function AddProperty() {
   const [searchParams] = useSearchParams();
@@ -11,6 +12,10 @@ export function AddProperty() {
   const [step, setStep] = useState(initialStep);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  
+  const [images, setImages] = useState<File[]>([]);
+  const [uploadError, setUploadError] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const stepParam = searchParams.get('step');
@@ -19,9 +24,47 @@ export function AddProperty() {
     }
   }, [searchParams]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError('');
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files) as File[];
+      const validFiles: File[] = [];
+      let hasError = false;
+
+      selectedFiles.forEach(file => {
+        // Check type
+        if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+          setUploadError('Apenas formatos PNG e JPG são permitidos.');
+          hasError = true;
+          return;
+        }
+        // Check size (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          setUploadError(`O arquivo ${file.name} excede o limite de 10MB.`);
+          hasError = true;
+          return;
+        }
+        validFiles.push(file);
+      });
+
+      if (!hasError) {
+        setImages(prev => [...prev, ...validFiles]);
+      }
+    }
+    // Reset input so the same file can be selected again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitted(true);
+    playNotificationSound();
   };
 
   const packages = [
@@ -173,6 +216,28 @@ export function AddProperty() {
                   <Input type="number" min="0" />
                 </div>
               </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Comodidades do Imóvel</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    'Piscina', 'Garagem', 'Jardim', 'Ar Condicionado', 
+                    'Segurança 24h', 'Varanda', 'Elevador', 'Mobiliado',
+                    'Cozinha Equipada', 'Ginásio', 'Vista para o Mar', 'Churrasqueira'
+                  ].map((amenity) => (
+                    <div key={amenity} className="flex items-center space-x-2">
+                      <input 
+                        type="checkbox" 
+                        id={`amenity-${amenity}`} 
+                        className="h-4 w-4 text-brand-green focus:ring-brand-green border-gray-300 rounded"
+                      />
+                      <label htmlFor={`amenity-${amenity}`} className="text-sm text-gray-600 cursor-pointer">
+                        {amenity}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -180,10 +245,44 @@ export function AddProperty() {
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 className="text-lg font-semibold text-gray-900">Fotos e Contacto</h3>
               
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer">
-                <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                <p className="text-sm text-gray-600 font-medium">Clique para adicionar fotos</p>
-                <p className="text-xs text-gray-400 mt-1">PNG, JPG até 5MB</p>
+              <div>
+                <input 
+                  type="file" 
+                  multiple 
+                  accept=".jpg,.jpeg,.png" 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                />
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600 font-medium">Clique para adicionar fotos</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG até 10MB</p>
+                </div>
+                
+                {uploadError && (
+                  <p className="mt-2 text-sm text-red-600">{uploadError}</p>
+                )}
+
+                {images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {images.map((file, index) => (
+                      <div key={index} className="relative group rounded-md overflow-hidden bg-gray-100 border border-gray-200 aspect-video flex items-center justify-center">
+                        <span className="text-xs text-gray-500 truncate px-2">{file.name}</span>
+                        <button 
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">

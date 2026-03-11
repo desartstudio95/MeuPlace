@@ -21,8 +21,11 @@ export interface Property {
   area: number; // m²
   images: string[];
   features: string[];
+  coordinates?: { lat: number; lng: number };
   agent: Agent;
   createdAt: string;
+  isPromoted?: boolean;
+  status?: 'Disponível' | 'Vendido' | 'Arrendado';
 }
 
 export const LOCATIONS = [

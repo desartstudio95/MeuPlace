@@ -3,6 +3,7 @@ import { Menu, X, PlusCircle, User, Search, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
+import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,8 +11,10 @@ export function Navbar() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    if (window.confirm('Tem certeza que deseja sair?')) {
+      logout();
+      navigate('/');
+    }
   };
 
   return (
@@ -26,7 +29,7 @@ export function Navbar() {
                 className="h-14 w-auto object-contain" 
               />
             </Link>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+            <div className="hidden md:ml-6 md:flex md:space-x-8">
               <Link
                 to="/"
                 className="border-transparent text-gray-500 hover:border-brand-green hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -47,7 +50,9 @@ export function Navbar() {
               </Link>
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+          <div className="hidden md:ml-6 md:flex md:items-center space-x-4">
+            <NotificationsPopover />
+            
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">
                 <div className="text-sm text-gray-700 hidden lg:block mr-2">
@@ -80,10 +85,11 @@ export function Navbar() {
               </Button>
             </Link>
           </div>
-          <div className="-mr-2 flex items-center sm:hidden">
+          <div className="-mr-2 flex items-center md:hidden">
+            <NotificationsPopover />
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-green"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-green ml-2"
             >
               <span className="sr-only">Open main menu</span>
               {isOpen ? (
@@ -97,7 +103,7 @@ export function Navbar() {
       </div>
 
       {isOpen && (
-        <div className="sm:hidden">
+        <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
             <Link
               to="/"

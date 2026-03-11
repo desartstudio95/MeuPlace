@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { PROPERTIES } from '@/data/mockData';
 import { Upload, Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { playNotificationSound } from '@/utils/sound';
 
 export function EditProperty() {
   const { id } = useParams();
@@ -28,12 +29,14 @@ export function EditProperty() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     // Simulate API call
+    playNotificationSound();
     alert('Imóvel atualizado com sucesso!');
     navigate('/dashboard');
   };
 
   const handleDelete = () => {
     if (confirm('Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.')) {
+      playNotificationSound();
       alert('Imóvel excluído com sucesso!');
       navigate('/dashboard');
     }

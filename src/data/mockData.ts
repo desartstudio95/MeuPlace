@@ -15,8 +15,10 @@ export const PROPERTIES: Property[] = [
     area: 180,
     images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=2340&q=80'],
     features: ['Vista Mar', 'Piscina', 'Ginásio', 'Estacionamento'],
+    coordinates: { lat: -25.9692, lng: 32.5858 }, // Polana Cimento
     agent: { name: 'Carlos Macuácua', phone: '+258 84 123 4567', whatsapp: '+258 84 123 4567' },
     createdAt: '2023-10-25T10:00:00Z',
+    isPromoted: true,
   },
   {
     id: '2',
@@ -32,6 +34,7 @@ export const PROPERTIES: Property[] = [
     area: 350,
     images: ['https://images.unsplash.com/photo-1600596542815-22b8c153bd30?ixlib=rb-4.0.3&auto=format&fit=crop&w=2600&q=80'],
     features: ['Jardim', 'Piscina', 'Garagem', 'Anexo'],
+    coordinates: { lat: -25.9653, lng: 32.4589 }, // Matola Rio
     agent: { name: 'Ana Langa', phone: '+258 82 987 6543', whatsapp: '+258 82 987 6543' },
     createdAt: '2023-10-26T14:30:00Z',
   },
@@ -49,8 +52,10 @@ export const PROPERTIES: Property[] = [
     area: 80,
     images: ['https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2301&q=80'],
     features: ['Ar Condicionado', 'Segurança', 'Elevador'],
+    coordinates: { lat: -25.9725, lng: 32.5716 }, // Baixa Maputo
     agent: { name: 'Imobiliária Maputo', phone: '+258 21 123 456', whatsapp: '+258 84 000 0000' },
     createdAt: '2023-10-27T09:15:00Z',
+    isPromoted: true,
   },
   {
     id: '4',
@@ -66,6 +71,7 @@ export const PROPERTIES: Property[] = [
     area: 800,
     images: ['https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=2664&q=80'],
     features: ['Murado', 'Documentação em dia'],
+    coordinates: { lat: -25.7333, lng: 32.6833 }, // Marracuene
     agent: { name: 'João Sitoe', phone: '845555555', whatsapp: '845555555' },
     createdAt: '2023-10-28T11:00:00Z',
   },
@@ -83,8 +89,10 @@ export const PROPERTIES: Property[] = [
     area: 120,
     images: ['https://images.unsplash.com/photo-1556740758-90de374c12ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=2340&q=80'],
     features: ['Vitrine', 'Estacionamento'],
+    coordinates: { lat: -25.9622, lng: 32.5694 }, // Alto Maé
     agent: { name: 'Maria Silva', phone: '841111111', whatsapp: '841111111' },
     createdAt: '2023-10-29T15:00:00Z',
+    isPromoted: true,
   },
   {
     id: '6',
@@ -100,6 +108,7 @@ export const PROPERTIES: Property[] = [
     area: 1000,
     images: ['https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2340&q=80'],
     features: ['Pé direito alto', 'Segurança 24h', 'Balança'],
+    coordinates: { lat: -25.9411, lng: 32.4278 }, // Matola Gare
     agent: { name: 'Logística MZ', phone: '822222222', whatsapp: '822222222' },
     createdAt: '2023-10-30T08:00:00Z',
   }

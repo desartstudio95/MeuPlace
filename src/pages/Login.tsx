@@ -1,20 +1,71 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { User, Lock, Building2, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationContext';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [userType, setUserType] = useState<'agent' | 'agency'>('agent');
   const { login } = useAuth();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
+
+  const validateEmail = (value: string) => {
+    if (!value) {
+      setEmailError('O email é obrigatório.');
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      setEmailError('Por favor, insira um email válido.');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError('A senha é obrigatória.');
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (emailError) validateEmail(value);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    if (passwordError) validatePassword(value);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+
+    if (!isEmailValid || !isPasswordValid) return;
+
     login(email, userType);
+    
+    addNotification({
+      title: 'Login bem-sucedido',
+      message: 'Bem-vindo de volta ao MeuPlace!',
+      type: 'success'
+    });
+    
     navigate('/');
   };
 
@@ -93,12 +144,16 @@ export function Login() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${emailError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
+                  onBlur={() => validateEmail(email)}
                 />
               </div>
+              {emailError && (
+                <p className="mt-2 text-sm text-red-600">{emailError}</p>
+              )}
             </div>
 
             <div>
@@ -115,12 +170,16 @@ export function Login() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="pl-10"
+                  className={`pl-10 ${passwordError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
+                  onBlur={() => validatePassword(password)}
                 />
               </div>
+              {passwordError && (
+                <p className="mt-2 text-sm text-red-600">{passwordError}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
