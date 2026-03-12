@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Home } from '@/pages/Home';
 import { Properties } from '@/pages/Properties';
 import { PropertyDetails } from '@/pages/PropertyDetails';
+import { ResortDetails } from '@/pages/ResortDetails';
 import { AddProperty } from '@/pages/AddProperty';
 import { EditProperty } from '@/pages/EditProperty';
 import { AgentDashboard } from '@/pages/AgentDashboard';
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/properties/:id" element={<PropertyDetails />} />
+              <Route path="/resort/:id" element={<ResortDetails />} />
               <Route path="/agent/:name" element={<AgentProfile />} />
               <Route path="/category/:type" element={<CategoryPage />} />
               <Route path="/about" element={<About />} />

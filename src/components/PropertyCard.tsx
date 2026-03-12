@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Property } from '@/types';
-import { MapPin, Bed, Bath, Maximize, Heart, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Heart, MessageCircle, ChevronLeft, ChevronRight, Star, BadgeCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,13 +29,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
 
   return (
     <div 
-      className={`bg-white rounded-xl shadow-sm transition-all duration-300 overflow-hidden border group flex flex-col h-full relative ${
-        isHighlighted 
-          ? 'border-brand-green ring-2 ring-brand-green ring-offset-2 shadow-md scale-[1.02]' 
-          : 'border-gray-100 hover:shadow-md'
+      className={`rounded-xl shadow-sm transition-all duration-300 overflow-hidden border group flex flex-col h-full relative ${
+        property.isPromoted || isHighlighted
+          ? 'bg-gradient-to-br from-brand-green/10 via-white to-brand-purple/10 border-brand-purple/30 shadow-md hover:shadow-lg hover:shadow-brand-purple/20 scale-[1.02]' 
+          : 'bg-white border-gray-100 hover:shadow-md'
       } ${className}`}
       id={`property-card-${property.id}`}
     >
+      {(property.isPromoted || isHighlighted) && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-green to-brand-purple z-20"></div>
+      )}
       <div className="relative h-48 sm:h-64 overflow-hidden bg-gray-100 flex-shrink-0">
         {!imageLoaded && (
           <Skeleton className="absolute inset-0 w-full h-full" />
@@ -85,7 +88,13 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
           </button>
         </div>
         <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
-          <span className="px-3 py-1 bg-brand-green text-white text-xs font-bold uppercase tracking-wider rounded-full w-fit">
+          {property.isPromoted && (
+            <span className="px-3 py-1 bg-brand-green text-white text-xs font-bold uppercase tracking-wider rounded-full w-fit shadow-md flex items-center gap-1">
+              <Star className="h-3 w-3 fill-current" />
+              Destaque
+            </span>
+          )}
+          <span className="px-3 py-1 bg-brand-purple text-white text-xs font-bold uppercase tracking-wider rounded-full w-fit shadow-md">
             {property.type}
           </span>
           {(property.status === 'Vendido' || property.status === 'Arrendado') && (
@@ -119,21 +128,21 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
           <span className="line-clamp-1">{property.location}</span>
         </div>
         
-        <div className="flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-600 mt-auto">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 border-t border-gray-100 pt-4 text-sm text-gray-600 mt-auto">
+          <div className="flex items-center gap-1.5" title={`${property.bedrooms} Quartos`}>
             <Bed className="h-4 w-4 text-gray-400" />
             <span className="font-medium">{property.bedrooms}</span>
-            <span className="text-xs text-gray-400">Quartos</span>
+            <span className="text-xs text-gray-500 hidden sm:inline-block">Quartos</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5" title={`${property.bathrooms} Banheiros`}>
             <Bath className="h-4 w-4 text-gray-400" />
             <span className="font-medium">{property.bathrooms}</span>
-            <span className="text-xs text-gray-400">Banheiros</span>
+            <span className="text-xs text-gray-500 hidden sm:inline-block">Banheiros</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5" title={`${property.area} m²`}>
             <Maximize className="h-4 w-4 text-gray-400" />
             <span className="font-medium">{property.area}</span>
-            <span className="text-xs text-gray-400">m²</span>
+            <span className="text-xs text-gray-500">m²</span>
           </div>
         </div>
 
@@ -146,7 +155,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
                         {property.agent.name.charAt(0)}
                     </div>
                 )}
-                <span className="text-xs text-gray-500 font-medium truncate max-w-[100px] group-hover:text-brand-green transition-colors">{property.agent.name}</span>
+                <span className="text-xs text-gray-500 font-medium truncate max-w-[100px] group-hover:text-brand-green transition-colors flex items-center gap-1">
+                  {property.agent.name}
+                  {property.agent.isVerified && (
+                    <BadgeCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" title="Agente Verificado" />
+                  )}
+                </span>
             </Link>
             <div className="flex items-center gap-2">
               <a 

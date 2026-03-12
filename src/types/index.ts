@@ -5,6 +5,14 @@ export interface Agent {
   email?: string;
   avatar?: string;
   bio?: string;
+  instagram?: string;
+  facebook?: string;
+  rating?: number;
+  reviews?: number;
+  propertiesSold?: number;
+  agency?: string;
+  yearsOfExperience?: number;
+  isVerified?: boolean;
 }
 
 export interface Property {

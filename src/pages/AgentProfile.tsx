@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, Mail, MessageCircle, ChevronLeft, Star, User } from 'lucide-react';
+import { MapPin, Phone, Mail, MessageCircle, ChevronLeft, Star, User, Instagram, Facebook, Award, Building2, BadgeCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PROPERTIES } from '@/data/mockData';
@@ -68,14 +68,45 @@ export function AgentProfile() {
               )}
             </div>
             <div className="text-center sm:text-left flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">{agent.name}</h1>
-              <div className="flex items-center justify-center sm:justify-start text-yellow-500 mt-1">
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <Star className="h-4 w-4 fill-current" />
-                <span className="text-gray-500 text-sm ml-2">(4.9 de 5)</span>
+              <div className="flex flex-col sm:flex-row items-center sm:items-center gap-3">
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                  {agent.name}
+                  {agent.isVerified && (
+                    <BadgeCheck className="h-7 w-7 text-blue-500" title="Agente Verificado" />
+                  )}
+                </h1>
+                {agent.rating && agent.rating >= 4.9 && (
+                  <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                    <Award className="h-3.5 w-3.5" />
+                    Agente 5 Estrelas
+                  </span>
+                )}
+              </div>
+              {agent.agency && (
+                <p className="text-brand-purple font-medium mt-1 text-center sm:text-left">{agent.agency}</p>
+              )}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3">
+                {agent.rating && (
+                  <div className="flex items-center text-amber-500">
+                    <Star className="h-4 w-4 fill-current" />
+                    <span className="font-bold text-gray-900 ml-1">{agent.rating.toFixed(1)}</span>
+                    <span className="text-gray-500 text-sm ml-1 font-medium">({agent.reviews || 0} avaliações)</span>
+                  </div>
+                )}
+                {agent.propertiesSold && (
+                  <div className="flex items-center text-gray-600">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mr-3 hidden sm:block"></div>
+                    <span className="font-bold text-gray-900 mr-1">{agent.propertiesSold}</span>
+                    <span className="text-sm">imóveis vendidos</span>
+                  </div>
+                )}
+                {agent.yearsOfExperience && (
+                  <div className="flex items-center text-gray-600">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-300 mr-3 hidden sm:block"></div>
+                    <span className="font-bold text-gray-900 mr-1">{agent.yearsOfExperience}</span>
+                    <span className="text-sm">anos de experiência</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
@@ -104,6 +135,15 @@ export function AgentProfile() {
             <div className="space-y-4 bg-gray-50 p-6 rounded-xl border border-gray-100 h-fit">
               <h3 className="font-bold text-gray-900">Informações de Contato</h3>
               <div className="space-y-3 text-sm text-gray-600">
+                {agent.agency && (
+                  <div className="flex items-center gap-3">
+                    <Building2 className="h-4 w-4 text-brand-green" />
+                    <span className="font-medium text-gray-900 flex items-center gap-1">
+                      {agent.agency}
+                      {agent.isVerified && <BadgeCheck className="h-3.5 w-3.5 text-blue-500" title="Agência Verificada" />}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-brand-green" />
                   <span>{agent.phone}</span>
@@ -118,6 +158,20 @@ export function AgentProfile() {
                   <MapPin className="h-4 w-4 text-brand-green" />
                   <span>Moçambique</span>
                 </div>
+                {(agent.instagram || agent.facebook) && (
+                  <div className="pt-3 mt-3 border-t border-gray-200 flex gap-4">
+                    {agent.instagram && (
+                      <a href={agent.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-pink-600 transition-colors">
+                        <Instagram className="h-5 w-5" />
+                      </a>
+                    )}
+                    {agent.facebook && (
+                      <a href={agent.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-600 transition-colors">
+                        <Facebook className="h-5 w-5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

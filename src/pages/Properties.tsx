@@ -141,6 +141,10 @@ export function Properties() {
     if (filters.minArea && p.area < Number(filters.minArea)) return false;
     return true;
   }).sort((a, b) => {
+    // Always show promoted properties first
+    if (a.isPromoted && !b.isPromoted) return -1;
+    if (!a.isPromoted && b.isPromoted) return 1;
+
     if (sortOrder === 'newest') {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     } else if (sortOrder === 'oldest') {
@@ -154,11 +158,8 @@ export function Properties() {
   });
 
   // Pagination logic
-  const promotedProperties = filteredProperties.filter(p => p.isPromoted);
-  const freeProperties = filteredProperties.filter(p => !p.isPromoted);
-  
-  const totalPages = Math.ceil(freeProperties.length / itemsPerPage);
-  const paginatedFreeProperties = freeProperties.slice(
+  const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
+  const paginatedProperties = filteredProperties.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -384,7 +385,7 @@ export function Properties() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Imóveis Disponíveis</h1>
               <p className="text-gray-500">
-                Mostrando {paginatedFreeProperties.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, freeProperties.length)} de {freeProperties.length} resultados gratuitos
+                Mostrando {paginatedProperties.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredProperties.length)} de {filteredProperties.length} resultados
               </p>
             </div>
             
@@ -429,28 +430,10 @@ export function Properties() {
           {viewMode === 'map' ? (
             <div className="flex flex-col lg:flex-row gap-6 h-[800px]">
               <div className="w-full lg:w-1/2 overflow-y-auto pr-2 pb-4 space-y-6">
-                {currentPage === 1 && promotedProperties.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <span className="text-brand-green">★</span> Imóveis Promovidos
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {promotedProperties.map(property => (
-                        <PropertyCard 
-                          key={property.id} 
-                          property={property} 
-                          isHighlighted={property.id === highlightedPropertyId} 
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {paginatedFreeProperties.length > 0 ? (
+                {paginatedProperties.length > 0 ? (
                   <>
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">Outros Imóveis</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {paginatedFreeProperties.map(property => (
+                      {paginatedProperties.map(property => (
                         <PropertyCard 
                           key={property.id} 
                           property={property} 
@@ -512,24 +495,10 @@ export function Properties() {
             </div>
           ) : (
             <>
-              {currentPage === 1 && promotedProperties.length > 0 && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="text-brand-green">★</span> Imóveis Promovidos
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {promotedProperties.map(property => (
-                      <PropertyCard key={property.id} property={property} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {paginatedFreeProperties.length > 0 ? (
+              {paginatedProperties.length > 0 ? (
                 <>
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Outros Imóveis</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginatedFreeProperties.map(property => (
+                    {paginatedProperties.map(property => (
                       <PropertyCard key={property.id} property={property} />
                     ))}
                   </div>

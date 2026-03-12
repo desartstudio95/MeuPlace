@@ -30,9 +30,12 @@ import {
   Search,
   Phone,
   Mail,
-  Check
+  Check,
+  Menu,
+  X,
+  BadgeCheck
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
 
 // Mock messages data
@@ -74,10 +77,12 @@ const MOCK_MESSAGES = [
 
 export function AgentDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [messages, setMessages] = useState(MOCK_MESSAGES);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Reply Dialog State
@@ -101,7 +106,10 @@ export function AgentDashboard() {
     phone: '+258 84 123 4567',
     whatsapp: '+258 84 123 4567',
     bio: 'Especialista em imóveis de luxo na cidade de Maputo com mais de 5 anos de experiência.',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    instagram: '',
+    facebook: '',
+    isVerified: true
   });
 
   const handleProfileUpdate = (e: React.FormEvent) => {
@@ -176,23 +184,54 @@ export function AgentDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center justify-between bg-white border-b border-gray-200 p-4 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-brand-green flex items-center justify-center text-white font-bold text-sm">
+            {profileData.name.charAt(0)}
+          </div>
+          <span className="font-bold text-gray-900 truncate max-w-[140px] flex items-center gap-1">
+            {profileData.name}
+            {profileData.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+          </span>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
+          <Menu className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-white border-r border-gray-200 flex-shrink-0">
-        <div className="p-6 border-b border-gray-100">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-gray-100 relative">
+          {/* Close button for mobile */}
+          <div className="md:hidden absolute top-4 right-4">
+            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
           <div className="flex items-center gap-3 mb-6">
             <div className="h-10 w-10 rounded-full bg-brand-green flex items-center justify-center text-white font-bold">
               {profileData.name.charAt(0)}
             </div>
             <div>
-              <h2 className="font-bold text-gray-900 truncate max-w-[140px]">{profileData.name}</h2>
+              <h2 className="font-bold text-gray-900 truncate max-w-[140px] flex items-center gap-1">
+                {profileData.name}
+                {profileData.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Agente Verificado" />}
+              </h2>
               <p className="text-xs text-gray-500">Agente Verificado</p>
             </div>
           </div>
           
           <nav className="space-y-1">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'dashboard' 
                   ? 'bg-brand-green/10 text-brand-green' 
@@ -203,7 +242,7 @@ export function AgentDashboard() {
               Visão Geral
             </button>
             <button
-              onClick={() => setActiveTab('properties')}
+              onClick={() => { setActiveTab('properties'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'properties' 
                   ? 'bg-brand-green/10 text-brand-green' 
@@ -214,7 +253,7 @@ export function AgentDashboard() {
               Meus Imóveis
             </button>
             <button
-              onClick={() => setActiveTab('messages')}
+              onClick={() => { setActiveTab('messages'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'messages' 
                   ? 'bg-brand-green/10 text-brand-green' 
@@ -230,7 +269,7 @@ export function AgentDashboard() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('profile')}
+              onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'profile' 
                   ? 'bg-brand-green/10 text-brand-green' 
@@ -247,6 +286,7 @@ export function AgentDashboard() {
           <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => {
             if (window.confirm('Tem certeza que deseja sair?')) {
               logout();
+              navigate('/');
             }
           }}>
             <LogOut className="mr-3 h-5 w-5" />
@@ -256,7 +296,7 @@ export function AgentDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 sm:p-8 overflow-y-auto relative">
+      <main className="md:pl-64 flex-1 p-4 sm:p-8 overflow-y-auto relative min-h-screen">
         {/* Success Toast */}
         {showSuccessMessage && (
           <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-top-5 duration-300">
@@ -667,6 +707,24 @@ export function AgentDashboard() {
                     <Input 
                       value={profileData.whatsapp} 
                       onChange={(e) => setProfileData({...profileData, whatsapp: e.target.value})} 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link do Instagram</label>
+                    <Input 
+                      placeholder="https://instagram.com/seu.perfil"
+                      value={profileData.instagram} 
+                      onChange={(e) => setProfileData({...profileData, instagram: e.target.value})} 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Link do Facebook</label>
+                    <Input 
+                      placeholder="https://facebook.com/seu.perfil"
+                      value={profileData.facebook} 
+                      onChange={(e) => setProfileData({...profileData, facebook: e.target.value})} 
                     />
                   </div>
                 </div>

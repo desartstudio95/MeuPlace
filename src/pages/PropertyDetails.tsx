@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types';
 import { PROPERTIES } from '@/data/mockData';
@@ -28,6 +28,7 @@ export function PropertyDetails() {
   const property = PROPERTIES.find(p => p.id === id) || PROPERTIES[0]; // Fallback to first for demo
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   
@@ -123,12 +124,14 @@ export function PropertyDetails() {
         setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
       } else if (e.key === 'ArrowRight') {
         setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+      } else if (e.key === 'Escape' && isZoomModalOpen) {
+        setIsZoomModalOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [property.images.length]);
+  }, [property.images.length, isZoomModalOpen]);
 
   if (!property) {
     return <div className="text-center py-20">Imóvel não encontrado.</div>;
@@ -223,57 +226,53 @@ export function PropertyDetails() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Image Carousel */}
-          <div className="relative h-96 rounded-2xl overflow-hidden shadow-lg group bg-gray-100">
-            {imageLoading && (
-              <Skeleton className="absolute inset-0 w-full h-full" />
-            )}
-            <img 
-              src={property.images[currentImageIndex]} 
-              alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
-              className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
-              onLoad={() => setImageLoading(false)}
-            />
-            
-            {/* Navigation Arrows */}
-            {property.images.length > 1 && (
-              <>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                  aria-label="Imagem anterior"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                  aria-label="Próxima imagem"
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-                
-                {/* Dots Indicator */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                  {property.images.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentImageIndex(idx)}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        idx === currentImageIndex ? 'bg-white w-4' : 'bg-white/50 hover:bg-white/80'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
+          <div className="space-y-4">
+            <div className="relative h-96 md:h-[500px] rounded-2xl overflow-hidden shadow-lg group bg-gray-100 cursor-pointer" onClick={() => setIsZoomModalOpen(true)}>
+              {imageLoading && (
+                <Skeleton className="absolute inset-0 w-full h-full" />
+              )}
+              <img 
+                src={property.images[currentImageIndex]} 
+                alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
+                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+                onLoad={() => setImageLoading(false)}
+              />
+              
+              {/* Navigation Arrows */}
+              {property.images.length > 1 && (
+                <>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="Imagem anterior"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="Próxima imagem"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
 
-            <div className="absolute top-4 right-4 flex gap-2">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button size="icon" variant="secondary" className="rounded-full bg-white/80 hover:bg-white">
-                    <Share2 className="h-5 w-5 text-gray-700" />
-                  </Button>
-                </DialogTrigger>
+              <div className="absolute top-4 right-4 flex gap-2">
+                <Button 
+                  size="icon" 
+                  variant="secondary" 
+                  className="rounded-full bg-white/80 hover:bg-white"
+                  onClick={(e) => { e.stopPropagation(); setIsZoomModalOpen(true); }}
+                >
+                  <ZoomIn className="h-5 w-5 text-gray-700" />
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="icon" variant="secondary" className="rounded-full bg-white/80 hover:bg-white" onClick={(e) => e.stopPropagation()}>
+                      <Share2 className="h-5 w-5 text-gray-700" />
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Compartilhar Imóvel</DialogTitle>
@@ -340,6 +339,24 @@ export function PropertyDetails() {
                 {property.type}
               </span>
             </div>
+          </div>
+
+          {/* Thumbnail Strip */}
+          {property.images.length > 1 && (
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x scrollbar-hide">
+              {property.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`relative h-20 w-28 shrink-0 rounded-lg overflow-hidden snap-start transition-all ${
+                    idx === currentImageIndex ? 'ring-2 ring-brand-green ring-offset-2' : 'opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
           </div>
 
           {/* Title and Price */}
@@ -426,8 +443,11 @@ export function PropertyDetails() {
               </Link>
               <div>
                 <p className="text-sm text-gray-500">Agente Responsável</p>
-                <Link to={`/agent/${encodeURIComponent(property.agent.name)}`} className="hover:text-brand-green transition-colors">
+                <Link to={`/agent/${encodeURIComponent(property.agent.name)}`} className="hover:text-brand-green transition-colors flex items-center gap-1.5">
                   <h3 className="text-lg font-bold text-gray-900">{property.agent.name}</h3>
+                  {property.agent.isVerified && (
+                    <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Agente Verificado" />
+                  )}
                 </Link>
                 <div className="flex items-center text-yellow-500 text-sm">
                   ★★★★★ <span className="text-gray-400 ml-1">(4.9)</span>
@@ -604,6 +624,62 @@ export function PropertyDetails() {
         </div>
       </div>
       
+      {/* Zoom Modal */}
+      {isZoomModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+          <button 
+            onClick={() => setIsZoomModalOpen(false)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-50"
+          >
+            <X className="h-8 w-8" />
+          </button>
+          
+          <div className="relative w-full max-w-6xl h-full flex items-center justify-center">
+            <img 
+              src={property.images[currentImageIndex]} 
+              alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
+              className="max-w-full max-h-full object-contain"
+            />
+            
+            {property.images.length > 1 && (
+              <>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all"
+                  aria-label="Imagem anterior"
+                >
+                  <ChevronLeft className="h-8 w-8" />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all"
+                  aria-label="Próxima imagem"
+                >
+                  <ChevronRight className="h-8 w-8" />
+                </button>
+              </>
+            )}
+          </div>
+          
+          {/* Zoom Modal Thumbnails */}
+          {property.images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-full px-4 pb-2 snap-x scrollbar-hide">
+              {property.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentImageIndex(idx)}
+                  className={`relative h-16 w-24 shrink-0 rounded-md overflow-hidden snap-start transition-all ${
+                    idx === currentImageIndex ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Real-time Chat Component */}
       {isChatOpen && (
         <Chat 

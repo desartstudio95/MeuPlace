@@ -1,12 +1,47 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyMap } from '@/components/PropertyMap';
 import { LOCATIONS, CATEGORIES } from '@/types';
-import { PROPERTIES as FEATURED_PROPERTIES } from '@/data/mockData';
+import { PROPERTIES as FEATURED_PROPERTIES, FEATURED_RESORTS } from '@/data/mockData';
+
+const FEATURED_AGENTS = [
+  {
+    name: 'Carlos Macuácua',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    rating: 5.0,
+    reviews: 124,
+    propertiesSold: 45,
+    agency: 'Remax Moçambique'
+  },
+  {
+    name: 'Ana Langa',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    rating: 4.9,
+    reviews: 89,
+    propertiesSold: 32,
+    agency: 'Century 21'
+  },
+  {
+    name: 'João Sitoe',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    rating: 4.8,
+    reviews: 56,
+    propertiesSold: 28,
+    agency: 'ERA Imobiliária'
+  },
+  {
+    name: 'Maria Silva',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    rating: 5.0,
+    reviews: 112,
+    propertiesSold: 50,
+    agency: 'Pam Golding'
+  }
+];
 
 export function Home() {
   const navigate = useNavigate();
@@ -163,6 +198,58 @@ export function Home() {
         </div>
       </section>
 
+      {/* Premium Agencies Carousel */}
+      <section className="py-10 bg-white border-b border-gray-100 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
+          <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+            Imobiliárias Premium
+          </p>
+        </div>
+        
+        <div className="relative w-full flex overflow-x-hidden group">
+          <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10"></div>
+          <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10"></div>
+          
+          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center">
+            {/* First set of logos */}
+            {[
+              { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
+              { name: "Century 21", icon: Crown, color: "text-yellow-600" },
+              { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
+              { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
+              { name: "Sotheby's", icon: Star, color: "text-slate-800" },
+              { name: "Keller Williams", icon: Building2, color: "text-red-500" },
+              { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
+              { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
+              { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
+            ].map((agency, idx) => (
+              <div key={`agency-1-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
+                <agency.icon className={`h-8 w-8 ${agency.color}`} />
+                <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+              </div>
+            ))}
+            
+            {/* Second set of logos (duplicated for seamless loop) */}
+            {[
+              { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
+              { name: "Century 21", icon: Crown, color: "text-yellow-600" },
+              { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
+              { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
+              { name: "Sotheby's", icon: Star, color: "text-slate-800" },
+              { name: "Keller Williams", icon: Building2, color: "text-red-500" },
+              { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
+              { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
+              { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
+            ].map((agency, idx) => (
+              <div key={`agency-2-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
+                <agency.icon className={`h-8 w-8 ${agency.color}`} />
+                <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Featured Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -189,6 +276,95 @@ export function Home() {
                 </Button>
             </Link>
            </div>
+        </div>
+      </section>
+
+      {/* Resorts & Hotels Section */}
+      <section className="py-16 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-end mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">Resorts & Hotéis</h2>
+              <p className="mt-2 text-gray-600">As melhores estadias para as suas férias ou viagens de negócios.</p>
+            </div>
+            <Link to="/properties?category=Resort" className="hidden sm:block text-brand-green font-medium hover:text-brand-green-hover">
+              Ver todos &rarr;
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {FEATURED_RESORTS.map((resort) => (
+              <Link key={resort.id} to={`/resort/${resort.id}`} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 group cursor-pointer block">
+                <div className="relative h-48 overflow-hidden">
+                  <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+                    <Star className="h-3.5 w-3.5 text-amber-500 fill-current" />
+                    <span className="text-sm font-bold text-gray-900">{resort.rating}</span>
+                  </div>
+                </div>
+                <div className="p-5">
+                  <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-brand-green transition-colors">{resort.name}</h3>
+                  <div className="flex items-center text-gray-500 text-sm mb-4">
+                    <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                    <span>{resort.location}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                    <p className="text-brand-purple font-bold">
+                      {resort.price} <span className="text-sm font-normal text-gray-500">/noite</span>
+                    </p>
+                    <Button variant="outline" size="sm" className="text-brand-green border-brand-green hover:bg-brand-green/10">
+                      Reservar
+                    </Button>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Agents Section */}
+      <section className="py-16 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900">Agentes em Destaque</h2>
+            <p className="mt-2 text-gray-600">Os profissionais mais bem avaliados e com melhor desempenho.</p>
+          </div>
+
+          <div className="flex overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0 gap-4 sm:gap-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {FEATURED_AGENTS.map((agent, idx) => (
+              <Link key={idx} to={`/agent/${encodeURIComponent(agent.name)}`} className="group min-w-[200px] sm:min-w-[220px] snap-center flex-shrink-0">
+                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-green/30 transition-all text-center h-full flex flex-col">
+                  <div className="relative mx-auto mb-3">
+                    <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-gray-50 group-hover:border-brand-green/20 transition-colors mx-auto">
+                      <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover" />
+                    </div>
+                    {agent.rating >= 4.9 && (
+                      <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white p-1 rounded-full shadow-sm">
+                        <Award className="h-3.5 w-3.5" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <h3 className="text-base font-bold text-gray-900 group-hover:text-brand-green transition-colors line-clamp-1">{agent.name}</h3>
+                  <p className="text-xs text-brand-purple font-medium mb-2">{agent.agency}</p>
+                  
+                  <div className="flex items-center justify-center gap-1 text-amber-500 mb-3">
+                    <Star className="h-3.5 w-3.5 fill-current" />
+                    <span className="font-bold text-gray-900 ml-1 text-sm">{agent.rating.toFixed(1)}</span>
+                    <span className="text-gray-500 text-xs">({agent.reviews})</span>
+                  </div>
+                  
+                  <div className="mt-auto pt-3 border-t border-gray-50 flex justify-center gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="font-bold text-gray-900 text-sm">{agent.propertiesSold}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Imóveis</p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -1,17 +1,25 @@
-import { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { PROPERTIES } from '@/data/mockData';
-import { Upload, Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { Upload, Save, ArrowLeft, Trash2, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
+
+const ALL_AMENITIES = [
+  'Piscina', 'Garagem', 'Jardim', 'Ar Condicionado', 
+  'Segurança 24h', 'Varanda', 'Elevador', 'Mobiliado',
+  'Cozinha Equipada', 'Ginásio', 'Vista para o Mar', 'Churrasqueira'
+];
 
 export function EditProperty() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<Property>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string>('');
 
   useEffect(() => {
     // Simulate fetching data
@@ -39,6 +47,49 @@ export function EditProperty() {
       playNotificationSound();
       alert('Imóvel excluído com sucesso!');
       navigate('/dashboard');
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError('');
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files) as File[];
+      const validFiles: string[] = [];
+      let hasError = false;
+
+      selectedFiles.forEach(file => {
+        if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+          setUploadError('Apenas formatos PNG e JPG são permitidos.');
+          hasError = true;
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          setUploadError(`O arquivo ${file.name} excede o limite de 10MB.`);
+          hasError = true;
+          return;
+        }
+        // Simulate file upload by creating a local object URL
+        validFiles.push(URL.createObjectURL(file));
+      });
+
+      if (!hasError) {
+        setFormData(prev => ({
+          ...prev,
+          images: [...(prev.images || []), ...validFiles]
+        }));
+      }
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const toggleAmenity = (amenity: string) => {
+    const currentFeatures = formData.features || [];
+    if (currentFeatures.includes(amenity)) {
+      setFormData({ ...formData, features: currentFeatures.filter(f => f !== amenity) });
+    } else {
+      setFormData({ ...formData, features: [...currentFeatures, amenity] });
     }
   };
 
@@ -179,11 +230,45 @@ export function EditProperty() {
               />
             </div>
           </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <label className="block text-sm font-medium text-gray-700 mb-3">Comodidades do Imóvel</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {ALL_AMENITIES.map((amenity) => (
+                <div key={amenity} className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id={`amenity-${amenity}`} 
+                    checked={formData.features?.includes(amenity) || false}
+                    onChange={() => toggleAmenity(amenity)}
+                    className="h-4 w-4 text-brand-green focus:ring-brand-green border-gray-300 rounded"
+                  />
+                  <label htmlFor={`amenity-${amenity}`} className="text-sm text-gray-600 cursor-pointer">
+                    {amenity}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* Photos */}
         <section className="space-y-6">
           <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Fotos</h3>
+          
+          <input 
+            type="file" 
+            multiple 
+            accept=".jpg,.jpeg,.png" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+          />
+          
+          {uploadError && (
+            <p className="text-sm text-red-600 mb-4">{uploadError}</p>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {formData.images?.map((img, idx) => (
               <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200">
@@ -200,7 +285,10 @@ export function EditProperty() {
                 </button>
               </div>
             ))}
-            <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 cursor-pointer transition-colors">
+            <div 
+              className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 cursor-pointer transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Upload className="h-8 w-8 mb-2" />
               <span className="text-xs">Adicionar Foto</span>
             </div>
