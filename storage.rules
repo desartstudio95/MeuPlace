@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Funções auxiliares
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          request.auth.token.email == "desartstudiopro@gmail.com"
+        );
+    }
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isLessThan5MB() {
+      return request.resource.size < 5 * 1024 * 1024; // 5MB
+    }
+
+    // Imagens das propriedades
+    match /properties/{fileName} {
+      allow read: if true; // Qualquer pessoa pode ver as imagens
+      allow create, update: if isAuthenticated() && isImage() && isLessThan5MB();
+      allow delete: if isAuthenticated(); // Idealmente, verificar se é dono ou admin
+    }
+    
+    // Avatares de utilizadores
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan5MB();
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+  }
+}

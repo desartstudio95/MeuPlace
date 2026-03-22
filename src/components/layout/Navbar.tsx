@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, PlusCircle, User, Search, LogOut } from 'lucide-react';
+import { Menu, X, PlusCircle, User, Search, LogOut, Building2, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -7,13 +7,16 @@ import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const navigate = useNavigate();
+  const isAuthenticated = !!currentUser;
 
-  const handleLogout = () => {
-    if (window.confirm('Tem certeza que deseja sair?')) {
-      logout();
+  const handleLogout = async () => {
+    try {
+      await logout();
       navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
   };
 
@@ -55,13 +58,38 @@ export function Navbar() {
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">
-                <div className="text-sm text-gray-700 hidden lg:block mr-2">
-                  Olá, <span className="font-medium">{user?.name}</span>
+                <div className="flex items-center text-sm text-gray-700 hidden lg:flex mr-2">
+                  {userProfile?.photoURL ? (
+                    <img src={userProfile.photoURL} alt={userProfile.displayName || 'Avatar'} className="h-8 w-8 rounded-full object-cover mr-2 border border-gray-200" />
+                  ) : (
+                    <User className="h-8 w-8 rounded-full bg-gray-100 p-1.5 text-gray-500 mr-2" />
+                  )}
+                  <span>Olá, <span className="font-medium">{userProfile?.displayName || currentUser?.email?.split('@')[0]}</span></span>
                 </div>
+                {userProfile?.role === 'admin' && (
+                  <Link to="/admin">
+                    <Button variant="ghost" size="sm">
+                      <User className="h-4 w-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/dashboard">
                   <Button variant="ghost" size="sm">
-                    <User className="h-4 w-4 mr-2" />
+                    <Building2 className="h-4 w-4 mr-2" />
                     Dashboard
+                  </Button>
+                </Link>
+                <Link to="/my-files">
+                  <Button variant="ghost" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Arquivos
+                  </Button>
+                </Link>
+                <Link to="/profile">
+                  <Button variant="ghost" size="sm">
+                    <User className="h-4 w-4 mr-2" />
+                    Perfil
                   </Button>
                 </Link>
                 <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -132,11 +160,15 @@ export function Navbar() {
               <div className="space-y-4">
                 <div className="flex items-center px-4">
                   <div className="flex-shrink-0">
-                    <User className="h-10 w-10 rounded-full bg-gray-100 p-2 text-gray-500" />
+                    {userProfile?.photoURL ? (
+                      <img src={userProfile.photoURL} alt={userProfile.displayName || 'Avatar'} className="h-10 w-10 rounded-full object-cover border border-gray-200" />
+                    ) : (
+                      <User className="h-10 w-10 rounded-full bg-gray-100 p-2 text-gray-500" />
+                    )}
                   </div>
                   <div className="ml-3">
-                    <div className="text-base font-medium text-gray-800">{user?.name}</div>
-                    <div className="text-sm font-medium text-gray-500">{user?.email}</div>
+                    <div className="text-base font-medium text-gray-800">{userProfile?.displayName || currentUser?.email?.split('@')[0]}</div>
+                    <div className="text-sm font-medium text-gray-500">{currentUser?.email}</div>
                   </div>
                 </div>
                 <Link

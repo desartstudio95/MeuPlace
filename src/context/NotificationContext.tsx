@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { playNotificationSound } from '@/utils/sound';
+import { toast } from 'sonner';
 
 export interface Notification {
   id: string;
@@ -64,26 +65,50 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const addNotification = (notification: Omit<Notification, 'id' | 'date' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toISOString(),
-      read: false,
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-    playNotificationSound();
+    setNotifications(prev => {
+      // Check if there's already an identical unread notification
+      const isDuplicate = prev.some(n => 
+        !n.read && 
+        n.title === notification.title && 
+        n.message === notification.message
+      );
+      
+      if (isDuplicate) return prev;
+      
+      const newNotification: Notification = {
+        ...notification,
+        id: Math.random().toString(36).substr(2, 9),
+        date: new Date().toISOString(),
+        read: false,
+      };
+      
+      playNotificationSound();
 
-    // Trigger browser push notification if supported and granted
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try {
-        new Notification(notification.title, {
-          body: notification.message,
-          icon: '/vite.svg' // Using default vite icon as fallback
-        });
-      } catch (e) {
-        console.error('Error showing push notification:', e);
+      // Trigger browser push notification if supported and granted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new window.Notification(notification.title, {
+            body: notification.message,
+            icon: '/vite.svg' // Using default vite icon as fallback
+          });
+        } catch (e) {
+          console.error('Error showing push notification:', e);
+        }
       }
-    }
+
+      // Show toast notification
+      if (notification.type === 'success') {
+        toast.success(notification.title, { description: notification.message });
+      } else if (notification.type === 'error') {
+        toast.error(notification.title, { description: notification.message });
+      } else if (notification.type === 'warning') {
+        toast.warning(notification.title, { description: notification.message });
+      } else {
+        toast.info(notification.title, { description: notification.message });
+      }
+      
+      return [newNotification, ...prev];
+    });
   };
 
   const markAsRead = (id: string) => {

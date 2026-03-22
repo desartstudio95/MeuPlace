@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application, including admins, agents, and regular users.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL of the user's profile picture."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "agent", "user"],
+          "description": "The user's role."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time the user was created."
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Property": {
+      "title": "Property",
+      "description": "A real estate property listing.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the property listing."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the property."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the property."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["MZN", "USD"],
+          "description": "The currency of the price."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location/city of the property."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Venda", "Arrendamento"],
+          "description": "The type of listing (Sale or Rent)."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Apartamento", "Vivenda", "Terreno", "Escritório", "Loja", "Armazém"],
+          "description": "The category of the property."
+        },
+        "bedrooms": {
+          "type": "number",
+          "description": "The number of bedrooms."
+        },
+        "bathrooms": {
+          "type": "number",
+          "description": "The number of bathrooms."
+        },
+        "area": {
+          "type": "number",
+          "description": "The area of the property in square meters."
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "An array of image URLs."
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array of property features."
+        },
+        "coordinates": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          },
+          "description": "The geographical coordinates of the property."
+        },
+        "agentId": {
+          "type": "string",
+          "description": "The UID of the agent who created the listing."
+        },
+        "agent": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "whatsapp": { "type": "string" },
+            "email": { "type": "string" },
+            "avatar": { "type": "string" },
+            "isVerified": { "type": "boolean" }
+          },
+          "description": "Denormalized agent data."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time the property was created."
+        },
+        "isPromoted": {
+          "type": "boolean",
+          "description": "Whether the property is promoted/featured."
+        },
+        "requestedPackage": {
+          "type": "string",
+          "description": "The package requested by the agent for promotion."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Disponível", "Vendido", "Arrendado", "Pendente"],
+          "description": "The status of the property."
+        }
+      },
+      "required": ["title", "description", "price", "currency", "location", "type", "category", "agentId", "createdAt", "status"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles and roles."
+    },
+    "properties/{propertyId}": {
+      "schema": {
+        "$ref": "#/entities/Property"
+      },
+      "description": "Stores property listings."
+    }
+  }
+}

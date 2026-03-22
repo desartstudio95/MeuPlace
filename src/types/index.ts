@@ -13,6 +13,15 @@ export interface Agent {
   agency?: string;
   yearsOfExperience?: number;
   isVerified?: boolean;
+  role?: string;
+}
+
+export interface PremiumAgency {
+  id: string;
+  name: string;
+  logoUrl: string;
+  isActive: boolean;
+  order?: number;
 }
 
 export interface Property {
@@ -30,10 +39,13 @@ export interface Property {
   images: string[];
   features: string[];
   coordinates?: { lat: number; lng: number };
-  agent: Agent;
+  agent?: Agent; // Optional for backward compatibility with mock data
+  agentId?: string; // Stored in Firebase
   createdAt: string;
   isPromoted?: boolean;
-  status?: 'Disponível' | 'Vendido' | 'Arrendado';
+  isApproved?: boolean;
+  requestedPackage?: string;
+  status?: 'Disponível' | 'Vendido' | 'Arrendado' | 'Pendente';
 }
 
 export const LOCATIONS = [

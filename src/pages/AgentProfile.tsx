@@ -4,28 +4,82 @@ import { MapPin, Phone, Mail, MessageCircle, ChevronLeft, Star, User, Instagram,
 import { Button } from '@/components/ui/button';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PROPERTIES } from '@/data/mockData';
-import { Agent } from '@/types';
+import { Agent, Property } from '@/types';
+import { collection, query, getDocs, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function AgentProfile() {
   const { name } = useParams();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<Agent | null>(null);
-  const [agentProperties, setAgentProperties] = useState<any[]>([]);
+  const [agentProperties, setAgentProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (name) {
-      const decodedName = decodeURIComponent(name);
-      // Find the first property that belongs to this agent to extract agent details
-      const propertyWithAgent = PROPERTIES.find(p => p.agent.name === decodedName);
+    const fetchAgentData = async () => {
+      if (!name) return;
       
-      if (propertyWithAgent) {
-        setAgent(propertyWithAgent.agent);
-        // Get all properties by this agent
-        const properties = PROPERTIES.filter(p => p.agent.name === decodedName);
-        setAgentProperties(properties);
+      setLoading(true);
+      const decodedName = decodeURIComponent(name);
+      
+      try {
+        // Try to fetch agent from users collection first
+        const usersRef = collection(db, 'users');
+        const userQuery = query(usersRef, where('displayName', '==', decodedName));
+        const userSnapshot = await getDocs(userQuery);
+        
+        let foundAgent: Agent | null = null;
+        
+        if (!userSnapshot.empty) {
+          const userData = userSnapshot.docs[0].data();
+          foundAgent = {
+            name: userData.displayName || decodedName,
+            email: userData.email,
+            phone: userData.phone || '',
+            whatsapp: userData.whatsapp || userData.phone || '',
+            avatar: userData.photoURL || '',
+            bio: userData.bio || '',
+            instagram: userData.instagram || '',
+            facebook: userData.facebook || '',
+            agency: userData.agencyName || '',
+            isVerified: userData.isApproved !== false,
+            role: userData.role
+          };
+        }
+
+        // Fetch properties from Firebase where agent.name matches
+        const q = query(collection(db, 'properties'), where('agent.name', '==', decodedName));
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedProperties: Property[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
+        });
+
+        // Combine with mock data for now
+        const mockProperties = PROPERTIES.filter(p => p.agent?.name === decodedName);
+        const allProperties = [...fetchedProperties, ...mockProperties].filter(p => p.isApproved !== false);
+        
+        setAgentProperties(allProperties);
+
+        if (foundAgent) {
+          setAgent(foundAgent);
+        } else if (allProperties.length > 0 && allProperties[0].agent) {
+          setAgent(allProperties[0].agent);
+        }
+      } catch (error) {
+        console.error("Error fetching agent properties:", error);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchAgentData();
   }, [name]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
+  }
 
   if (!agent) {
     return (
@@ -45,14 +99,20 @@ export function AgentProfile() {
     window.open(`https://wa.me/${agent.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  const handleBack = () => {
+    navigate(-1);
+    setTimeout(() => window.scrollTo(0, 0), 100);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <Button variant="ghost" className="text-gray-500 hover:text-gray-900 pl-0" onClick={() => navigate(-1)}>
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          Voltar
-        </Button>
-      </div>
+      <button 
+        onClick={handleBack}
+        className="flex items-center text-gray-500 hover:text-brand-green transition-colors mb-6 group"
+      >
+        <ChevronLeft className="h-5 w-5 mr-1 group-hover:-translate-x-1 transition-transform" />
+        Voltar
+      </button>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-12">
         <div className="h-32 bg-gradient-to-r from-brand-green/20 to-brand-purple/20"></div>
@@ -78,7 +138,7 @@ export function AgentProfile() {
                 {agent.rating && agent.rating >= 4.9 && (
                   <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
                     <Award className="h-3.5 w-3.5" />
-                    Agente 5 Estrelas
+                    {agent.role === 'resort' ? 'Resort 5 Estrelas' : 'Agente 5 Estrelas'}
                   </span>
                 )}
               </div>
@@ -128,7 +188,9 @@ export function AgentProfile() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">Sobre</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  {agent.bio || `${agent.name} é um agente imobiliário verificado no MeuPlace, dedicado a ajudar clientes a encontrar o imóvel ideal. Com uma seleção cuidadosa de propriedades, oferece um serviço profissional e transparente.`}
+                  {agent.bio || (agent.role === 'resort' 
+                    ? `${agent.name} é um resort/hotel parceiro verificado no MeuPlace, oferecendo as melhores acomodações e serviços para a sua estadia.`
+                    : `${agent.name} é um agente imobiliário verificado no MeuPlace, dedicado a ajudar clientes a encontrar o imóvel ideal. Com uma seleção cuidadosa de propriedades, oferece um serviço profissional e transparente.`)}
                 </p>
               </div>
             </div>
@@ -187,7 +249,7 @@ export function AgentProfile() {
         </div>
         
         {agentProperties.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
             {agentProperties.map(property => (
               <PropertyCard key={property.id} property={property} />
             ))}

@@ -35,8 +35,14 @@ import {
   X,
   BadgeCheck
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
+import { Property } from '@/types';
+import { resizeImage } from '@/utils/imageUtils';
+import { useNotifications } from '@/context/NotificationContext';
 
 // Mock messages data
 const MOCK_MESSAGES = [
@@ -76,9 +82,10 @@ const MOCK_MESSAGES = [
 ];
 
 export function AgentDashboard() {
-  const { user, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [messages, setMessages] = useState(MOCK_MESSAGES);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,7 +99,38 @@ export function AgentDashboard() {
   const [showReplySuccess, setShowReplySuccess] = useState(false);
 
   // Mock data for the dashboard
-  const [myProperties, setMyProperties] = useState(PROPERTIES.slice(0, 3)); // Simulate user's properties
+  const [myProperties, setMyProperties] = useState<Property[]>([]);
+  const [loadingProperties, setLoadingProperties] = useState(true);
+
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clear the state so it doesn't persist on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
+
+  useEffect(() => {
+    const fetchMyProperties = async () => {
+      if (!currentUser) return;
+      try {
+        const q = query(collection(db, 'properties'), where('agentId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const fetchedProperties: Property[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
+        });
+        setMyProperties(fetchedProperties);
+      } catch (error) {
+        console.error("Error fetching agent properties:", error);
+      } finally {
+        setLoadingProperties(false);
+      }
+    };
+
+    fetchMyProperties();
+  }, [currentUser]);
+
   const stats = [
     { label: 'Imóveis Ativos', value: myProperties.length, icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
     { label: 'Visualizações Totais', value: '1,234', icon: Eye, color: 'text-green-600', bg: 'bg-green-100' },
@@ -101,29 +139,68 @@ export function AgentDashboard() {
   ];
 
   const [profileData, setProfileData] = useState({
-    name: user?.name || 'Agente Imobiliário',
-    email: user?.email || 'agente@meuplace.co.mz',
-    phone: '+258 84 123 4567',
-    whatsapp: '+258 84 123 4567',
-    bio: 'Especialista em imóveis de luxo na cidade de Maputo com mais de 5 anos de experiência.',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    instagram: '',
-    facebook: '',
+    name: userProfile?.displayName || currentUser?.email?.split('@')[0] || 'Agente Imobiliário',
+    email: currentUser?.email || 'agente@meuplace.co.mz',
+    phone: userProfile?.phone || '+258 84 123 4567',
+    whatsapp: userProfile?.whatsapp || '+258 84 123 4567',
+    bio: userProfile?.bio || 'Especialista em imóveis de luxo na cidade de Maputo com mais de 5 anos de experiência.',
+    avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+    instagram: userProfile?.instagram || '',
+    facebook: userProfile?.facebook || '',
+    agencyName: userProfile?.agencyName || '',
     isVerified: true
   });
 
-  const handleProfileUpdate = (e: React.FormEvent) => {
+  const { updateUserProfile } = useAuth();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const { addNotification } = useNotifications();
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowSuccessMessage(true);
-    playNotificationSound();
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+    try {
+      await updateUserProfile({
+        displayName: profileData.name,
+        photoURL: profileData.avatar,
+        phone: profileData.phone,
+        whatsapp: profileData.whatsapp,
+        bio: profileData.bio,
+        instagram: profileData.instagram,
+        facebook: profileData.facebook,
+        agencyName: profileData.agencyName
+      });
+      setShowSuccessMessage(true);
+      playNotificationSound();
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      addNotification({ title: 'Erro', message: 'Erro ao atualizar perfil.', type: 'error' });
+    }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setProfileData(prev => ({ ...prev, avatar: imageUrl }));
+    if (!file || !currentUser) return;
+
+    if (!file.type.startsWith('image/')) {
+      addNotification({ title: 'Erro', message: 'Por favor, selecione uma imagem.', type: 'error' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification({ title: 'Erro', message: 'A imagem deve ter no máximo 5MB.', type: 'error' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    
+    try {
+      const base64Image = await resizeImage(file, 200, 200);
+      setProfileData(prev => ({ ...prev, avatar: base64Image }));
+      setUploadingAvatar(false);
+    } catch (error) {
+      console.error('Error in file upload:', error);
+      addNotification({ title: 'Erro', message: 'Erro ao processar a imagem.', type: 'error' });
+      setUploadingAvatar(false);
     }
   };
 
@@ -131,20 +208,39 @@ export function AgentDashboard() {
     fileInputRef.current?.click();
   };
 
-  const handleDeleteProperty = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este imóvel?')) {
-      setMyProperties(myProperties.filter(p => p.id !== id));
-      // In a real app, we would also call an API to delete the property
+  const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
+
+  const handleDeleteProperty = async (id: string) => {
+    setPropertyToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!propertyToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'properties', propertyToDelete));
+      setMyProperties(myProperties.filter(p => p.id !== propertyToDelete));
+      playNotificationSound();
+    } catch (error) {
+      console.error("Error deleting property:", error);
+    } finally {
+      setPropertyToDelete(null);
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: 'Disponível' | 'Vendido' | 'Arrendado') => {
-    setMyProperties(myProperties.map(p => 
-      p.id === id ? { ...p, status: newStatus } : p
-    ));
-    setShowSuccessMessage(true);
-    playNotificationSound();
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+  const handleStatusChange = async (id: string, newStatus: 'Disponível' | 'Vendido' | 'Arrendado') => {
+    try {
+      const propertyRef = doc(db, 'properties', id);
+      await updateDoc(propertyRef, { status: newStatus });
+      setMyProperties(myProperties.map(p => 
+        p.id === id ? { ...p, status: newStatus } : p
+      ));
+      setShowSuccessMessage(true);
+      playNotificationSound();
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error("Error updating property status:", error);
+      addNotification({ title: 'Erro', message: 'Erro ao atualizar status.', type: 'error' });
+    }
   };
 
   const toggleMessageRead = (id: number) => {
@@ -182,6 +278,24 @@ export function AgentDashboard() {
     msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
     msg.propertyTitle.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (userProfile && !userProfile.isApproved) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+          <Clock className="w-8 h-8 text-yellow-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Cadastro em Análise</h2>
+        <p className="text-gray-600 max-w-md mb-6">
+          Seu cadastro como agente está sendo analisado pela nossa equipe. 
+          Você receberá uma notificação assim que for aprovado.
+        </p>
+        <Button onClick={() => navigate('/')} className="bg-brand-green hover:bg-brand-green/90">
+          Voltar para a Página Inicial
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -223,9 +337,11 @@ export function AgentDashboard() {
             <div>
               <h2 className="font-bold text-gray-900 truncate max-w-[140px] flex items-center gap-1">
                 {profileData.name}
-                {profileData.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Agente Verificado" />}
+                {profileData.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Verificado" />}
               </h2>
-              <p className="text-xs text-gray-500">Agente Verificado</p>
+              <p className="text-xs text-gray-500">
+                {userProfile?.role === 'resort' ? 'Resort / Hotel' : 'Agente Verificado'}
+              </p>
             </div>
           </div>
           
@@ -283,10 +399,12 @@ export function AgentDashboard() {
         </div>
         
         <div className="p-4 mt-auto">
-          <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => {
-            if (window.confirm('Tem certeza que deseja sair?')) {
-              logout();
+          <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50" onClick={async () => {
+            try {
+              await logout();
               navigate('/');
+            } catch (error) {
+              console.error('Error logging out:', error);
             }
           }}>
             <LogOut className="mr-3 h-5 w-5" />
@@ -352,7 +470,7 @@ export function AgentDashboard() {
                   <h2 className="text-lg font-bold text-gray-900">Imóveis Recentes</h2>
                   <Button variant="outline" size="sm" onClick={() => setActiveTab('properties')}>Ver Todos</Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                   {myProperties.slice(0, 2).map(property => (
                     <div key={property.id} className="relative group flex flex-col h-full">
                       <PropertyCard property={property} className="h-auto" />
@@ -384,7 +502,7 @@ export function AgentDashboard() {
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-bold text-gray-900">Imóveis Antigos</h2>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     {myProperties.slice(2).map(property => (
                       <div key={property.id} className="relative group flex flex-col h-full">
                         <PropertyCard property={property} className="h-auto" />
@@ -517,6 +635,22 @@ export function AgentDashboard() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+              </div>
+            </div>
+
+            {/* Chat Rules Banner */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-4">
+              <div className="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0">
+                <BadgeCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-1">Regras de Comunicação Interna</h3>
+                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <li><strong>Seja Profissional:</strong> Mantenha um tom respeitoso e cordial com todos os clientes.</li>
+                  <li><strong>Segurança:</strong> Não partilhe links de pagamento externos ou solicite transferências antes de formalizar o contrato.</li>
+                  <li><strong>Privacidade:</strong> Proteja os seus dados pessoais e os do cliente.</li>
+                  <li><strong>Proibido Spam:</strong> Não envie mensagens não solicitadas ou promoções irrelevantes.</li>
+                </ul>
               </div>
             </div>
 
@@ -672,16 +806,27 @@ export function AgentDashboard() {
                       accept="image/*" 
                       onChange={handleFileChange} 
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={triggerFileInput}>Alterar Foto</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={triggerFileInput} disabled={uploadingAvatar}>
+                      {uploadingAvatar ? 'A Carregar...' : 'Alterar Foto'}
+                    </Button>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="col-span-1 md:col-span-2">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
                     <Input 
                       value={profileData.name} 
                       onChange={(e) => setProfileData({...profileData, name: e.target.value})} 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Agência (Opcional)</label>
+                    <Input 
+                      value={profileData.agencyName} 
+                      onChange={(e) => setProfileData({...profileData, agencyName: e.target.value})} 
+                      placeholder="Ex: Remax, Century 21, etc."
                     />
                   </div>
 
@@ -738,7 +883,10 @@ export function AgentDashboard() {
                   />
                 </div>
 
-                <div className="pt-4 flex justify-end">
+                <div className="pt-4 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setActiveTab('overview')}>
+                    Cancelar
+                  </Button>
                   <Button type="submit" className="bg-brand-green hover:bg-brand-green-hover">
                     Salvar Alterações
                   </Button>
@@ -748,6 +896,21 @@ export function AgentDashboard() {
           </div>
         )}
       </main>
+
+      <Dialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Imóvel</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPropertyToDelete(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

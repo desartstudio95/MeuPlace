@@ -6,6 +6,18 @@ import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { PROPERTIES } from '@/data/mockData';
 import { Upload, Save, ArrowLeft, Trash2, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
+import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const ALL_AMENITIES = [
   'Piscina', 'Garagem', 'Jardim', 'Ar Condicionado', 
@@ -16,37 +28,90 @@ const ALL_AMENITIES = [
 export function EditProperty() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentUser, userProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<Property>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState<string>('');
 
-  useEffect(() => {
-    // Simulate fetching data
-    const property = PROPERTIES.find(p => p.id === id);
-    if (property) {
-      setFormData(property);
-    } else {
-      // Handle not found
-      alert('Imóvel não encontrado');
-      navigate('/dashboard');
-    }
-    setIsLoading(false);
-  }, [id, navigate]);
+  const { addNotification } = useNotifications();
 
-  const handleSubmit = (e: FormEvent) => {
+  useEffect(() => {
+    if (userProfile && !userProfile.isApproved) {
+      navigate('/');
+      return;
+    }
+    
+    const fetchProperty = async () => {
+      if (!id) return;
+      try {
+        const docRef = doc(db, 'properties', id);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setFormData({ id: docSnap.id, ...docSnap.data() } as Property);
+        } else {
+          // Fallback to mock data
+          const property = PROPERTIES.find(p => p.id === id);
+          if (property) {
+            setFormData(property);
+          } else {
+            addNotification({ title: 'Erro', message: 'Imóvel não encontrado', type: 'error' });
+            navigate('/dashboard', { state: { activeTab: 'properties' } });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching property:", error);
+        addNotification({ title: 'Erro', message: 'Erro ao carregar imóvel', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperty();
+  }, [id, navigate, userProfile, addNotification]);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Simulate API call
-    playNotificationSound();
-    alert('Imóvel atualizado com sucesso!');
-    navigate('/dashboard');
+    if (!id || !currentUser) return;
+    
+    try {
+      setIsLoading(true);
+      const docRef = doc(db, 'properties', id);
+      
+      // Remove id from formData before updating
+      const { id: _, ...updateData } = formData;
+      
+      await updateDoc(docRef, updateData);
+      playNotificationSound();
+      addNotification({ title: 'Sucesso', message: 'Imóvel atualizado com sucesso!', type: 'success' });
+      navigate('/dashboard', { state: { activeTab: 'properties' } });
+    } catch (error) {
+      console.error("Error updating property:", error);
+      addNotification({ title: 'Erro', message: 'Erro ao atualizar imóvel. Verifique suas permissões.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    if (confirm('Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.')) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleDelete = async () => {
+    if (!id || !currentUser) return;
+    
+    try {
+      setIsLoading(true);
+      const docRef = doc(db, 'properties', id);
+      await deleteDoc(docRef);
       playNotificationSound();
-      alert('Imóvel excluído com sucesso!');
-      navigate('/dashboard');
+      addNotification({ title: 'Sucesso', message: 'Imóvel excluído com sucesso!', type: 'success' });
+      navigate('/dashboard', { state: { activeTab: 'properties' } });
+    } catch (error) {
+      console.error("Error deleting property:", error);
+      addNotification({ title: 'Erro', message: 'Erro ao excluir imóvel.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -101,7 +166,7 @@ export function EditProperty() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard', { state: { activeTab: 'properties' } })}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -109,11 +174,28 @@ export function EditProperty() {
             <p className="text-sm text-gray-500">ID: {id}</p>
           </div>
         </div>
-        <Button variant="destructive" size="sm" onClick={handleDelete}>
+        <Button variant="destructive" size="sm" onClick={() => setShowDeleteModal(true)}>
           <Trash2 className="h-4 w-4 mr-2" />
           Excluir Imóvel
         </Button>
       </div>
+
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Imóvel</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isLoading}>
+              {isLoading ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <form onSubmit={handleSubmit} className="space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-100">
         
@@ -154,13 +236,25 @@ export function EditProperty() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preço ({formData.currency})</label>
-              <Input 
-                type="number" 
-                value={formData.price} 
-                onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} 
-                required 
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Preço</label>
+              <div className="flex gap-2">
+                <select
+                  name="currency"
+                  value={formData.currency || 'MZN'}
+                  onChange={(e) => setFormData({...formData, currency: e.target.value as any})}
+                  className="w-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="MZN">MZN</option>
+                  <option value="USD">USD</option>
+                </select>
+                <Input 
+                  type="number" 
+                  value={formData.price} 
+                  onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} 
+                  required 
+                  className="flex-1"
+                />
+              </div>
             </div>
           </div>
 
@@ -296,7 +390,7 @@ export function EditProperty() {
         </section>
 
         <div className="flex justify-end pt-6 border-t border-gray-100 gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
+          <Button type="button" variant="outline" onClick={() => navigate('/dashboard', { state: { activeTab: 'properties' } })}>
             Cancelar
           </Button>
           <Button type="submit" className="bg-brand-green hover:bg-brand-green-hover">

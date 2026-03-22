@@ -6,6 +6,9 @@ import { PropertyMap } from '@/components/PropertyMap';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/context/NotificationContext';
+import { useAuth } from '@/context/AuthContext';
+import { collection, query, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -15,13 +18,40 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Search, Filter, X, Bell, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List } from 'lucide-react';
+import { Search, Filter, X, Bell, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, Star } from 'lucide-react';
 import { PROPERTIES as MOCK_PROPERTIES } from '@/data/mockData';
 
 export function Properties() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { addNotification } = useNotifications();
+  const { userProfile } = useAuth();
   
+  const [properties, setProperties] = useState<Property[]>(MOCK_PROPERTIES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const q = query(collection(db, 'properties'));
+        const querySnapshot = await getDocs(q);
+        const fetchedProperties: Property[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
+        });
+        
+        // Combine mock properties and fetched properties
+        // In a real app, you might only use fetched properties
+        setProperties([...fetchedProperties, ...MOCK_PROPERTIES]);
+      } catch (error) {
+        console.error("Error fetching properties:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
+
   const [filters, setFilters] = useState({
     location: searchParams.get('location') || '',
     category: searchParams.get('category') || '',
@@ -74,7 +104,7 @@ export function Properties() {
         title: 'Novo Imóvel Encontrado!',
         message: 'Um novo imóvel que corresponde aos seus critérios foi adicionado.',
         type: 'info',
-        link: `/properties/${MOCK_PROPERTIES[0].id}` // Just linking to the first one for demo
+        link: `/properties/${properties[0]?.id}` // Just linking to the first one for demo
       });
     }, 5000);
 
@@ -130,7 +160,10 @@ export function Properties() {
     }
   };
 
-  const filteredProperties = MOCK_PROPERTIES.filter(p => {
+  const filteredProperties = properties.filter(p => {
+    // Filter out unapproved properties unless admin or owner
+    if (!p.isApproved && userProfile?.role !== 'admin' && p.agentId !== userProfile?.uid) return false;
+
     // Case insensitive location search
     if (filters.location && !p.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.category && p.category !== filters.category) return false;
@@ -157,9 +190,13 @@ export function Properties() {
     return 0;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
-  const paginatedProperties = filteredProperties.slice(
+  // Separate featured and free properties
+  const featuredProperties = filteredProperties.filter(p => p.isPromoted);
+  const freeProperties = filteredProperties.filter(p => !p.isPromoted);
+
+  // Pagination logic applies to free properties
+  const totalPages = Math.ceil(freeProperties.length / itemsPerPage);
+  const paginatedFreeProperties = freeProperties.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -385,7 +422,7 @@ export function Properties() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Imóveis Disponíveis</h1>
               <p className="text-gray-500">
-                Mostrando {paginatedProperties.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} - {Math.min(currentPage * itemsPerPage, filteredProperties.length)} de {filteredProperties.length} resultados
+                {filteredProperties.length} resultados encontrados
               </p>
             </div>
             
@@ -429,18 +466,46 @@ export function Properties() {
 
           {viewMode === 'map' ? (
             <div className="flex flex-col lg:flex-row gap-6 h-[800px]">
-              <div className="w-full lg:w-1/2 overflow-y-auto pr-2 pb-4 space-y-6">
-                {paginatedProperties.length > 0 ? (
+              <div className="w-full lg:w-1/2 overflow-y-auto pr-2 pb-4 space-y-8">
+                {filteredProperties.length > 0 ? (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {paginatedProperties.map(property => (
-                        <PropertyCard 
-                          key={property.id} 
-                          property={property} 
-                          isHighlighted={property.id === highlightedPropertyId} 
-                        />
-                      ))}
-                    </div>
+                    {/* Featured Properties Section */}
+                    {featuredProperties.length > 0 && currentPage === 1 && (
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                          <Star className="h-5 w-5 text-amber-500 fill-current" />
+                          Imóveis em Destaque
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {featuredProperties.map(property => (
+                            <PropertyCard 
+                              key={property.id} 
+                              property={property} 
+                              isHighlighted={property.id === highlightedPropertyId} 
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Free Properties Section */}
+                    {paginatedFreeProperties.length > 0 && (
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">
+                          Imóveis Publicados Gratuitamente
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {paginatedFreeProperties.map(property => (
+                            <PropertyCard 
+                              key={property.id} 
+                              property={property} 
+                              isHighlighted={property.id === highlightedPropertyId} 
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
                       <div className="mt-8 flex justify-center items-center gap-2">
@@ -477,10 +542,21 @@ export function Properties() {
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
-                    <Search className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Nenhum imóvel encontrado</h3>
-                    <p className="text-gray-500">Tente ajustar os seus filtros de pesquisa.</p>
+                  <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300 flex flex-col items-center justify-center">
+                    <div className="bg-gray-50 p-6 rounded-full mb-6">
+                      <Search className="h-12 w-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Ops! Nenhum imóvel encontrado</h3>
+                    <p className="text-gray-500 max-w-md mx-auto mb-6">
+                      Não encontrámos nenhum imóvel com os filtros selecionados. Tente remover alguns filtros ou procurar numa localização diferente.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setFilters({ location: '', category: '', type: '', minPrice: '', maxPrice: '', bedrooms: '', minArea: '' })}
+                      className="text-brand-green border-brand-green hover:bg-brand-green/10"
+                    >
+                      Limpar Filtros
+                    </Button>
                   </div>
                 )}
               </div>
@@ -494,14 +570,37 @@ export function Properties() {
               </div>
             </div>
           ) : (
-            <>
-              {paginatedProperties.length > 0 ? (
+            <div className="space-y-10">
+              {filteredProperties.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginatedProperties.map(property => (
-                      <PropertyCard key={property.id} property={property} />
-                    ))}
-                  </div>
+                  {/* Featured Properties Section */}
+                  {featuredProperties.length > 0 && currentPage === 1 && (
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <Star className="h-6 w-6 text-amber-500 fill-current" />
+                        Imóveis em Destaque
+                      </h2>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                        {featuredProperties.map(property => (
+                          <PropertyCard key={property.id} property={property} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Free Properties Section */}
+                  {paginatedFreeProperties.length > 0 && (
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">
+                        Imóveis Publicados Gratuitamente
+                      </h2>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                        {paginatedFreeProperties.map(property => (
+                          <PropertyCard key={property.id} property={property} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Pagination Controls */}
                   {totalPages > 1 && (
@@ -539,13 +638,24 @@ export function Properties() {
                   )}
                 </>
               ) : (
-                <div className="text-center py-20 bg-white rounded-lg border border-dashed border-gray-300">
-                  <Search className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900">Nenhum imóvel encontrado</h3>
-                  <p className="text-gray-500">Tente ajustar os seus filtros de pesquisa.</p>
+                <div className="text-center py-24 bg-white rounded-2xl border border-dashed border-gray-300 flex flex-col items-center justify-center">
+                  <div className="bg-gray-50 p-6 rounded-full mb-6">
+                    <Search className="h-12 w-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Ops! Nenhum imóvel encontrado</h3>
+                  <p className="text-gray-500 max-w-md mx-auto mb-6">
+                    Não encontrámos nenhum imóvel com os filtros selecionados. Tente remover alguns filtros ou procurar numa localização diferente.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setFilters({ location: '', category: '', type: '', minPrice: '', maxPrice: '', bedrooms: '', minArea: '' })}
+                    className="text-brand-green border-brand-green hover:bg-brand-green/10"
+                  >
+                    Limpar Filtros
+                  </Button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

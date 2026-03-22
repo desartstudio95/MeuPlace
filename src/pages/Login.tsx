@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, Lock, Building2, Info } from 'lucide-react';
+import { User, Lock, Building2, Info, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 
@@ -11,8 +11,12 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [userType, setUserType] = useState<'agent' | 'agency'>('agent');
-  const { login } = useAuth();
+  const { login, loginWithEmail, resetPassword } = useAuth();
   const { addNotification } = useNotifications();
   const navigate = useNavigate();
 
@@ -43,30 +47,73 @@ export function Login() {
     const value = e.target.value;
     setEmail(value);
     if (emailError) validateEmail(value);
+    if (authError) setAuthError('');
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPassword(value);
     if (passwordError) validatePassword(value);
+    if (authError) setAuthError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleGoogleLogin = async () => {
+    try {
+      await login();
+      addNotification({
+        title: 'Login bem-sucedido',
+        message: 'Bem-vindo de volta ao MeuPlace!',
+        type: 'success'
+      });
+      navigate('/');
+    } catch (error) {
+      addNotification({
+        title: 'Erro no login',
+        message: 'Não foi possível iniciar sessão com o Google.',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const isEmailValid = validateEmail(email);
+    
+    if (isForgotPassword) {
+      if (!isEmailValid) return;
+      try {
+        await resetPassword(email);
+        setResetSent(true);
+        addNotification({
+          title: 'Email enviado',
+          message: 'Verifique a sua caixa de entrada para redefinir a senha.',
+          type: 'success'
+        });
+      } catch (error: any) {
+        setAuthError('Não foi possível enviar o email de redefinição. Verifique se o email está correto.');
+      }
+      return;
+    }
+
     const isPasswordValid = validatePassword(password);
 
     if (!isEmailValid || !isPasswordValid) return;
 
-    login(email, userType);
-    
-    addNotification({
-      title: 'Login bem-sucedido',
-      message: 'Bem-vindo de volta ao MeuPlace!',
-      type: 'success'
-    });
-    
-    navigate('/');
+    try {
+      await loginWithEmail(email, password);
+      addNotification({
+        title: 'Login bem-sucedido',
+        message: 'Bem-vindo de volta ao MeuPlace!',
+        type: 'success'
+      });
+      navigate('/');
+    } catch (error: any) {
+      if (error.message === 'email-not-verified') {
+        navigate('/verify-email', { state: { email } });
+      } else {
+        setAuthError('Email ou Senha Incorretos');
+      }
+    }
   };
 
   return (
@@ -78,178 +125,157 @@ export function Login() {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Acesse sua conta
+          {isForgotPassword ? 'Recuperar senha' : 'Acesse sua conta'}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Ou{' '}
-          <Link to="/register" className="font-medium text-brand-green hover:text-brand-green-hover">
-            crie uma nova conta
-          </Link>
+          {isForgotPassword 
+            ? 'Insira o seu email para receber um link de redefinição de senha.' 
+            : 'Faça login para gerir os seus imóveis, resorts ou hotéis'}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
           
-          {/* Testing Hint */}
-          <div className="mb-6 bg-blue-50 p-4 rounded-md flex items-start">
-            <Info className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-            <div className="text-sm text-blue-700">
-              <p className="font-medium mb-1">Dica para teste:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Use <strong>aprovado@teste.com</strong> para entrar como usuário aprovado.</li>
-                <li>Qualquer outro email entrará como usuário pendente.</li>
-              </ul>
-            </div>
-          </div>
-          
-          {/* User Type Toggle */}
-          <div className="flex rounded-md bg-gray-100 p-1 mb-6">
-            <button
-              onClick={() => setUserType('agent')}
-              className={`flex-1 flex items-center justify-center py-2 text-sm font-medium rounded-md transition-all ${
-                userType === 'agent' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <User className="w-4 h-4 mr-2" />
-              Agente
-            </button>
-            <button
-              onClick={() => setUserType('agency')}
-              className={`flex-1 flex items-center justify-center py-2 text-sm font-medium rounded-md transition-all ${
-                userType === 'agency' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <Building2 className="w-4 h-4 mr-2" />
-              Agência
-            </button>
-          </div>
-
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email profissional
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className={`pl-10 ${emailError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={handleEmailChange}
-                  onBlur={() => validateEmail(email)}
-                />
+          {resetSent ? (
+            <div className="text-center">
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm font-medium mb-6">
+                Email de redefinição enviado com sucesso! Verifique sua caixa de entrada.
               </div>
-              {emailError && (
-                <p className="mt-2 text-sm text-red-600">{emailError}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Senha
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className={`pl-10 ${passwordError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={handlePasswordChange}
-                  onBlur={() => validatePassword(password)}
-                />
-              </div>
-              {passwordError && (
-                <p className="mt-2 text-sm text-red-600">{passwordError}</p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-brand-green focus:ring-brand-green border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Lembrar-me
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-brand-green hover:text-brand-green-hover">
-                  Esqueceu sua senha?
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <Button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-green hover:bg-brand-green-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-green"
+              <Button 
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setResetSent(false);
+                  setAuthError('');
+                }} 
+                className="w-full bg-brand-green hover:bg-brand-green-hover text-white"
               >
-                Entrar
+                Voltar ao Login
               </Button>
             </div>
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Ou continue com
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
+          ) : (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {authError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm text-center font-medium">
+                  {authError}
+                </div>
+              )}
+              
               <div>
-                <a
-                  href="#"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Entrar com Google</span>
-                  <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                  </svg>
-                </a>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <div className="mt-1">
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={handleEmailChange}
+                    className={emailError ? 'border-red-500' : ''}
+                    placeholder="seu@email.com"
+                  />
+                  {emailError && <p className="mt-1 text-sm text-red-600">{emailError}</p>}
+                </div>
               </div>
 
+              {!isForgotPassword && (
+                <div>
+                  <div className="flex justify-between items-center">
+                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setAuthError('');
+                        setEmailError('');
+                        setPasswordError('');
+                      }} 
+                      className="text-sm font-medium text-brand-green hover:text-brand-green-hover"
+                    >
+                      Esqueceu a senha?
+                    </button>
+                  </div>
+                  <div className="mt-1 relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={handlePasswordChange}
+                      className={`${passwordError ? 'border-red-500' : ''} pr-10`}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" aria-hidden="true" />
+                      ) : (
+                        <Eye className="h-5 w-5" aria-hidden="true" />
+                      )}
+                    </button>
+                    {passwordError && <p className="mt-1 text-sm text-red-600">{passwordError}</p>}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <a
-                  href="#"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Entrar com Facebook</span>
-                  <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                    <path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd" />
-                  </svg>
-                </a>
+                <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white">
+                  {isForgotPassword ? 'Enviar Link' : 'Entrar'}
+                </Button>
               </div>
-            </div>
-          </div>
+              
+              {isForgotPassword && (
+                <div className="text-center mt-4">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsForgotPassword(false);
+                      setAuthError('');
+                      setEmailError('');
+                    }} 
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Voltar ao Login
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+
+          {!isForgotPassword && !resetSent && (
+            <>
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Ou continue com</span>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <Button
+                    onClick={handleGoogleLogin}
+                    type="button"
+                    className="w-full flex justify-center py-6 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <svg className="w-5 h-5 mr-2" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                    </svg>
+                    Entrar com Google
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                  Ainda não tem conta?{' '}
+                  <Link to="/register" className="font-medium text-brand-green hover:text-brand-green-hover">
+                    Criar conta
+                  </Link>
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

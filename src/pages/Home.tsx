@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyMap } from '@/components/PropertyMap';
-import { LOCATIONS, CATEGORIES } from '@/types';
-import { PROPERTIES as FEATURED_PROPERTIES, FEATURED_RESORTS } from '@/data/mockData';
+import { LOCATIONS, CATEGORIES, Property, PremiumAgency } from '@/types';
+import { PROPERTIES as FEATURED_PROPERTIES_MOCK, FEATURED_RESORTS } from '@/data/mockData';
+import { collection, query, getDocs, limit, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const FEATURED_AGENTS = [
   {
@@ -52,6 +55,48 @@ export function Home() {
   const [bedrooms, setBedrooms] = useState('');
   const [minArea, setMinArea] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(true);
+  const [featuredProperties, setFeaturedProperties] = useState<Property[]>(FEATURED_PROPERTIES_MOCK.filter(p => p.isPromoted));
+  const [premiumAgencies, setPremiumAgencies] = useState<PremiumAgency[]>([]);
+
+  useEffect(() => {
+    const fetchFeaturedProperties = async () => {
+      try {
+        const q = query(collection(db, 'properties'), where('isPromoted', '==', true), limit(6));
+        const querySnapshot = await getDocs(q);
+        const fetchedProperties: Property[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
+        });
+        
+        if (fetchedProperties.length > 0) {
+          setFeaturedProperties(fetchedProperties);
+        }
+      } catch (error) {
+        console.error("Error fetching featured properties:", error);
+      }
+    };
+
+    const fetchPremiumAgencies = async () => {
+      try {
+        const agenciesQ = query(collection(db, 'premium_agencies'), where('isActive', '==', true));
+        const agenciesSnapshot = await getDocs(agenciesQ);
+        const fetchedAgencies: PremiumAgency[] = [];
+        agenciesSnapshot.forEach((doc) => {
+          fetchedAgencies.push({ id: doc.id, ...doc.data() } as PremiumAgency);
+        });
+        
+        // Sort in memory to avoid requiring a composite index
+        fetchedAgencies.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        setPremiumAgencies(fetchedAgencies);
+      } catch (error) {
+        console.error("Error fetching premium agencies:", error);
+      }
+    };
+
+    fetchFeaturedProperties();
+    fetchPremiumAgencies();
+  }, []);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -76,21 +121,32 @@ export function Home() {
           <img
             src="https://i.ibb.co/9HtKhj7v/Chat-GPT-Image-Mar-5-2026-10-33-16-AM.png"
             alt="Família feliz"
-            className="w-full h-full object-cover opacity-70"
+            className="w-full h-full object-cover opacity-95"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#cb6ce6]/60 to-[#cb6ce6]/90" />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
-            O Maior Shopping de imóveis em <span className="text-brand-green">Moçambique</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10">
-            A forma mais simples e segura de comprar, vender ou arrendar o teu place.
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
+              O Maior Shopping de imóveis em <span className="text-brand-green">Moçambique</span>
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10">
+              A forma mais simples e segura de comprar, vender ou arrendar o teu place.
+            </p>
+          </motion.div>
 
           {/* Search Box */}
-          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300">
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300"
+          >
             <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
               <div className="flex items-center gap-2 text-gray-700 font-medium">
                 <Search className="h-4 w-4" />
@@ -194,12 +250,18 @@ export function Home() {
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Premium Agencies Carousel */}
-      <section className="py-10 bg-white border-b border-gray-100 overflow-hidden">
+      <motion.section 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8 }}
+        className="py-10 bg-white border-b border-gray-100 overflow-hidden"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
           <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
             Imobiliárias Premium
@@ -212,48 +274,83 @@ export function Home() {
           
           <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center">
             {/* First set of logos */}
-            {[
-              { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
-              { name: "Century 21", icon: Crown, color: "text-yellow-600" },
-              { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
-              { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
-              { name: "Sotheby's", icon: Star, color: "text-slate-800" },
-              { name: "Keller Williams", icon: Building2, color: "text-red-500" },
-              { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
-              { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
-              { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
-            ].map((agency, idx) => (
-              <div key={`agency-1-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
-                <agency.icon className={`h-8 w-8 ${agency.color}`} />
-                <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-              </div>
-            ))}
+            {premiumAgencies.length > 0 ? (
+              premiumAgencies.map((agency, idx) => (
+                <div key={`agency-1-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
+                  {agency.logoUrl ? (
+                    <img src={agency.logoUrl} alt={agency.name} className="h-10 object-contain max-w-[150px]" />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-8 w-8 text-gray-400" />
+                      <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              [
+                { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
+                { name: "Century 21", icon: Crown, color: "text-yellow-600" },
+                { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
+                { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
+                { name: "Sotheby's", icon: Star, color: "text-slate-800" },
+                { name: "Keller Williams", icon: Building2, color: "text-red-500" },
+                { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
+                { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
+                { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
+              ].map((agency, idx) => (
+                <div key={`agency-1-fallback-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
+                  <agency.icon className={`h-8 w-8 ${agency.color}`} />
+                  <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                </div>
+              ))
+            )}
             
             {/* Second set of logos (duplicated for seamless loop) */}
-            {[
-              { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
-              { name: "Century 21", icon: Crown, color: "text-yellow-600" },
-              { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
-              { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
-              { name: "Sotheby's", icon: Star, color: "text-slate-800" },
-              { name: "Keller Williams", icon: Building2, color: "text-red-500" },
-              { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
-              { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
-              { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
-            ].map((agency, idx) => (
-              <div key={`agency-2-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
-                <agency.icon className={`h-8 w-8 ${agency.color}`} />
-                <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-              </div>
-            ))}
+            {premiumAgencies.length > 0 ? (
+              premiumAgencies.map((agency, idx) => (
+                <div key={`agency-2-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
+                  {agency.logoUrl ? (
+                    <img src={agency.logoUrl} alt={agency.name} className="h-10 object-contain max-w-[150px]" />
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-8 w-8 text-gray-400" />
+                      <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              [
+                { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
+                { name: "Century 21", icon: Crown, color: "text-yellow-600" },
+                { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
+                { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
+                { name: "Sotheby's", icon: Star, color: "text-slate-800" },
+                { name: "Keller Williams", icon: Building2, color: "text-red-500" },
+                { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
+                { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
+                { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
+              ].map((agency, idx) => (
+                <div key={`agency-2-fallback-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
+                  <agency.icon className={`h-8 w-8 ${agency.color}`} />
+                  <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Featured Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex justify-between items-end mb-8"
+          >
             <div>
               <h2 className="text-3xl font-bold text-gray-900">Destaques da Semana</h2>
               <p className="mt-2 text-gray-600">Imóveis promovidos e recomendados.</p>
@@ -261,11 +358,19 @@ export function Home() {
             <Link to="/properties" className="hidden sm:block text-brand-green font-medium hover:text-brand-green-hover">
               Ver todos os imóveis &rarr;
             </Link>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {FEATURED_PROPERTIES.filter(p => p.isPromoted).map((property) => (
-              <PropertyCard key={property.id} property={property} />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
+            {featuredProperties.map((property, idx) => (
+              <motion.div
+                key={property.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+              >
+                <PropertyCard property={property} />
+              </motion.div>
             ))}
           </div>
            
@@ -282,7 +387,12 @@ export function Home() {
       {/* Resorts & Hotels Section */}
       <section className="py-16 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex justify-between items-end mb-8"
+          >
             <div>
               <h2 className="text-3xl font-bold text-gray-900">Resorts & Hotéis</h2>
               <p className="mt-2 text-gray-600">As melhores estadias para as suas férias ou viagens de negócios.</p>
@@ -290,34 +400,42 @@ export function Home() {
             <Link to="/properties?category=Resort" className="hidden sm:block text-brand-green font-medium hover:text-brand-green-hover">
               Ver todos &rarr;
             </Link>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {FEATURED_RESORTS.map((resort) => (
-              <Link key={resort.id} to={`/resort/${resort.id}`} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 group cursor-pointer block">
-                <div className="relative h-48 overflow-hidden">
-                  <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-                    <Star className="h-3.5 w-3.5 text-amber-500 fill-current" />
-                    <span className="text-sm font-bold text-gray-900">{resort.rating}</span>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
+            {FEATURED_RESORTS.map((resort, idx) => (
+              <motion.div
+                key={resort.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+              >
+                <Link to={`/resort/${resort.id}`} className="max-w-[350px] mx-auto w-full bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 group cursor-pointer block">
+                  <div className="relative h-36 overflow-hidden">
+                    <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+                      <Star className="h-3.5 w-3.5 text-amber-500 fill-current" />
+                      <span className="text-xs font-bold text-gray-900">{resort.rating}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-brand-green transition-colors">{resort.name}</h3>
-                  <div className="flex items-center text-gray-500 text-sm mb-4">
-                    <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                    <span>{resort.location}</span>
+                  <div className="p-3">
+                    <h3 className="text-[15px] font-bold text-gray-900 mb-1 group-hover:text-brand-green transition-colors leading-tight">{resort.name}</h3>
+                    <div className="flex items-center text-gray-500 text-xs mb-2">
+                      <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
+                      <span className="truncate">{resort.location}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                      <p className="text-sm text-brand-purple font-bold">
+                        {resort.price} <span className="text-xs font-normal text-gray-500">/noite</span>
+                      </p>
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-[10px] text-brand-green border-brand-green hover:bg-brand-green/10">
+                        Reservar
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                    <p className="text-brand-purple font-bold">
-                      {resort.price} <span className="text-sm font-normal text-gray-500">/noite</span>
-                    </p>
-                    <Button variant="outline" size="sm" className="text-brand-green border-brand-green hover:bg-brand-green/10">
-                      Reservar
-                    </Button>
-                  </div>
-                </div>
-              </Link>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -326,43 +444,57 @@ export function Home() {
       {/* Featured Agents Section */}
       <section className="py-16 bg-gray-50 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
             <h2 className="text-3xl font-bold text-gray-900">Agentes em Destaque</h2>
             <p className="mt-2 text-gray-600">Os profissionais mais bem avaliados e com melhor desempenho.</p>
-          </div>
+          </motion.div>
 
           <div className="flex overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0 gap-4 sm:gap-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {FEATURED_AGENTS.map((agent, idx) => (
-              <Link key={idx} to={`/agent/${encodeURIComponent(agent.name)}`} className="group min-w-[200px] sm:min-w-[220px] snap-center flex-shrink-0">
-                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-green/30 transition-all text-center h-full flex flex-col">
-                  <div className="relative mx-auto mb-3">
-                    <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-gray-50 group-hover:border-brand-green/20 transition-colors mx-auto">
-                      <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover" />
-                    </div>
-                    {agent.rating >= 4.9 && (
-                      <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white p-1 rounded-full shadow-sm">
-                        <Award className="h-3.5 w-3.5" />
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="group min-w-[200px] sm:min-w-[220px] snap-center flex-shrink-0"
+              >
+                <Link to={`/agent/${encodeURIComponent(agent.name)}`} className="block h-full">
+                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-green/30 transition-all text-center h-full flex flex-col">
+                    <div className="relative mx-auto mb-3">
+                      <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-gray-50 group-hover:border-brand-green/20 transition-colors mx-auto">
+                        <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover" />
                       </div>
-                    )}
-                  </div>
-                  
-                  <h3 className="text-base font-bold text-gray-900 group-hover:text-brand-green transition-colors line-clamp-1">{agent.name}</h3>
-                  <p className="text-xs text-brand-purple font-medium mb-2">{agent.agency}</p>
-                  
-                  <div className="flex items-center justify-center gap-1 text-amber-500 mb-3">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <span className="font-bold text-gray-900 ml-1 text-sm">{agent.rating.toFixed(1)}</span>
-                    <span className="text-gray-500 text-xs">({agent.reviews})</span>
-                  </div>
-                  
-                  <div className="mt-auto pt-3 border-t border-gray-50 flex justify-center gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="font-bold text-gray-900 text-sm">{agent.propertiesSold}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Imóveis</p>
+                      {agent.rating >= 4.9 && (
+                        <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white p-1 rounded-full shadow-sm">
+                          <Award className="h-3.5 w-3.5" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <h3 className="text-base font-bold text-gray-900 group-hover:text-brand-green transition-colors line-clamp-1">{agent.name}</h3>
+                    <p className="text-xs text-brand-purple font-medium mb-2">{agent.agency}</p>
+                    
+                    <div className="flex items-center justify-center gap-1 text-amber-500 mb-3">
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <span className="font-bold text-gray-900 ml-1 text-sm">{agent.rating.toFixed(1)}</span>
+                      <span className="text-gray-500 text-xs">({agent.reviews})</span>
+                    </div>
+                    
+                    <div className="mt-auto pt-3 border-t border-gray-50 flex justify-center gap-4 text-sm">
+                      <div className="text-center">
+                        <p className="font-bold text-gray-900 text-sm">{agent.propertiesSold}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500">Imóveis</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -371,26 +503,53 @@ export function Home() {
       {/* Map Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
             <h2 className="text-3xl font-bold text-gray-900">Explore no Mapa</h2>
             <p className="mt-2 text-gray-600">Encontre imóveis em todas as províncias de Moçambique.</p>
-          </div>
-          <PropertyMap />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <PropertyMap />
+          </motion.div>
         </div>
       </section>
 
       {/* Categories Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Explorar por Categoria</h2>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-bold text-gray-900 mb-8 text-center"
+          >
+            Explorar por Categoria
+          </motion.h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-            {CATEGORIES.map((cat) => (
-              <Link key={cat} to={`/category/${cat.toLowerCase()}`} className="group cursor-pointer">
-                <div className="bg-gray-50 rounded-xl p-6 text-center hover:bg-brand-green/10 transition-colors border border-gray-100 hover:border-brand-green">
-                  <HomeIcon className="h-8 w-8 mx-auto text-brand-purple mb-3 group-hover:scale-110 transition-transform" />
-                  <h3 className="font-medium text-gray-900">{cat}</h3>
-                </div>
-              </Link>
+            {CATEGORIES.map((cat, idx) => (
+              <motion.div
+                key={cat}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.05 }}
+              >
+                <Link to={`/category/${cat.toLowerCase()}`} className="group cursor-pointer block h-full">
+                  <div className="bg-gray-50 rounded-xl p-6 text-center hover:bg-brand-green/10 transition-colors border border-gray-100 hover:border-brand-green h-full">
+                    <HomeIcon className="h-8 w-8 mx-auto text-brand-purple mb-3 group-hover:scale-110 transition-transform" />
+                    <h3 className="font-medium text-gray-900">{cat}</h3>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -399,7 +558,13 @@ export function Home() {
       {/* Call to Action */}
       <section className="py-20 bg-gray-900 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-brand-green/20 to-brand-purple/20"></div>
-          <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="max-w-4xl mx-auto px-4 text-center relative z-10"
+          >
               <h2 className="text-3xl sm:text-4xl font-bold mb-6">Quer vender ou arrendar o seu imóvel?</h2>
               <p className="text-xl text-gray-300 mb-8">
                   Junte-se a milhares de proprietários e alcance potenciais clientes em todo Moçambique.
@@ -409,7 +574,7 @@ export function Home() {
                     Anunciar Agora (Grátis)
                 </Button>
               </Link>
-          </div>
+          </motion.div>
       </section>
     </div>
   );

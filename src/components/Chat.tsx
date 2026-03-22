@@ -22,7 +22,7 @@ interface ChatProps {
 }
 
 export function Chat({ propertyId, agentName, onClose }: ChatProps) {
-  const { user } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -33,8 +33,8 @@ export function Chat({ propertyId, agentName, onClose }: ChatProps) {
   
   // Use a combination of property ID and user ID for the room
   // In a real app, this would be more secure and persistent
-  const currentUserId = user?.id || guestIdRef.current;
-  const currentUserName = user?.name || 'Visitante';
+  const currentUserId = currentUser?.uid || guestIdRef.current;
+  const currentUserName = userProfile?.displayName || currentUser?.email?.split('@')[0] || 'Visitante';
   const roomId = `prop_${propertyId}_user_${currentUserId}`;
 
   useEffect(() => {

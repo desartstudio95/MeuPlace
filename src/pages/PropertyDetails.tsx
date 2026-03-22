@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types';
 import { PROPERTIES } from '@/data/mockData';
@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/components/Chat';
 import { PropertyMap } from '@/components/PropertyMap';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import {
   Dialog,
   DialogContent,
@@ -24,8 +26,59 @@ import { playNotificationSound } from '@/utils/sound';
 export function PropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const property = PROPERTIES.find(p => p.id === id) || PROPERTIES[0]; // Fallback to first for demo
+  const { currentUser, userProfile } = useAuth();
+  const isAuthenticated = !!currentUser;
+  
+  const [property, setProperty] = useState<Property | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProperty = async () => {
+      if (!id) return;
+      
+      try {
+        const docRef = doc(db, 'properties', id);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const fetchedProperty = { id: docSnap.id, ...docSnap.data() } as Property;
+          
+          // Check if property is approved or if user is owner/admin
+          if (!fetchedProperty.isApproved && 
+              userProfile?.role !== 'admin' && 
+              fetchedProperty.agentId !== currentUser?.uid) {
+            setError('Este imóvel ainda não foi aprovado.');
+            setProperty(null);
+          } else {
+            setProperty(fetchedProperty);
+          }
+        } else {
+          // Fallback to mock data
+          const mockProp = PROPERTIES.find(p => p.id === id);
+          if (mockProp) {
+            setProperty(mockProp);
+          } else {
+            setProperty(PROPERTIES[0]); // Fallback to first for demo
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching property:", error);
+        // Fallback to mock data
+        const mockProp = PROPERTIES.find(p => p.id === id);
+        if (mockProp) {
+          setProperty(mockProp);
+        } else {
+          setProperty(PROPERTIES[0]); // Fallback to first for demo
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperty();
+  }, [id]);
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageLoading, setImageLoading] = useState(true);
   const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
@@ -65,10 +118,11 @@ export function PropertyDetails() {
 
   const handleSendFeedback = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!property) return;
     
     // Simulate sending feedback to admin panel
     const newFeedback = {
-      agentId: property.agent.name, // Using name as ID for mock
+      agentId: property.agent?.name || 'Desconhecido', // Using name as ID for mock
       propertyId: property.id,
       ...feedbackForm,
       date: new Date().toISOString(),
@@ -120,6 +174,7 @@ export function PropertyDetails() {
   // Keyboard navigation for image carousel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!property || !property.images) return;
       if (e.key === 'ArrowLeft') {
         setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
       } else if (e.key === 'ArrowRight') {
@@ -131,7 +186,38 @@ export function PropertyDetails() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [property.images.length, isZoomModalOpen]);
+  }, [property?.images?.length, isZoomModalOpen]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-[400px] w-full rounded-xl" />
+          <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+          <ShieldCheck className="w-8 h-8 text-red-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
+        <p className="text-gray-600 max-w-md mb-6">{error}</p>
+        <Button onClick={() => navigate('/properties')} className="bg-brand-green hover:bg-brand-green/90">
+          Voltar para Imóveis
+        </Button>
+      </div>
+    );
+  }
 
   if (!property) {
     return <div className="text-center py-20">Imóvel não encontrado.</div>;
@@ -139,7 +225,7 @@ export function PropertyDetails() {
 
   const handleWhatsApp = () => {
     const message = `Olá, estou interessado no imóvel: ${property.title}`;
-    window.open(`https://wa.me/${property.agent.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${property.agent?.whatsapp || ''}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handlePhoneClick = () => {
@@ -198,7 +284,7 @@ export function PropertyDetails() {
           <CheckCircle className="h-5 w-5" />
           <div>
             <h4 className="font-bold text-sm">Mensagem Enviada!</h4>
-            <p className="text-xs opacity-90">Sua mensagem foi enviada para {property.agent.name}.</p>
+            <p className="text-xs opacity-90">Sua mensagem foi enviada para {property.agent?.name || 'o agente'}.</p>
           </div>
         </div>
       )}
@@ -214,14 +300,21 @@ export function PropertyDetails() {
         </div>
       )}
 
-      {/* Breadcrumbs could go here */}
+      {/* Back Button */}
       <div className="mb-6">
-        <Button variant="ghost" className="text-gray-500 hover:text-gray-900 pl-0" onClick={() => navigate(-1)}>
-          <ChevronLeft className="h-5 w-5 mr-1" />
+        <button 
+          onClick={() => {
+            navigate(-1);
+            setTimeout(() => window.scrollTo(0, 0), 100);
+          }} 
+          className="flex items-center gap-2 text-gray-600 hover:text-brand-green transition-colors font-medium"
+        >
+          <ArrowLeft className="h-5 w-5" />
           Voltar
-        </Button>
+        </button>
       </div>
-      
+
+      {/* Breadcrumbs could go here */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
@@ -243,14 +336,14 @@ export function PropertyDetails() {
                 <>
                   <button 
                     onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:outline-none"
                     aria-label="Imagem anterior"
                   >
                     <ChevronLeft className="h-6 w-6" />
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:outline-none"
                     aria-label="Próxima imagem"
                   >
                     <ChevronRight className="h-6 w-6" />
@@ -348,11 +441,11 @@ export function PropertyDetails() {
                 <button
                   key={idx}
                   onClick={() => setCurrentImageIndex(idx)}
-                  className={`relative h-20 w-28 shrink-0 rounded-lg overflow-hidden snap-start transition-all ${
+                  className={`relative h-20 w-28 md:h-24 md:w-36 shrink-0 rounded-lg overflow-hidden snap-start transition-all focus:outline-none ${
                     idx === currentImageIndex ? 'ring-2 ring-brand-green ring-offset-2' : 'opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
@@ -434,21 +527,27 @@ export function PropertyDetails() {
         <div className="lg:col-span-1">
           <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 sticky top-24">
             <div className="flex items-center gap-4 mb-6">
-              <Link to={`/agent/${encodeURIComponent(property.agent.name)}`} className="shrink-0 group">
+              <Link to={`/agent/${encodeURIComponent(property.agent?.name || 'Agente')}`} className="shrink-0 group">
                 <img 
-                  src={property.agent.avatar || `https://ui-avatars.com/api/?name=${property.agent.name}`} 
-                  alt={property.agent.name} 
+                  src={property.agent?.avatar || `https://ui-avatars.com/api/?name=${property.agent?.name || 'Agente'}`} 
+                  alt={property.agent?.name || 'Agente'} 
                   className="w-16 h-16 rounded-full object-cover border-2 border-brand-green/20 group-hover:border-brand-green transition-colors"
+                  loading="lazy"
                 />
               </Link>
               <div>
                 <p className="text-sm text-gray-500">Agente Responsável</p>
-                <Link to={`/agent/${encodeURIComponent(property.agent.name)}`} className="hover:text-brand-green transition-colors flex items-center gap-1.5">
-                  <h3 className="text-lg font-bold text-gray-900">{property.agent.name}</h3>
-                  {property.agent.isVerified && (
+                <Link to={`/agent/${encodeURIComponent(property.agent?.name || 'Agente')}`} className="hover:text-brand-green transition-colors flex items-center gap-1.5">
+                  <h3 className="text-lg font-bold text-gray-900">{property.agent?.name || 'Agente'}</h3>
+                  {property.agent?.isVerified && (
                     <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Agente Verificado" />
                   )}
                 </Link>
+                {property.agent?.agency && (
+                  <p className="text-xs font-medium text-brand-green bg-brand-green/10 inline-block px-2 py-0.5 rounded-full mt-1 mb-1">
+                    {property.agent.agency}
+                  </p>
+                )}
                 <div className="flex items-center text-yellow-500 text-sm">
                   ★★★★★ <span className="text-gray-400 ml-1">(4.9)</span>
                 </div>
@@ -460,7 +559,7 @@ export function PropertyDetails() {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Avaliar {property.agent.name}</DialogTitle>
+                      <DialogTitle>Avaliar {property.agent?.name || 'Agente'}</DialogTitle>
                       <DialogDescription>
                         Compartilhe sua experiência com este agente. Seu feedback será enviado para análise da nossa equipe administrativa.
                       </DialogDescription>
@@ -537,7 +636,7 @@ export function PropertyDetails() {
                   <DialogHeader>
                     <DialogTitle>Contatar Agente</DialogTitle>
                     <DialogDescription>
-                      Envie uma mensagem direta para {property.agent.name} sobre este imóvel.
+                      Envie uma mensagem direta para {property.agent?.name || 'o agente'} sobre este imóvel.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSendMessage} className="space-y-4 py-2">
@@ -597,7 +696,7 @@ export function PropertyDetails() {
 
               <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-900" onClick={handlePhoneClick}>
                 <Phone className="h-4 w-4 mr-2" />
-                {showPhone ? property.agent.whatsapp : "Ver Telefone"}
+                {showPhone ? (property.agent?.whatsapp || 'Indisponível') : "Ver Telefone"}
               </Button>
             </div>
 
@@ -639,20 +738,21 @@ export function PropertyDetails() {
               src={property.images[currentImageIndex]} 
               alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
               className="max-w-full max-h-full object-contain"
+              loading="lazy"
             />
             
             {property.images.length > 1 && (
               <>
                 <button 
                   onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all focus:outline-none"
                   aria-label="Imagem anterior"
                 >
                   <ChevronLeft className="h-8 w-8" />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all focus:outline-none"
                   aria-label="Próxima imagem"
                 >
                   <ChevronRight className="h-8 w-8" />
@@ -668,11 +768,11 @@ export function PropertyDetails() {
                 <button
                   key={idx}
                   onClick={() => setCurrentImageIndex(idx)}
-                  className={`relative h-16 w-24 shrink-0 rounded-md overflow-hidden snap-start transition-all ${
-                    idx === currentImageIndex ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : 'opacity-50 hover:opacity-100'
+                  className={`relative h-16 w-24 md:h-20 md:w-32 shrink-0 rounded-md overflow-hidden snap-start transition-all focus:outline-none ${
+                    idx === currentImageIndex ? 'ring-2 ring-white' : 'opacity-50 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
@@ -684,7 +784,7 @@ export function PropertyDetails() {
       {isChatOpen && (
         <Chat 
           propertyId={property.id} 
-          agentName={property.agent.name} 
+          agentName={property.agent?.name || 'Agente'} 
           onClose={() => setIsChatOpen(false)} 
         />
       )}

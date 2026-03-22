@@ -57,13 +57,6 @@ export function ResortDetails() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <Button variant="ghost" className="text-gray-500 hover:text-gray-900 pl-0" onClick={() => navigate(-1)}>
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          Voltar
-        </Button>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Gallery & Details */}
         <div className="lg:col-span-2 space-y-8">
@@ -76,12 +69,12 @@ export function ResortDetails() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {resort.gallery.map((img: string, idx: number) => (
                 <button 
                   key={idx}
                   onClick={() => setActiveImage(idx)}
-                  className={`relative h-24 w-32 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${activeImage === idx ? 'border-brand-green' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  className={`relative h-24 w-32 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${activeImage === idx ? 'border-brand-green' : 'border-transparent opacity-70 hover:opacity-100'}`}
                 >
                   <img src={img} alt={`Galeria ${idx + 1}`} className="w-full h-full object-cover" />
                 </button>
