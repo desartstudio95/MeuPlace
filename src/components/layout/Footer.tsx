@@ -1,7 +1,33 @@
 import { Home, Facebook, Instagram, Twitter, Mail, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function Footer() {
+  const [settings, setSettings] = useState({
+    contactEmail: 'info@meuplace.co.mz',
+    contactPhone: '+258 84 123 4567',
+    facebookUrl: 'https://facebook.com',
+    instagramUrl: 'https://instagram.com',
+    linkedinUrl: 'https://linkedin.com'
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'general');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSettings(prev => ({ ...prev, ...docSnap.data() }));
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   return (
     <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -44,22 +70,19 @@ export function Footer() {
             <ul className="mt-4 space-y-4">
               <li className="flex items-center text-gray-300">
                 <Phone className="h-5 w-5 mr-2 text-brand-green" />
-                +258 84 123 4567
+                {settings.contactPhone}
               </li>
               <li className="flex items-center text-gray-300">
                 <Mail className="h-5 w-5 mr-2 text-brand-green" />
-                info@meuplace.co.mz
+                {settings.contactEmail}
               </li>
             </ul>
             <div className="mt-6 flex space-x-6">
-              <a href="#" className="text-gray-400 hover:text-white">
+              <a href={settings.facebookUrl} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
                 <Facebook className="h-6 w-6" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white">
+              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
                 <Instagram className="h-6 w-6" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white">
-                <Twitter className="h-6 w-6" />
               </a>
             </div>
           </div>

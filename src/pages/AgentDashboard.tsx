@@ -12,7 +12,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PropertyCard } from '@/components/PropertyCard';
-import { PROPERTIES } from '@/data/mockData';
 import { 
   LayoutDashboard, 
   Home, 
@@ -37,49 +36,12 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { Property } from '@/types';
 import { resizeImage } from '@/utils/imageUtils';
 import { useNotifications } from '@/context/NotificationContext';
-
-// Mock messages data
-const MOCK_MESSAGES = [
-  {
-    id: 1,
-    sender: 'João Silva',
-    email: 'joao.silva@email.com',
-    phone: '+258 84 123 4567',
-    propertyId: '1',
-    propertyTitle: 'Apartamento T3 Luxuoso',
-    message: 'Olá, estou interessado neste imóvel. Gostaria de agendar uma visita para o próximo sábado.',
-    date: '2024-03-10T10:30:00',
-    read: false,
-  },
-  {
-    id: 2,
-    sender: 'Maria Santos',
-    email: 'maria.santos@email.com',
-    phone: '+258 82 987 6543',
-    propertyId: '2',
-    propertyTitle: 'Vivenda V4 com Piscina',
-    message: 'Boa tarde. O preço é negociável? Aceitam permuta?',
-    date: '2024-03-09T15:45:00',
-    read: true,
-  },
-  {
-    id: 3,
-    sender: 'Pedro Oliveira',
-    email: 'pedro.oliveira@email.com',
-    phone: '+258 86 555 4444',
-    propertyId: '1',
-    propertyTitle: 'Apartamento T3 Luxuoso',
-    message: 'Ainda está disponível?',
-    date: '2024-03-08T09:15:00',
-    read: true,
-  },
-];
 
 export function AgentDashboard() {
   const { currentUser, userProfile, logout } = useAuth();
@@ -87,10 +49,11 @@ export function AgentDashboard() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { addNotification } = useNotifications();
   
   // Reply Dialog State
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
@@ -111,7 +74,7 @@ export function AgentDashboard() {
   }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
-    const fetchMyProperties = async () => {
+    const fetchMyPropertiesAndMessages = async () => {
       if (!currentUser) return;
       try {
         const q = query(collection(db, 'properties'), where('agentId', '==', currentUser.uid));
@@ -121,20 +84,60 @@ export function AgentDashboard() {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
         });
         setMyProperties(fetchedProperties);
+
       } catch (error) {
-        console.error("Error fetching agent properties:", error);
+        console.error("Error fetching agent data:", error);
       } finally {
         setLoadingProperties(false);
       }
     };
 
-    fetchMyProperties();
+    fetchMyPropertiesAndMessages();
+
+    // Listen for new messages in real-time
+    if (!currentUser) return;
+    const messagesQ = query(collection(db, 'messages'), where('receiverId', '==', currentUser.uid));
+    const unsubscribe = onSnapshot(messagesQ, (snapshot) => {
+      const fetchedMessages: any[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Sort by date descending
+      fetchedMessages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Check for new unread messages to show notification
+      if (messages.length > 0) {
+        const newUnreadMessages = fetchedMessages.filter(
+          newMsg => !newMsg.read && !messages.find(oldMsg => oldMsg.id === newMsg.id)
+        );
+        
+        if (newUnreadMessages.length > 0) {
+          playNotificationSound();
+          addNotification({
+            title: 'Nova Mensagem',
+            message: `Você recebeu ${newUnreadMessages.length} nova(s) mensagem(ns).`,
+            type: 'info'
+          });
+        }
+      }
+      
+      setMessages(fetchedMessages);
+    }, (error) => {
+      console.error("Error listening to messages:", error);
+    });
+
+    return () => unsubscribe();
   }, [currentUser]);
 
+  const isResort = userProfile?.role === 'resort';
+  const propertyLabel = isResort ? 'Acomodações' : 'Imóveis';
+  const propertyLabelSingular = isResort ? 'Acomodação' : 'Imóvel';
+
   const stats = [
-    { label: 'Imóveis Ativos', value: myProperties.length, icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: `${propertyLabel} Ativos`, value: myProperties.length, icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
     { label: 'Visualizações Totais', value: '1,234', icon: Eye, color: 'text-green-600', bg: 'bg-green-100' },
-    { label: 'Leads (Mensagens)', value: messages.length, icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { label: isResort ? 'Reservas (Mensagens)' : 'Leads (Mensagens)', value: messages.length, icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-100' },
     { label: 'Taxa de Conversão', value: '2.4%', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-100' },
   ];
 
@@ -153,7 +156,6 @@ export function AgentDashboard() {
 
   const { updateUserProfile } = useAuth();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const { addNotification } = useNotifications();
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,10 +245,22 @@ export function AgentDashboard() {
     }
   };
 
-  const toggleMessageRead = (id: number) => {
-    setMessages(messages.map(msg => 
-      msg.id === id ? { ...msg, read: !msg.read } : msg
-    ));
+  const toggleMessageRead = async (id: string) => {
+    try {
+      const messageToUpdate = messages.find(msg => msg.id === id);
+      if (!messageToUpdate) return;
+      
+      const newReadStatus = !messageToUpdate.read;
+      
+      const messageRef = doc(db, 'messages', id);
+      await updateDoc(messageRef, { read: newReadStatus });
+      
+      setMessages(messages.map(msg => 
+        msg.id === id ? { ...msg, read: newReadStatus } : msg
+      ));
+    } catch (error) {
+      console.error("Error updating message status:", error);
+    }
   };
 
   const openReplyDialog = (message: any, e: React.MouseEvent) => {
@@ -275,8 +289,8 @@ export function AgentDashboard() {
   };
 
   const filteredMessages = messages.filter(msg => 
-    msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    msg.propertyTitle.toLowerCase().includes(searchTerm.toLowerCase())
+    (msg.senderName || msg.sender || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (msg.propertyTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (userProfile && !userProfile.isApproved) {
@@ -366,7 +380,7 @@ export function AgentDashboard() {
               }`}
             >
               <Home className="mr-3 h-5 w-5" />
-              Meus Imóveis
+              Meus {propertyLabel}
             </button>
             <button
               onClick={() => { setActiveTab('messages'); setIsMobileMenuOpen(false); }}
@@ -467,7 +481,7 @@ export function AgentDashboard() {
               {/* Recent Properties */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg font-bold text-gray-900">Imóveis Recentes</h2>
+                  <h2 className="text-lg font-bold text-gray-900">{propertyLabel} Recentes</h2>
                   <Button variant="outline" size="sm" onClick={() => setActiveTab('properties')}>Ver Todos</Button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -500,7 +514,7 @@ export function AgentDashboard() {
               {myProperties.length > 2 && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-lg font-bold text-gray-900">Imóveis Antigos</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{propertyLabel} Antigos</h2>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     {myProperties.slice(2).map(property => (
@@ -536,13 +550,13 @@ export function AgentDashboard() {
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Meus Imóveis</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Meus {propertyLabel}</h1>
                 <p className="text-gray-500">Gerencie seus anúncios publicados.</p>
               </div>
               <Link to="/add-property">
                 <Button className="bg-brand-green hover:bg-brand-green-hover">
                   <Plus className="mr-2 h-4 w-4" />
-                  Novo Imóvel
+                  Novo {propertyLabelSingular}
                 </Button>
               </Link>
             </div>
@@ -552,7 +566,7 @@ export function AgentDashboard() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imóvel</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{propertyLabelSingular}</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
@@ -625,7 +639,7 @@ export function AgentDashboard() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Mensagens</h1>
-                <p className="text-gray-500">Gerencie as mensagens dos interessados em seus imóveis.</p>
+                <p className="text-gray-500">Gerencie as mensagens dos interessados em seus {propertyLabel.toLowerCase()}.</p>
               </div>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -667,7 +681,7 @@ export function AgentDashboard() {
                         <div className="flex items-center gap-3">
                           <div className={`h-2 w-2 rounded-full ${!message.read ? 'bg-blue-600' : 'bg-transparent'}`} />
                           <h3 className={`font-medium text-gray-900 ${!message.read ? 'font-bold' : ''}`}>
-                            {message.sender}
+                            {message.senderName || message.sender}
                           </h3>
                           <Link to={`/properties/${message.propertyId}`} onClick={(e) => e.stopPropagation()}>
                             <span className="text-xs text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-full hover:bg-brand-green/20 transition-colors cursor-pointer flex items-center gap-1">
@@ -688,10 +702,10 @@ export function AgentDashboard() {
                       
                       <div className="flex flex-wrap gap-4 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" /> {message.email}
+                          <User className="h-3 w-3" /> {message.senderEmail || message.email}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" /> {message.phone}
+                          <Phone className="h-3 w-3" /> {message.senderPhone || message.phone}
                         </span>
                       </div>
                       
@@ -709,14 +723,17 @@ export function AgentDashboard() {
                         </Button>
                         <Button size="sm" variant="outline" className="text-xs h-8" onClick={(e) => {
                           e.stopPropagation();
-                          window.open(`https://wa.me/${message.phone.replace(/[^0-9]/g, '')}`);
+                          const phoneNum = message.senderPhone || message.phone;
+                          if (phoneNum) {
+                            window.open(`https://wa.me/${phoneNum.replace(/[^0-9]/g, '')}`);
+                          }
                         }}>
                           WhatsApp
                         </Button>
                         <Link to={`/properties/${message.propertyId}`} onClick={(e) => e.stopPropagation()}>
                           <Button size="sm" variant="outline" className="text-xs h-8 text-gray-600">
                             <Eye className="h-3 w-3 mr-1" />
-                            Ver Imóvel
+                            Ver {propertyLabelSingular}
                           </Button>
                         </Link>
                       </div>
@@ -735,7 +752,7 @@ export function AgentDashboard() {
             <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Responder a {selectedMessage?.sender}</DialogTitle>
+                  <DialogTitle>Responder a {selectedMessage?.senderName || selectedMessage?.sender}</DialogTitle>
                   <DialogDescription>
                     Sua resposta será enviada para o email e ficará registrada no histórico.
                   </DialogDescription>
@@ -900,9 +917,9 @@ export function AgentDashboard() {
       <Dialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Excluir Imóvel</DialogTitle>
+            <DialogTitle>Excluir {propertyLabelSingular}</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir {isResort ? 'esta' : 'este'} {propertyLabelSingular.toLowerCase()}? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

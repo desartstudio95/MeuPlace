@@ -1,37 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Search, MessageCircle, FileText, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
-
-const FAQS = [
-  {
-    question: "Como posso anunciar um imóvel no MeuPlace?",
-    answer: "Para anunciar um imóvel, primeiro você precisa criar uma conta como Agente ou Agência. Após fazer o login e ter a sua conta aprovada, clique no botão 'Anunciar Imóvel' no menu superior. Preencha todos os detalhes do imóvel, adicione fotos de boa qualidade e publique o seu anúncio."
-  },
-  {
-    question: "Quais são os planos de divulgação disponíveis?",
-    answer: "Oferecemos diferentes planos para atender às suas necessidades:\n\n• Plano Gratuito: Permite a publicação de um número limitado de anúncios básicos.\n• Plano Premium: Oferece maior destaque nos resultados de pesquisa, selo de 'Imóvel Promovido' e estatísticas detalhadas de visualizações.\n• Plano Agência: Ideal para empresas com grande volume de imóveis, inclui gestão de múltiplos agentes e suporte prioritário."
-  },
-  {
-    question: "Como funciona o processo de compra ou arrendamento?",
-    answer: "O MeuPlace atua como uma plataforma de conexão entre quem procura e quem oferece imóveis. Ao encontrar um imóvel do seu interesse, você deve entrar em contacto diretamente com o agente responsável através do WhatsApp, telefone ou formulário de mensagem na página do imóvel. Todo o processo de negociação, visitas e fecho de contrato é feito diretamente entre você e o agente/proprietário."
-  },
-  {
-    question: "É seguro negociar os imóveis listados na plataforma?",
-    answer: "Trabalhamos arduamente para verificar todos os agentes e agências registados na nossa plataforma (procure pelo selo de 'Agente Verificado'). No entanto, recomendamos sempre que visite o imóvel pessoalmente, não faça pagamentos antecipados sem assinar um contrato válido e verifique toda a documentação antes de fechar qualquer negócio."
-  },
-  {
-    question: "Como posso editar ou remover o meu anúncio?",
-    answer: "Acesse o seu 'Painel do Agente' (Dashboard), vá até a aba 'Meus Imóveis', encontre o imóvel que deseja alterar e clique nos botões de editar ou excluir correspondentes."
-  }
-];
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function Help() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [faqs, setFaqs] = useState<{question: string, answer: string}[]>([
+    {
+      question: "Como posso anunciar um imóvel no MeuPlace?",
+      answer: "Para anunciar um imóvel, primeiro você precisa criar uma conta como Agente ou Agência. Após fazer o login e ter a sua conta aprovada, clique no botão 'Anunciar Imóvel' no menu superior. Preencha todos os detalhes do imóvel, adicione fotos de boa qualidade e publique o seu anúncio."
+    },
+    {
+      question: "Quais são os planos de divulgação disponíveis?",
+      answer: "Oferecemos diferentes planos para atender às suas necessidades:\n\n• Plano Gratuito: Permite a publicação de um número limitado de anúncios básicos.\n• Plano Premium: Oferece maior destaque nos resultados de pesquisa, selo de 'Imóvel Promovido' e estatísticas detalhadas de visualizações.\n• Plano Agência: Ideal para empresas com grande volume de imóveis, inclui gestão de múltiplos agentes e suporte prioritário."
+    },
+    {
+      question: "Como funciona o processo de compra ou arrendamento?",
+      answer: "O MeuPlace atua como uma plataforma de conexão entre quem procura e quem oferece imóveis. Ao encontrar um imóvel do seu interesse, você deve entrar em contacto diretamente com o agente responsável através do WhatsApp, telefone ou formulário de mensagem na página do imóvel. Todo o processo de negociação, visitas e fecho de contrato é feito diretamente entre você e o agente/proprietário."
+    },
+    {
+      question: "É seguro negociar os imóveis listados na plataforma?",
+      answer: "Trabalhamos arduamente para verificar todos os agentes e agências registados na nossa plataforma (procure pelo selo de 'Agente Verificado'). No entanto, recomendamos sempre que visite o imóvel pessoalmente, não faça pagamentos antecipados sem assinar um contrato válido e verifique toda a documentação antes de fechar qualquer negócio."
+    },
+    {
+      question: "Como posso editar ou remover o meu anúncio?",
+      answer: "Acesse o seu 'Painel do Agente' (Dashboard), vá até a aba 'Meus Imóveis', encontre o imóvel que deseja alterar e clique nos botões de editar ou excluir correspondentes."
+    }
+  ]);
 
-  const filteredFaqs = FAQS.filter(faq => 
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'pages');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().helpFaqs) {
+          setFaqs(docSnap.data().helpFaqs);
+        }
+      } catch (error) {
+        console.error("Error fetching FAQs:", error);
+      }
+    };
+    fetchFaqs();
+  }, []);
+
+  const filteredFaqs = faqs.filter(faq => 
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
   );

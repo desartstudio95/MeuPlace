@@ -22,10 +22,22 @@ export function AdminLogin() {
       });
       
       navigate('/admin');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Admin login error:', error);
+      
+      let errorMessage = 'Não foi possível autenticar.';
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'O login foi cancelado. Por favor, tente novamente.';
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'O pop-up de login foi bloqueado pelo navegador. Por favor, permita pop-ups para este site.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'Este domínio não está autorizado no Firebase. Contate o suporte.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast.error('Erro no login', {
-        description: 'Não foi possível autenticar.'
+        description: errorMessage
       });
     } finally {
       setIsLoading(false);

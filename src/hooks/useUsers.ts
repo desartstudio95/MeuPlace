@@ -70,12 +70,93 @@ export function useUsers() {
     }
   };
 
+  const deactivateUser = async (uid: string) => {
+    try {
+      await authService.deactivateUser(uid);
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isApproved: false } : u));
+      addNotification({
+        title: 'Sucesso',
+        message: 'Usuário desativado com sucesso.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error deactivating user:', err);
+      addNotification({
+        title: 'Erro',
+        message: 'Não foi possível desativar o usuário.',
+        type: 'error'
+      });
+    }
+  };
+
+  const deleteUser = async (uid: string) => {
+    try {
+      await authService.deleteUser(uid);
+      setUsers(prev => prev.filter(u => u.uid !== uid));
+      addNotification({
+        title: 'Sucesso',
+        message: 'Usuário eliminado com sucesso.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      addNotification({
+        title: 'Erro',
+        message: 'Não foi possível eliminar o usuário.',
+        type: 'error'
+      });
+    }
+  };
+
+  const updateUserRating = async (uid: string, rating: number, reviewsCount: number) => {
+    try {
+      await authService.updateUserProfile(uid, { rating, reviews: reviewsCount });
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, rating, reviews: reviewsCount } : u));
+      addNotification({
+        title: 'Sucesso',
+        message: 'Avaliação do usuário atualizada com sucesso.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error updating user rating:', err);
+      addNotification({
+        title: 'Erro',
+        message: 'Não foi possível atualizar a avaliação do usuário.',
+        type: 'error'
+      });
+    }
+  };
+
+  const toggleResponsibleStatus = async (uid: string, currentStatus: boolean | undefined) => {
+    const newStatus = !currentStatus;
+    try {
+      await authService.updateUserProfile(uid, { isResponsible: newStatus });
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isResponsible: newStatus } : u));
+      addNotification({
+        title: 'Sucesso',
+        message: `Status de responsabilidade atualizado com sucesso.`,
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error updating responsible status:', err);
+      addNotification({
+        title: 'Erro',
+        message: 'Não foi possível atualizar o status de responsabilidade.',
+        type: 'error'
+      });
+    }
+  };
+
   return {
     users,
     loading,
     error,
     refreshUsers: fetchUsers,
     changeUserRole,
-    approveUser
+    approveUser,
+    deactivateUser,
+    deleteUser,
+    updateUserRating,
+    toggleResponsibleStatus
   };
 }

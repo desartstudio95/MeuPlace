@@ -13,13 +13,34 @@ export interface Agent {
   agency?: string;
   yearsOfExperience?: number;
   isVerified?: boolean;
+  isResponsible?: boolean;
   role?: string;
+}
+
+export interface Resort {
+  id: string;
+  name: string;
+  location: string;
+  image: string;
+  rating: number;
+  price: string;
+  description: string;
+  amenities: string[];
+  contact: {
+    phone: string;
+    email: string;
+    website: string;
+  };
+  gallery: string[];
+  createdAt?: any;
+  coordinates?: { lat: number; lng: number };
 }
 
 export interface PremiumAgency {
   id: string;
   name: string;
   logoUrl: string;
+  websiteUrl?: string;
   isActive: boolean;
   order?: number;
 }
@@ -39,13 +60,26 @@ export interface Property {
   images: string[];
   features: string[];
   coordinates?: { lat: number; lng: number };
-  agent?: Agent; // Optional for backward compatibility with mock data
+  agent?: Agent;
   agentId?: string; // Stored in Firebase
   createdAt: string;
   isPromoted?: boolean;
   isApproved?: boolean;
   requestedPackage?: string;
   status?: 'Disponível' | 'Vendido' | 'Arrendado' | 'Pendente';
+}
+
+export interface Message {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  senderPhone: string;
+  message: string;
+  propertyId: string;
+  propertyTitle: string;
+  receiverId: string;
+  createdAt: string;
+  read: boolean;
 }
 
 export const LOCATIONS = [

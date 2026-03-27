@@ -1,53 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyMap } from '@/components/PropertyMap';
-import { LOCATIONS, CATEGORIES, Property, PremiumAgency } from '@/types';
-import { PROPERTIES as FEATURED_PROPERTIES_MOCK, FEATURED_RESORTS } from '@/data/mockData';
-import { collection, query, getDocs, limit, where } from 'firebase/firestore';
+import { LOCATIONS, CATEGORIES, Property, PremiumAgency, Resort } from '@/types';
+import { collection, query, getDocs, limit, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
 
-const FEATURED_AGENTS = [
-  {
-    name: 'Carlos Macuácua',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    rating: 5.0,
-    reviews: 124,
-    propertiesSold: 45,
-    agency: 'Remax Moçambique'
-  },
-  {
-    name: 'Ana Langa',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    rating: 4.9,
-    reviews: 89,
-    propertiesSold: 32,
-    agency: 'Century 21'
-  },
-  {
-    name: 'João Sitoe',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    rating: 4.8,
-    reviews: 56,
-    propertiesSold: 28,
-    agency: 'ERA Imobiliária'
-  },
-  {
-    name: 'Maria Silva',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    rating: 5.0,
-    reviews: 112,
-    propertiesSold: 50,
-    agency: 'Pam Golding'
-  }
-];
+import { SEO } from '@/components/SEO';
 
 export function Home() {
   const navigate = useNavigate();
+  const { userProfile, loading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState('');
   const [category, setCategory] = useState('');
@@ -55,8 +23,17 @@ export function Home() {
   const [bedrooms, setBedrooms] = useState('');
   const [minArea, setMinArea] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(true);
-  const [featuredProperties, setFeaturedProperties] = useState<Property[]>(FEATURED_PROPERTIES_MOCK.filter(p => p.isPromoted));
+  const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
   const [premiumAgencies, setPremiumAgencies] = useState<PremiumAgency[]>([]);
+  const [resorts, setResorts] = useState<Resort[]>([]);
+  const [featuredAgents, setFeaturedAgents] = useState<any[]>([]);
+  const [settings, setSettings] = useState({
+    heroImage: 'https://i.ibb.co/9HtKhj7v/Chat-GPT-Image-Mar-5-2026-10-33-16-AM.png',
+    heroTitle: 'O Maior Shopping de imóveis em Moçambique',
+    heroSubtitle: 'A forma mais simples e segura de comprar, vender ou arrendar o teu place.',
+    featuredAgentsTitle: 'Agentes em Destaque',
+    featuredAgentsSubtitle: 'Os profissionais mais bem avaliados e com melhor desempenho.'
+  });
 
   useEffect(() => {
     const fetchFeaturedProperties = async () => {
@@ -68,9 +45,7 @@ export function Home() {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
         });
         
-        if (fetchedProperties.length > 0) {
-          setFeaturedProperties(fetchedProperties);
-        }
+        setFeaturedProperties(fetchedProperties);
       } catch (error) {
         console.error("Error fetching featured properties:", error);
       }
@@ -94,9 +69,67 @@ export function Home() {
       }
     };
 
+    const fetchResorts = async () => {
+      try {
+        const resortsQ = query(collection(db, 'resorts'), limit(6));
+        const resortsSnapshot = await getDocs(resortsQ);
+        const fetchedResorts: Resort[] = [];
+        resortsSnapshot.forEach((doc) => {
+          fetchedResorts.push({ id: doc.id, ...doc.data() } as Resort);
+        });
+        setResorts(fetchedResorts);
+      } catch (error) {
+        console.error("Error fetching resorts:", error);
+      }
+    };
+
+    const fetchFeaturedAgents = async () => {
+      try {
+        const agentsQ = query(collection(db, 'featured_agents'));
+        const agentsSnapshot = await getDocs(agentsQ);
+        const fetchedAgents: any[] = [];
+        agentsSnapshot.forEach((doc) => {
+          fetchedAgents.push({ id: doc.id, ...doc.data() });
+        });
+        
+        fetchedAgents.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        if (fetchedAgents.length > 0) {
+          setFeaturedAgents(fetchedAgents);
+        } else {
+          setFeaturedAgents([]);
+        }
+      } catch (error) {
+        console.error("Error fetching featured agents:", error);
+      }
+    };
+
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'general');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSettings(prev => ({ ...prev, ...docSnap.data() }));
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      }
+    };
+
     fetchFeaturedProperties();
     fetchPremiumAgencies();
+    fetchResorts();
+    fetchFeaturedAgents();
+    fetchSettings();
   }, []);
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  }
+
+  if (userProfile?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -115,12 +148,16 @@ export function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <SEO 
+        title="Início" 
+        description={settings.heroSubtitle || "A forma mais simples e segura de comprar, vender ou arrendar o teu place."} 
+      />
       {/* Hero Section */}
       <section className="relative bg-[#cb6ce6] py-20 sm:py-32">
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="https://i.ibb.co/9HtKhj7v/Chat-GPT-Image-Mar-5-2026-10-33-16-AM.png"
-            alt="Família feliz"
+            src={settings.heroImage}
+            alt="Hero Background"
             className="w-full h-full object-cover opacity-95"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#cb6ce6]/60 to-[#cb6ce6]/90" />
@@ -132,11 +169,10 @@ export function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
-              O Maior Shopping de imóveis em <span className="text-brand-green">Moçambique</span>
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green">Moçambique</span>') }}>
             </h1>
             <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10">
-              A forma mais simples e segura de comprar, vender ou arrendar o teu place.
+              {settings.heroSubtitle}
             </p>
           </motion.div>
 
@@ -274,67 +310,63 @@ export function Home() {
           
           <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center">
             {/* First set of logos */}
-            {premiumAgencies.length > 0 ? (
+            {premiumAgencies.length > 0 && (
               premiumAgencies.map((agency, idx) => (
-                <div key={`agency-1-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
-                  {agency.logoUrl ? (
-                    <img src={agency.logoUrl} alt={agency.name} className="h-10 object-contain max-w-[150px]" />
+                <div key={`agency-1-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 transition-transform hover:scale-105 cursor-pointer">
+                  {agency.websiteUrl ? (
+                    <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+                      {agency.logoUrl ? (
+                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-16 w-16 text-gray-400" />
+                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                        </div>
+                      )}
+                    </a>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <Building2 className="h-8 w-8 text-gray-400" />
-                      <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-                    </div>
+                    <>
+                      {agency.logoUrl ? (
+                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-16 w-16 text-gray-400" />
+                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                        </div>
+                      )}
+                    </>
                   )}
-                </div>
-              ))
-            ) : (
-              [
-                { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
-                { name: "Century 21", icon: Crown, color: "text-yellow-600" },
-                { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
-                { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
-                { name: "Sotheby's", icon: Star, color: "text-slate-800" },
-                { name: "Keller Williams", icon: Building2, color: "text-red-500" },
-                { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
-                { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
-                { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
-              ].map((agency, idx) => (
-                <div key={`agency-1-fallback-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
-                  <agency.icon className={`h-8 w-8 ${agency.color}`} />
-                  <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
                 </div>
               ))
             )}
             
             {/* Second set of logos (duplicated for seamless loop) */}
-            {premiumAgencies.length > 0 ? (
+            {premiumAgencies.length > 0 && (
               premiumAgencies.map((agency, idx) => (
-                <div key={`agency-2-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
-                  {agency.logoUrl ? (
-                    <img src={agency.logoUrl} alt={agency.name} className="h-10 object-contain max-w-[150px]" />
+                <div key={`agency-2-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 transition-transform hover:scale-105 cursor-pointer">
+                  {agency.websiteUrl ? (
+                    <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+                      {agency.logoUrl ? (
+                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-16 w-16 text-gray-400" />
+                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                        </div>
+                      )}
+                    </a>
                   ) : (
-                    <div className="flex items-center gap-3">
-                      <Building2 className="h-8 w-8 text-gray-400" />
-                      <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-                    </div>
+                    <>
+                      {agency.logoUrl ? (
+                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Building2 className="h-16 w-16 text-gray-400" />
+                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
+                        </div>
+                      )}
+                    </>
                   )}
-                </div>
-              ))
-            ) : (
-              [
-                { name: "Remax Moçambique", icon: Building2, color: "text-red-600" },
-                { name: "Century 21", icon: Crown, color: "text-yellow-600" },
-                { name: "ERA Imobiliária", icon: HomeIcon, color: "text-blue-600" },
-                { name: "Pam Golding", icon: ShieldCheck, color: "text-emerald-700" },
-                { name: "Sotheby's", icon: Star, color: "text-slate-800" },
-                { name: "Keller Williams", icon: Building2, color: "text-red-500" },
-                { name: "Zome Real Estate", icon: HomeIcon, color: "text-indigo-600" },
-                { name: "Sable Imóveis", icon: Crown, color: "text-amber-700" },
-                { name: "Kamiva Property", icon: Building2, color: "text-brand-green" },
-              ].map((agency, idx) => (
-                <div key={`agency-2-fallback-${idx}`} className="flex items-center gap-3 mx-8 sm:mx-12 opacity-60 hover:opacity-100 transition-opacity grayscale hover:grayscale-0 cursor-pointer">
-                  <agency.icon className={`h-8 w-8 ${agency.color}`} />
-                  <span className="text-xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
                 </div>
               ))
             )}
@@ -403,7 +435,7 @@ export function Home() {
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
-            {FEATURED_RESORTS.map((resort, idx) => (
+            {resorts.map((resort, idx) => (
               <motion.div
                 key={resort.id}
                 initial={{ opacity: 0, y: 30 }}
@@ -450,52 +482,58 @@ export function Home() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-gray-900">Agentes em Destaque</h2>
-            <p className="mt-2 text-gray-600">Os profissionais mais bem avaliados e com melhor desempenho.</p>
+            <h2 className="text-3xl font-bold text-gray-900">{settings.featuredAgentsTitle}</h2>
+            <p className="mt-2 text-gray-600">{settings.featuredAgentsSubtitle}</p>
           </motion.div>
 
           <div className="flex overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0 gap-4 sm:gap-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {FEATURED_AGENTS.map((agent, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="group min-w-[200px] sm:min-w-[220px] snap-center flex-shrink-0"
-              >
-                <Link to={`/agent/${encodeURIComponent(agent.name)}`} className="block h-full">
-                  <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-green/30 transition-all text-center h-full flex flex-col">
-                    <div className="relative mx-auto mb-3">
-                      <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-gray-50 group-hover:border-brand-green/20 transition-colors mx-auto">
-                        <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover" />
-                      </div>
-                      {agent.rating >= 4.9 && (
-                        <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white p-1 rounded-full shadow-sm">
-                          <Award className="h-3.5 w-3.5" />
+            {featuredAgents.length > 0 ? (
+              featuredAgents.map((agent, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="group min-w-[200px] sm:min-w-[220px] snap-center flex-shrink-0"
+                >
+                  <Link to={`/agent/${encodeURIComponent(agent.name)}`} className="block h-full">
+                    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-green/30 transition-all text-center h-full flex flex-col">
+                      <div className="relative mx-auto mb-3">
+                        <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-gray-50 group-hover:border-brand-green/20 transition-colors mx-auto">
+                          <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover" />
                         </div>
-                      )}
-                    </div>
-                    
-                    <h3 className="text-base font-bold text-gray-900 group-hover:text-brand-green transition-colors line-clamp-1">{agent.name}</h3>
-                    <p className="text-xs text-brand-purple font-medium mb-2">{agent.agency}</p>
-                    
-                    <div className="flex items-center justify-center gap-1 text-amber-500 mb-3">
-                      <Star className="h-3.5 w-3.5 fill-current" />
-                      <span className="font-bold text-gray-900 ml-1 text-sm">{agent.rating.toFixed(1)}</span>
-                      <span className="text-gray-500 text-xs">({agent.reviews})</span>
-                    </div>
-                    
-                    <div className="mt-auto pt-3 border-t border-gray-50 flex justify-center gap-4 text-sm">
-                      <div className="text-center">
-                        <p className="font-bold text-gray-900 text-sm">{agent.propertiesSold}</p>
-                        <p className="text-[10px] uppercase tracking-wider text-gray-500">Imóveis</p>
+                        {agent.rating >= 4.9 && (
+                          <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white p-1 rounded-full shadow-sm">
+                            <Award className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-brand-green transition-colors line-clamp-1">{agent.name}</h3>
+                      <p className="text-xs text-brand-purple font-medium mb-2">{agent.agency}</p>
+                      
+                      <div className="flex items-center justify-center gap-1 text-amber-500 mb-3">
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        <span className="font-bold text-gray-900 ml-1 text-sm">{agent.rating.toFixed(1)}</span>
+                        <span className="text-gray-500 text-xs">({agent.reviews})</span>
+                      </div>
+                      
+                      <div className="mt-auto pt-3 border-t border-gray-50 flex justify-center gap-4 text-sm">
+                        <div className="text-center">
+                          <p className="font-bold text-gray-900 text-sm">{agent.propertiesSold}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-gray-500">Imóveis</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+                  </Link>
+                </motion.div>
+              ))
+            ) : (
+              <div className="w-full text-center py-12 text-gray-500">
+                Nenhum agente em destaque no momento.
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -1,19 +1,40 @@
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Loader2 } from 'lucide-react';
+
 export function Privacy() {
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'pages');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().privacyContent) {
+          setContent(docSnap.data().privacyContent);
+        } else {
+          setContent("Sua privacidade é importante para nós. Esta política explica como coletamos e usamos seus dados.\n\n1. Coleta de Dados\nColetamos informações como nome, email e telefone apenas quando você se cadastra ou entra em contato conosco.\n\n2. Uso de Cookies\nUtilizamos cookies para melhorar sua experiência de navegação e personalizar conteúdo.");
+        }
+      } catch (error) {
+        console.error("Error fetching privacy policy:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContent();
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen flex justify-center items-center"><Loader2 className="h-8 w-8 animate-spin text-brand-green" /></div>;
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-16">
       <h1 className="text-3xl font-bold mb-6">Política de Privacidade</h1>
-      <div className="prose max-w-none text-gray-700">
-        <p className="mb-4">
-          Sua privacidade é importante para nós. Esta política explica como coletamos e usamos seus dados.
-        </p>
-        <h2 className="text-xl font-semibold mt-6 mb-2">1. Coleta de Dados</h2>
-        <p className="mb-4">
-          Coletamos informações como nome, email e telefone apenas quando você se cadastra ou entra em contato conosco.
-        </p>
-        <h2 className="text-xl font-semibold mt-6 mb-2">2. Uso de Cookies</h2>
-        <p className="mb-4">
-          Utilizamos cookies para melhorar sua experiência de navegação e personalizar conteúdo.
-        </p>
+      <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+        {content}
       </div>
     </div>
   );

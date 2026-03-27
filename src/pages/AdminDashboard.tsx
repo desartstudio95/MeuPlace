@@ -4,10 +4,11 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { UserProfile } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { User, Shield, ShieldCheck, Trash2, Home, CheckCircle, XCircle, Building2 } from 'lucide-react';
+import { User, Shield, ShieldCheck, Trash2, Home, CheckCircle, XCircle, Building2, CreditCard } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { Property } from '@/types';
 import { PremiumAgenciesAdmin } from '@/components/admin/PremiumAgenciesAdmin';
+import { PlansAdmin } from '@/components/admin/PlansAdmin';
 
 export function AdminDashboard() {
   const { userProfile } = useAuth();
@@ -15,7 +16,7 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'properties' | 'agencies'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'properties' | 'agencies' | 'plans'>('users');
 
   useEffect(() => {
     fetchUsers();
@@ -235,7 +236,24 @@ export function AdminDashboard() {
             Agências Premium
           </div>
         </button>
+        <button
+          className={`pb-4 px-2 text-sm font-medium border-b-2 ${
+            activeTab === 'plans'
+              ? 'border-brand-green text-brand-green'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+          onClick={() => setActiveTab('plans')}
+        >
+          <div className="flex items-center">
+            <CreditCard className="w-4 h-4 mr-2" />
+            Planos
+          </div>
+        </button>
       </div>
+
+      {activeTab === 'plans' && (
+        <PlansAdmin />
+      )}
 
       {activeTab === 'users' && (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">

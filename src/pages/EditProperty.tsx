@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
-import { PROPERTIES } from '@/data/mockData';
 import { Upload, Save, ArrowLeft, Trash2, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
 import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -51,14 +50,8 @@ export function EditProperty() {
         if (docSnap.exists()) {
           setFormData({ id: docSnap.id, ...docSnap.data() } as Property);
         } else {
-          // Fallback to mock data
-          const property = PROPERTIES.find(p => p.id === id);
-          if (property) {
-            setFormData(property);
-          } else {
-            addNotification({ title: 'Erro', message: 'Imóvel não encontrado', type: 'error' });
-            navigate('/dashboard', { state: { activeTab: 'properties' } });
-          }
+          addNotification({ title: 'Erro', message: 'Imóvel não encontrado', type: 'error' });
+          navigate('/dashboard', { state: { activeTab: 'properties' } });
         }
       } catch (error) {
         console.error("Error fetching property:", error);

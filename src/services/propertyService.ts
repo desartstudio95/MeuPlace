@@ -35,6 +35,11 @@ export const propertyService = {
     await updateDoc(docRef, { status: 'Disponível', isApproved: true });
   },
 
+  async rejectProperty(id: string) {
+    const docRef = doc(db, 'properties', id);
+    await updateDoc(docRef, { status: 'Pendente', isApproved: false });
+  },
+
   async deleteProperty(id: string) {
     const docRef = doc(db, 'properties', id);
     await deleteDoc(docRef);

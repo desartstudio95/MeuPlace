@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Navigate, useNavigate } from 'react-router-dom';
 import { Property, LOCATIONS, CATEGORIES } from '@/types';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyMap } from '@/components/PropertyMap';
@@ -19,14 +19,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Search, Filter, X, Bell, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, Star } from 'lucide-react';
-import { PROPERTIES as MOCK_PROPERTIES } from '@/data/mockData';
+import { SEO } from '@/components/SEO';
 
 export function Properties() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { addNotification } = useNotifications();
-  const { userProfile } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
   
-  const [properties, setProperties] = useState<Property[]>(MOCK_PROPERTIES);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,9 +39,7 @@ export function Properties() {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
         });
         
-        // Combine mock properties and fetched properties
-        // In a real app, you might only use fetched properties
-        setProperties([...fetchedProperties, ...MOCK_PROPERTIES]);
+        setProperties(fetchedProperties);
       } catch (error) {
         console.error("Error fetching properties:", error);
       } finally {
@@ -51,6 +49,14 @@ export function Properties() {
 
     fetchProperties();
   }, []);
+
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  }
+
+  if (userProfile?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
 
   const [filters, setFilters] = useState({
     location: searchParams.get('location') || '',
@@ -64,11 +70,11 @@ export function Properties() {
   
   const [sortOrder, setSortOrder] = useState('newest');
   const [showFilters, setShowFilters] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [highlightedPropertyId, setHighlightedPropertyId] = useState<string | undefined>();
+  const navigate = useNavigate();
   
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  const [featuredCurrentPage, setFeaturedCurrentPage] = useState(1);
+  const [freeCurrentPage, setFreeCurrentPage] = useState(1);
   const itemsPerPage = 6;
   
   // Autocomplete state
@@ -123,7 +129,8 @@ export function Properties() {
     if (filters.bedrooms) params.set('bedrooms', filters.bedrooms);
     if (filters.minArea) params.set('minArea', filters.minArea);
     setSearchParams(params);
-    setCurrentPage(1); // Reset to first page on filter change
+    setFeaturedCurrentPage(1);
+    setFreeCurrentPage(1); // Reset to first page on filter change
   }, [filters, setSearchParams]);
 
   // Handle click outside for autocomplete
@@ -138,27 +145,6 @@ export function Properties() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [locationWrapperRef]);
-
-  const handleMarkerClick = (propertyId: string) => {
-    setHighlightedPropertyId(propertyId);
-    
-    // Find which page the property is on
-    const propertyIndex = filteredProperties.findIndex(p => p.id === propertyId);
-    if (propertyIndex !== -1) {
-      const page = Math.floor(propertyIndex / itemsPerPage) + 1;
-      if (page !== currentPage) {
-        setCurrentPage(page);
-      }
-      
-      // Scroll to the card after a short delay to allow rendering
-      setTimeout(() => {
-        const cardElement = document.getElementById(`property-card-${propertyId}`);
-        if (cardElement) {
-          cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-    }
-  };
 
   const filteredProperties = properties.filter(p => {
     // Filter out unapproved properties unless admin or owner
@@ -194,11 +180,17 @@ export function Properties() {
   const featuredProperties = filteredProperties.filter(p => p.isPromoted);
   const freeProperties = filteredProperties.filter(p => !p.isPromoted);
 
-  // Pagination logic applies to free properties
-  const totalPages = Math.ceil(freeProperties.length / itemsPerPage);
+  // Pagination logic applies to both
+  const totalFeaturedPages = Math.ceil(featuredProperties.length / itemsPerPage);
+  const paginatedFeaturedProperties = featuredProperties.slice(
+    (featuredCurrentPage - 1) * itemsPerPage,
+    featuredCurrentPage * itemsPerPage
+  );
+
+  const totalFreePages = Math.ceil(freeProperties.length / itemsPerPage);
   const paginatedFreeProperties = freeProperties.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (freeCurrentPage - 1) * itemsPerPage,
+    freeCurrentPage * itemsPerPage
   );
 
   const filteredLocations = LOCATIONS.filter(l => 
@@ -207,6 +199,22 @@ export function Properties() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <SEO 
+        title="Imóveis" 
+        description="Encontre os melhores imóveis para comprar, vender ou arrendar em Moçambique." 
+      />
+      
+      <div className="mb-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate(-1)} 
+          className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 -ml-2"
+        >
+          <ChevronLeft className="h-5 w-5 mr-1" />
+          Voltar
+        </Button>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-8">
         {/* Sidebar Filters */}
         <div className="w-full md:w-64 flex-shrink-0 space-y-6">
@@ -427,27 +435,6 @@ export function Properties() {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={`h-8 px-3 ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-4 w-4 mr-2" />
-                  Lista
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={`h-8 px-3 ${viewMode === 'map' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
-                  onClick={() => setViewMode('map')}
-                >
-                  <MapIcon className="h-4 w-4 mr-2" />
-                  Mapa
-                </Button>
-              </div>
-
               <div className="flex items-center gap-2">
                 <select
                   id="sort"
@@ -464,127 +451,56 @@ export function Properties() {
             </div>
           </div>
 
-          {viewMode === 'map' ? (
-            <div className="flex flex-col lg:flex-row gap-6 h-[800px]">
-              <div className="w-full lg:w-1/2 overflow-y-auto pr-2 pb-4 space-y-8">
-                {filteredProperties.length > 0 ? (
-                  <>
-                    {/* Featured Properties Section */}
-                    {featuredProperties.length > 0 && currentPage === 1 && (
-                      <div>
-                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                          <Star className="h-5 w-5 text-amber-500 fill-current" />
-                          Imóveis em Destaque
-                        </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {featuredProperties.map(property => (
-                            <PropertyCard 
-                              key={property.id} 
-                              property={property} 
-                              isHighlighted={property.id === highlightedPropertyId} 
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Free Properties Section */}
-                    {paginatedFreeProperties.length > 0 && (
-                      <div>
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">
-                          Imóveis Publicados Gratuitamente
-                        </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {paginatedFreeProperties.map(property => (
-                            <PropertyCard 
-                              key={property.id} 
-                              property={property} 
-                              isHighlighted={property.id === highlightedPropertyId} 
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                      <div className="mt-8 flex justify-center items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(page)}
-                            className={currentPage === page ? "bg-brand-green hover:bg-brand-green-hover" : ""}
-                          >
-                            {page}
-                          </Button>
-                        ))}
-
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                          disabled={currentPage === totalPages}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300 flex flex-col items-center justify-center">
-                    <div className="bg-gray-50 p-6 rounded-full mb-6">
-                      <Search className="h-12 w-12 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Ops! Nenhum imóvel encontrado</h3>
-                    <p className="text-gray-500 max-w-md mx-auto mb-6">
-                      Não encontrámos nenhum imóvel com os filtros selecionados. Tente remover alguns filtros ou procurar numa localização diferente.
-                    </p>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setFilters({ location: '', category: '', type: '', minPrice: '', maxPrice: '', bedrooms: '', minArea: '' })}
-                      className="text-brand-green border-brand-green hover:bg-brand-green/10"
-                    >
-                      Limpar Filtros
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="w-full lg:w-1/2 h-[400px] lg:h-full sticky top-4">
-                <PropertyMap 
-                  properties={filteredProperties} 
-                  height="100%" 
-                  onMarkerClick={handleMarkerClick}
-                  highlightedPropertyId={highlightedPropertyId}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-10">
-              {filteredProperties.length > 0 ? (
-                <>
-                  {/* Featured Properties Section */}
-                  {featuredProperties.length > 0 && currentPage === 1 && (
-                    <div>
+          <div className="space-y-10">
+            {filteredProperties.length > 0 ? (
+              <>
+                {/* Featured Properties Section */}
+                  {paginatedFeaturedProperties.length > 0 && (
+                    <div className="mb-12">
                       <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <Star className="h-6 w-6 text-amber-500 fill-current" />
                         Imóveis em Destaque
                       </h2>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                        {featuredProperties.map(property => (
+                        {paginatedFeaturedProperties.map(property => (
                           <PropertyCard key={property.id} property={property} />
                         ))}
                       </div>
+                      
+                      {/* Featured Pagination Controls */}
+                      {totalFeaturedPages > 1 && (
+                        <div className="mt-8 flex justify-center items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setFeaturedCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={featuredCurrentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          
+                          {Array.from({ length: totalFeaturedPages }, (_, i) => i + 1).map(page => (
+                            <Button
+                              key={`feat-${page}`}
+                              variant={featuredCurrentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setFeaturedCurrentPage(page)}
+                              className={featuredCurrentPage === page ? "bg-brand-green hover:bg-brand-green-hover" : ""}
+                            >
+                              {page}
+                            </Button>
+                          ))}
+
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setFeaturedCurrentPage(prev => Math.min(prev + 1, totalFeaturedPages))}
+                            disabled={featuredCurrentPage === totalFeaturedPages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -599,41 +515,41 @@ export function Properties() {
                           <PropertyCard key={property.id} property={property} />
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Pagination Controls */}
-                  {totalPages > 1 && (
-                    <div className="mt-8 flex justify-center items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
                       
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setCurrentPage(page)}
-                          className={currentPage === page ? "bg-brand-green hover:bg-brand-green-hover" : ""}
-                        >
-                          {page}
-                        </Button>
-                      ))}
+                      {/* Free Pagination Controls */}
+                      {totalFreePages > 1 && (
+                        <div className="mt-8 flex justify-center items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setFreeCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={freeCurrentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          
+                          {Array.from({ length: totalFreePages }, (_, i) => i + 1).map(page => (
+                            <Button
+                              key={`free-${page}`}
+                              variant={freeCurrentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setFreeCurrentPage(page)}
+                              className={freeCurrentPage === page ? "bg-brand-green hover:bg-brand-green-hover" : ""}
+                            >
+                              {page}
+                            </Button>
+                          ))}
 
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setFreeCurrentPage(prev => Math.min(prev + 1, totalFreePages))}
+                            disabled={freeCurrentPage === totalFreePages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -656,7 +572,6 @@ export function Properties() {
                 </div>
               )}
             </div>
-          )}
         </div>
       </div>
     </div>

@@ -51,6 +51,25 @@ export function useProperties() {
     }
   };
 
+  const rejectProperty = async (id: string) => {
+    try {
+      await propertyService.rejectProperty(id);
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, isApproved: false, status: 'Pendente' } : p));
+      addNotification({
+        title: 'Sucesso',
+        message: 'Imóvel rejeitado/desativado com sucesso.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error rejecting property:', err);
+      addNotification({
+        title: 'Erro',
+        message: 'Não foi possível rejeitar o imóvel.',
+        type: 'error'
+      });
+    }
+  };
+
   const deleteProperty = async (id: string) => {
     try {
       await propertyService.deleteProperty(id);
@@ -76,6 +95,7 @@ export function useProperties() {
     error,
     refreshProperties: fetchProperties,
     approveProperty,
+    rejectProperty,
     deleteProperty
   };
 }

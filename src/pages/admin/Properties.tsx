@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProperties } from '@/hooks/useProperties';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Trash2, Edit2, Plus, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, Eye, Search, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   Dialog,
@@ -11,11 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Property } from '@/types';
 
 export function AdminProperties() {
-  const { properties, loading, approveProperty, deleteProperty } = useProperties();
+  const { properties, loading, approveProperty, rejectProperty, deleteProperty } = useProperties();
   const [searchTerm, setSearchTerm] = useState('');
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
+  const [propertyToView, setPropertyToView] = useState<Property | null>(null);
 
   if (loading) {
     return <div className="flex justify-center items-center h-full">Carregando...</div>;
@@ -37,12 +39,6 @@ export function AdminProperties() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Gestão de Imóveis</h1>
-        <Link to="/add-property">
-          <Button className="bg-brand-green hover:bg-brand-green/90">
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar Imóvel
-          </Button>
-        </Link>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -132,11 +128,26 @@ export function AdminProperties() {
                           <CheckCircle className="h-4 w-4" />
                         </Button>
                       )}
-                      <Link to={`/edit-property/${property.id}`}>
-                        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-900 hover:bg-blue-50">
-                          <Edit2 className="h-4 w-4" />
+                      {property.isApproved && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-yellow-600 border-yellow-200 hover:bg-yellow-50"
+                          onClick={() => rejectProperty(property.id)}
+                          title="Rejeitar/Desativar Imóvel"
+                        >
+                          <Ban className="h-4 w-4" />
                         </Button>
-                      </Link>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-blue-600 hover:text-blue-900 hover:bg-blue-50"
+                        onClick={() => setPropertyToView(property)}
+                        title="Ver Detalhes"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="sm"
@@ -172,6 +183,75 @@ export function AdminProperties() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPropertyToDelete(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={confirmDelete}>Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!propertyToView} onOpenChange={(open) => !open && setPropertyToView(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Imóvel</DialogTitle>
+          </DialogHeader>
+          {propertyToView && (
+            <div className="space-y-4 mt-4">
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {propertyToView.images.map((img, idx) => (
+                  <img key={idx} src={img} alt={`Imagem ${idx + 1}`} className="h-32 w-48 object-cover rounded-md" />
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-700">Título</h3>
+                  <p>{propertyToView.title}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-700">Preço</h3>
+                  <p>{propertyToView.price.toLocaleString()} {propertyToView.currency}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-700">Localização</h3>
+                  <p>{propertyToView.location}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-700">Tipo / Categoria</h3>
+                  <p>{propertyToView.type} / {propertyToView.category}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-700">Quartos / Casas de Banho</h3>
+                  <p>{propertyToView.bedrooms || 0} / {propertyToView.bathrooms || 0}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-700">Área</h3>
+                  <p>{propertyToView.area ? `${propertyToView.area} m²` : 'N/A'}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700">Descrição</h3>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{propertyToView.description}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700">Comodidades</h3>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {propertyToView.features.map((feature, idx) => (
+                    <span key={idx} className="bg-gray-100 px-2 py-1 rounded-md text-xs">{feature}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPropertyToView(null)}>Fechar</Button>
+            {propertyToView && !propertyToView.isApproved && (
+              <Button 
+                className="bg-brand-green hover:bg-brand-green/90"
+                onClick={() => {
+                  approveProperty(propertyToView.id);
+                  setPropertyToView(null);
+                }}
+              >
+                Aprovar Imóvel
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

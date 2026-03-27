@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { playNotificationSound } from '@/utils/sound';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -16,6 +18,35 @@ export function Contact() {
     phone: ''
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  
+  const [contactInfo, setContactInfo] = useState({
+    contactPhone: '+258 84 123 4567',
+    contactEmail: 'contacto@meuplace.co.mz',
+    contactAddress: 'Maputo, Moçambique',
+    contactHours: 'Segunda a Sexta, 8h às 18h'
+  });
+
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'pages');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setContactInfo(prev => ({
+            ...prev,
+            contactPhone: data.contactPhone || prev.contactPhone,
+            contactEmail: data.contactEmail || prev.contactEmail,
+            contactAddress: data.contactAddress || prev.contactAddress,
+            contactHours: data.contactHours || prev.contactHours
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching contact info:", error);
+      }
+    };
+    fetchContactInfo();
+  }, []);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,8 +126,8 @@ export function Contact() {
             </div>
             <div className="ml-4">
               <h3 className="text-lg font-medium text-gray-900">Telefone</h3>
-              <p className="mt-1 text-gray-600">+258 84 123 4567</p>
-              <p className="text-gray-600">Segunda a Sexta, 8h às 18h</p>
+              <p className="mt-1 text-gray-600">{contactInfo.contactPhone}</p>
+              <p className="text-gray-600">{contactInfo.contactHours}</p>
             </div>
           </div>
 
@@ -106,8 +137,7 @@ export function Contact() {
             </div>
             <div className="ml-4">
               <h3 className="text-lg font-medium text-gray-900">Email</h3>
-              <p className="mt-1 text-gray-600">info@meuplace.co.mz</p>
-              <p className="text-gray-600">suporte@meuplace.co.mz</p>
+              <p className="mt-1 text-gray-600">{contactInfo.contactEmail}</p>
             </div>
           </div>
 
@@ -116,11 +146,9 @@ export function Contact() {
               <MapPin className="h-6 w-6 text-brand-green" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-medium text-gray-900">Escritório</h3>
-              <p className="mt-1 text-gray-600">
-                Av. Julius Nyerere, 1234<br />
-                Polana Cimento, Maputo<br />
-                Moçambique
+              <h3 className="text-lg font-medium text-gray-900">Endereço</h3>
+              <p className="mt-1 text-gray-600 whitespace-pre-wrap">
+                {contactInfo.contactAddress}
               </p>
             </div>
           </div>

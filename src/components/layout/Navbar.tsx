@@ -1,15 +1,33 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, PlusCircle, User, Search, LogOut, Building2, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { currentUser, userProfile, logout } = useAuth();
   const navigate = useNavigate();
   const isAuthenticated = !!currentUser;
+  const [logoUrl, setLogoUrl] = useState('https://i.ibb.co/yBVKb9hJ/Logotipo-para-corretora-de-im-veis-preto-e-bege-simples-Website.png');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'general');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().headerLogo) {
+          setLogoUrl(docSnap.data().headerLogo);
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -27,7 +45,7 @@ export function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
               <img 
-                src="https://i.ibb.co/yBVKb9hJ/Logotipo-para-corretora-de-im-veis-preto-e-bege-simples-Website.png" 
+                src={logoUrl} 
                 alt="MeuPlace Logo" 
                 className="h-14 w-auto object-contain" 
               />
@@ -51,6 +69,14 @@ export function Navbar() {
               >
                 Sobre
               </Link>
+              {userProfile && ['admin', 'agent', 'resort'].includes(userProfile.role) && (
+                <Link
+                  to="/plans"
+                  className="border-transparent text-gray-500 hover:border-brand-green hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Planos
+                </Link>
+              )}
             </div>
           </div>
           <div className="hidden md:ml-6 md:flex md:items-center space-x-4">
@@ -106,12 +132,14 @@ export function Navbar() {
               </Link>
             )}
             
-            <Link to="/add-property">
-              <Button className="bg-brand-green hover:bg-brand-green-hover text-white">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Anunciar Imóvel
-              </Button>
-            </Link>
+            {(!isAuthenticated || (userProfile?.role !== 'user' && userProfile?.role !== 'resort')) && (
+              <Link to="/add-property">
+                <Button className="bg-brand-green hover:bg-brand-green-hover text-white">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Anunciar Imóvel
+                </Button>
+              </Link>
+            )}
           </div>
           <div className="-mr-2 flex items-center md:hidden">
             <NotificationsPopover />
@@ -147,13 +175,24 @@ export function Navbar() {
             >
               Imóveis
             </Link>
-            <Link
-              to="/add-property"
-              className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-              onClick={() => setIsOpen(false)}
-            >
-              Anunciar Imóvel
-            </Link>
+            {userProfile && ['admin', 'agent', 'resort'].includes(userProfile.role) && (
+              <Link
+                to="/plans"
+                className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+                onClick={() => setIsOpen(false)}
+              >
+                Planos
+              </Link>
+            )}
+            {(!isAuthenticated || (userProfile?.role !== 'user' && userProfile?.role !== 'resort')) && (
+              <Link
+                to="/add-property"
+                className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+                onClick={() => setIsOpen(false)}
+              >
+                Anunciar Imóvel
+              </Link>
+            )}
           </div>
           <div className="pt-4 pb-4 border-t border-gray-200">
             {isAuthenticated ? (

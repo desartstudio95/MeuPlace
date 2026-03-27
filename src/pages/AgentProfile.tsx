@@ -1,19 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, Mail, MessageCircle, ChevronLeft, Star, User, Instagram, Facebook, Award, Building2, BadgeCheck } from 'lucide-react';
+import { MapPin, Phone, Mail, MessageCircle, ChevronLeft, Star, User, Instagram, Facebook, Award, Building2, BadgeCheck, Send, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
-import { PROPERTIES } from '@/data/mockData';
 import { Agent, Property } from '@/types';
-import { collection, query, getDocs, where } from 'firebase/firestore';
+import { collection, query, getDocs, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useNotifications } from '@/context/NotificationContext';
 
 export function AgentProfile() {
   const { name } = useParams();
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [agentProperties, setAgentProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Review form state
+  const [reviewName, setReviewName] = useState('');
+  const [reviewEmail, setReviewEmail] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchAgentData = async () => {
@@ -43,7 +52,10 @@ export function AgentProfile() {
             facebook: userData.facebook || '',
             agency: userData.agencyName || '',
             isVerified: userData.isApproved !== false,
-            role: userData.role
+            isResponsible: userData.isResponsible,
+            role: userData.role,
+            rating: userData.rating,
+            reviews: userData.reviews
           };
         }
 
@@ -56,9 +68,7 @@ export function AgentProfile() {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
         });
 
-        // Combine with mock data for now
-        const mockProperties = PROPERTIES.filter(p => p.agent?.name === decodedName);
-        const allProperties = [...fetchedProperties, ...mockProperties].filter(p => p.isApproved !== false);
+        const allProperties = fetchedProperties.filter(p => p.isApproved !== false);
         
         setAgentProperties(allProperties);
 
@@ -76,6 +86,43 @@ export function AgentProfile() {
 
     fetchAgentData();
   }, [name]);
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewName || !reviewComment) {
+      addNotification({ title: 'Aviso', message: 'Preencha todos os campos obrigatórios.', type: 'info' });
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      await addDoc(collection(db, 'agent_reviews'), {
+        agentName: agent?.name,
+        clientName: reviewName,
+        clientEmail: reviewEmail,
+        suggestedRating: reviewRating,
+        comment: reviewComment,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      
+      addNotification({ 
+        title: 'Avaliação Enviada', 
+        message: 'Sua avaliação foi enviada para análise do administrador.', 
+        type: 'success' 
+      });
+      
+      setReviewName('');
+      setReviewEmail('');
+      setReviewRating(5);
+      setReviewComment('');
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      addNotification({ title: 'Erro', message: 'Falha ao enviar avaliação.', type: 'error' });
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Carregando...</div>;
@@ -133,6 +180,12 @@ export function AgentProfile() {
                   {agent.name}
                   {agent.isVerified && (
                     <BadgeCheck className="h-7 w-7 text-blue-500" title="Agente Verificado" />
+                  )}
+                  {agent.isResponsible && (
+                    <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-blue-200 ml-2">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Responsável
+                    </span>
                   )}
                 </h1>
                 {agent.rating && agent.rating >= 4.9 && (
@@ -259,6 +312,78 @@ export function AgentProfile() {
             <p className="text-gray-500">Este agente não possui imóveis publicados no momento.</p>
           </div>
         )}
+      </div>
+
+      {/* Review Form Section */}
+      <div className="mt-16 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-10">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Avaliar Agente</h2>
+        <p className="text-gray-600 mb-8">Sua avaliação será enviada para a administração e ajudará outros clientes.</p>
+        
+        <form onSubmit={handleSubmitReview} className="space-y-6 max-w-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Seu Nome *</label>
+              <Input 
+                value={reviewName} 
+                onChange={(e) => setReviewName(e.target.value)} 
+                placeholder="Ex: João Silva"
+                required 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Seu Email</label>
+              <Input 
+                type="email"
+                value={reviewEmail} 
+                onChange={(e) => setReviewEmail(e.target.value)} 
+                placeholder="Ex: joao@email.com"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Avaliação (Estrelas) *</label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setReviewRating(star)}
+                  className="focus:outline-none"
+                >
+                  <Star 
+                    className={`h-8 w-8 ${star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} 
+                  />
+                </button>
+              ))}
+              <span className="ml-2 text-sm font-medium text-gray-600">{reviewRating} de 5</span>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Seu Comentário *</label>
+            <textarea
+              className="w-full min-h-[120px] p-3 border border-gray-300 rounded-md focus:ring-brand-green focus:border-brand-green"
+              placeholder="Conte-nos sobre sua experiência com este agente..."
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              required
+            ></textarea>
+          </div>
+          
+          <Button 
+            type="submit" 
+            className="bg-brand-green hover:bg-brand-green/90 text-white"
+            disabled={submittingReview}
+          >
+            {submittingReview ? 'Enviando...' : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Enviar Avaliação
+              </>
+            )}
+          </Button>
+        </form>
       </div>
     </div>
   );

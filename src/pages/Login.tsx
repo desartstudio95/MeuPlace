@@ -66,10 +66,19 @@ export function Login() {
         type: 'success'
       });
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
+      let errorMessage = 'Não foi possível iniciar sessão com o Google.';
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'O login foi cancelado. Por favor, tente novamente.';
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'O pop-up de login foi bloqueado pelo navegador. Por favor, permita pop-ups para este site.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'Este domínio não está autorizado no Firebase. Contate o suporte.';
+      }
+      
       addNotification({
         title: 'Erro no login',
-        message: 'Não foi possível iniciar sessão com o Google.',
+        message: errorMessage,
         type: 'error'
       });
     }

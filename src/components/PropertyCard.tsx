@@ -29,10 +29,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
 
   return (
     <div 
-      className={`max-w-[350px] mx-auto w-full rounded-xl shadow-sm transition-all duration-300 overflow-hidden border group flex flex-col h-full relative ${
+      className={`max-w-[350px] mx-auto w-full rounded-xl shadow-md transition-all duration-300 overflow-hidden border group flex flex-col h-full relative ${
         property.isPromoted || isHighlighted
-          ? 'bg-gradient-to-br from-brand-green/10 via-white to-brand-purple/10 border-brand-purple/30 shadow-md hover:shadow-lg hover:shadow-brand-purple/20 scale-[1.02]' 
-          : 'bg-white border-gray-100 hover:shadow-md'
+          ? 'bg-gradient-to-br from-brand-green/10 via-white to-brand-purple/10 border-brand-purple/30 shadow-lg hover:shadow-xl hover:shadow-brand-purple/20 scale-[1.02]' 
+          : 'bg-white border-gray-100 hover:shadow-lg'
       } ${className}`}
       id={`property-card-${property.id}`}
     >

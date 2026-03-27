@@ -1,10 +1,15 @@
 import { useParams } from 'react-router-dom';
 import { PropertyCard } from '@/components/PropertyCard';
-import { PROPERTIES } from '@/data/mockData';
 import { Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Property } from '@/types';
 
 export function CategoryPage() {
   const { type } = useParams<{ type: string }>();
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
   
   // Normalize the type from URL to match category in data
   // e.g. "apartamento" -> "Apartamento"
@@ -20,9 +25,28 @@ export function CategoryPage() {
 
   const filterCategory = type ? getCategoryFilter(type) : '';
 
-  const filteredProperties = PROPERTIES.filter(p => 
-    p.category.toLowerCase() === filterCategory.toLowerCase()
-  );
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setLoading(true);
+      try {
+        const q = query(collection(db, 'properties'), where('category', '==', filterCategory));
+        const querySnapshot = await getDocs(q);
+        const fetchedProperties: Property[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
+        });
+        setFilteredProperties(fetchedProperties);
+      } catch (error) {
+        console.error("Error fetching properties:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (filterCategory) {
+      fetchProperties();
+    }
+  }, [filterCategory]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -33,7 +57,9 @@ export function CategoryPage() {
         </p>
       </div>
 
-      {filteredProperties.length > 0 ? (
+      {loading ? (
+        <div className="text-center py-20">Carregando...</div>
+      ) : filteredProperties.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {filteredProperties.map(property => (
             <PropertyCard key={property.id} property={property} />

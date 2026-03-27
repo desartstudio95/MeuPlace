@@ -3,12 +3,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types';
-import { PROPERTIES } from '@/data/mockData';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/components/Chat';
 import { PropertyMap } from '@/components/PropertyMap';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Dialog,
@@ -22,6 +21,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { playNotificationSound } from '@/utils/sound';
+
+import { SEO } from '@/components/SEO';
 
 export function PropertyDetails() {
   const { id } = useParams();
@@ -54,30 +55,20 @@ export function PropertyDetails() {
             setProperty(fetchedProperty);
           }
         } else {
-          // Fallback to mock data
-          const mockProp = PROPERTIES.find(p => p.id === id);
-          if (mockProp) {
-            setProperty(mockProp);
-          } else {
-            setProperty(PROPERTIES[0]); // Fallback to first for demo
-          }
+          setError('Imóvel não encontrado.');
+          setProperty(null);
         }
       } catch (error) {
         console.error("Error fetching property:", error);
-        // Fallback to mock data
-        const mockProp = PROPERTIES.find(p => p.id === id);
-        if (mockProp) {
-          setProperty(mockProp);
-        } else {
-          setProperty(PROPERTIES[0]); // Fallback to first for demo
-        }
+        setError('Erro ao carregar imóvel.');
+        setProperty(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProperty();
-  }, [id]);
+  }, [id, userProfile, currentUser]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageLoading, setImageLoading] = useState(true);
@@ -100,13 +91,15 @@ export function PropertyDetails() {
   const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
-    // Check if property is already favorited (mock implementation)
-    // In a real app, this would check against user preferences or local storage
-    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    if (property && favorites.includes(property.id)) {
-      setIsFavorite(true);
+    if (property && userProfile) {
+      const favorites = userProfile.favorites || [];
+      if (favorites.includes(property.id)) {
+        setIsFavorite(true);
+      } else {
+        setIsFavorite(false);
+      }
     }
-  }, [property]);
+  }, [property, userProfile]);
 
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [feedbackForm, setFeedbackForm] = useState({
@@ -116,46 +109,56 @@ export function PropertyDetails() {
   });
   const [showFeedbackSuccess, setShowFeedbackSuccess] = useState(false);
 
-  const handleSendFeedback = (e: React.FormEvent) => {
+  const handleSendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!property) return;
     
-    // Simulate sending feedback to admin panel
-    const newFeedback = {
-      agentId: property.agent?.name || 'Desconhecido', // Using name as ID for mock
-      propertyId: property.id,
-      ...feedbackForm,
-      date: new Date().toISOString(),
-      status: 'pending_review' // Admin needs to review to award stars
-    };
+    try {
+      const newFeedback = {
+        agentId: property.agentId || property.agent?.name || 'Desconhecido',
+        propertyId: property.id,
+        ...feedbackForm,
+        date: new Date().toISOString(),
+        status: 'pending_review' // Admin needs to review to award stars
+      };
 
-    // Store in localStorage to simulate backend persistence
-    const existingFeedbacks = JSON.parse(localStorage.getItem('admin_agent_feedbacks') || '[]');
-    localStorage.setItem('admin_agent_feedbacks', JSON.stringify([...existingFeedbacks, newFeedback]));
+      await addDoc(collection(db, 'feedbacks'), newFeedback);
 
-    console.log('Feedback sent to admin:', newFeedback);
+      console.log('Feedback sent to admin:', newFeedback);
 
-    setIsFeedbackDialogOpen(false);
-    setShowFeedbackSuccess(true);
-    playNotificationSound();
-    setFeedbackForm({ name: '', email: '', feedback: '' });
-    setTimeout(() => setShowFeedbackSuccess(false), 3000);
+      setIsFeedbackDialogOpen(false);
+      setShowFeedbackSuccess(true);
+      playNotificationSound();
+      setFeedbackForm({ name: '', email: '', feedback: '' });
+      setTimeout(() => setShowFeedbackSuccess(false), 3000);
+    } catch (error) {
+      console.error("Error sending feedback:", error);
+    }
   };
 
-  const toggleFavorite = () => {
-    if (!property) return;
-
-    const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    let newFavorites;
-
-    if (isFavorite) {
-      newFavorites = favorites.filter((id: string) => id !== property.id);
-    } else {
-      newFavorites = [...favorites, property.id];
+  const toggleFavorite = async () => {
+    if (!property || !currentUser) {
+      // Se não estiver logado, pode redirecionar para login ou mostrar mensagem
+      alert('Faça login para adicionar aos favoritos');
+      return;
     }
 
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
-    setIsFavorite(!isFavorite);
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      if (isFavorite) {
+        await updateDoc(userRef, {
+          favorites: arrayRemove(property.id)
+        });
+        setIsFavorite(false);
+      } else {
+        await updateDoc(userRef, {
+          favorites: arrayUnion(property.id)
+        });
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   useEffect(() => {
@@ -232,13 +235,38 @@ export function PropertyDetails() {
     setShowPhone(!showPhone);
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate sending message
-    setIsMessageDialogOpen(false);
-    setShowSuccessMessage(true);
-    playNotificationSound();
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+    if (!property || !property.agentId) return;
+
+    try {
+      await addDoc(collection(db, 'messages'), {
+        senderName: messageForm.name,
+        senderEmail: messageForm.email,
+        senderPhone: messageForm.phone,
+        message: messageForm.message,
+        propertyId: property.id,
+        propertyTitle: property.title,
+        receiverId: property.agentId,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+
+      setIsMessageDialogOpen(false);
+      setShowSuccessMessage(true);
+      playNotificationSound();
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+      
+      // Reset form
+      setMessageForm({
+        name: '',
+        email: '',
+        phone: '',
+        message: ''
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   const nextImage = () => {
@@ -278,6 +306,11 @@ export function PropertyDetails() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+      <SEO 
+        title={property.title} 
+        description={property.description} 
+        image={property.images[0]}
+      />
       {/* Success Toast */}
       {showSuccessMessage && (
         <div className="fixed top-20 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-top-5 duration-300">

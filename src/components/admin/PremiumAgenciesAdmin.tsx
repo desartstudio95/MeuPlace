@@ -19,6 +19,7 @@ export function PremiumAgenciesAdmin() {
   // Form state
   const [name, setName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -89,6 +90,7 @@ export function PremiumAgenciesAdmin() {
   const resetForm = () => {
     setName('');
     setLogoUrl('');
+    setWebsiteUrl('');
     setIsActive(true);
     setIsAdding(false);
     setEditingId(null);
@@ -104,12 +106,13 @@ export function PremiumAgenciesAdmin() {
     try {
       if (editingId) {
         const agencyRef = doc(db, 'premium_agencies', editingId);
-        await updateDoc(agencyRef, { name, logoUrl, isActive });
+        await updateDoc(agencyRef, { name, logoUrl, websiteUrl, isActive });
         addNotification({ title: 'Sucesso', message: 'Agência atualizada com sucesso.', type: 'success' });
       } else {
         await addDoc(collection(db, 'premium_agencies'), {
           name,
           logoUrl,
+          websiteUrl,
           isActive,
           order: agencies.length
         });
@@ -126,6 +129,7 @@ export function PremiumAgenciesAdmin() {
   const handleEdit = (agency: PremiumAgency) => {
     setName(agency.name);
     setLogoUrl(agency.logoUrl);
+    setWebsiteUrl(agency.websiteUrl || '');
     setIsActive(agency.isActive);
     setEditingId(agency.id);
     setIsAdding(true);
@@ -179,9 +183,15 @@ export function PremiumAgenciesAdmin() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Agência</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Remax Moçambique" required />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Link do Website (Opcional)</label>
+              <Input value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="Ex: https://www.remax.co.mz" type="url" />
+            </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Logotipo</label>
+              <p className="text-xs text-gray-500 mb-2">Formatos aceites: PNG, JPG, SVG. O logotipo deve ser colorido e ter boa resolução.</p>
               <div className="flex items-center gap-4">
                 {logoUrl ? (
                   <div className="h-16 w-32 bg-white border rounded flex items-center justify-center overflow-hidden p-2">
@@ -193,7 +203,7 @@ export function PremiumAgenciesAdmin() {
                   </div>
                 )}
                 <div className="flex-1">
-                  <Input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                  <Input type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={handleLogoUpload} disabled={uploadingLogo} />
                   {uploadingLogo && <p className="text-sm text-blue-600 mt-1">Carregando imagem...</p>}
                 </div>
               </div>

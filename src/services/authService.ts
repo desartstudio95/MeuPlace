@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, getDoc, updateDoc, query } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/lib/firebase';
 import { UserProfile } from '@/context/AuthContext';
@@ -27,5 +27,20 @@ export const authService = {
   async approveUser(uid: string) {
     const docRef = doc(db, 'users', uid);
     await updateDoc(docRef, { isApproved: true });
+  },
+
+  async deactivateUser(uid: string) {
+    const docRef = doc(db, 'users', uid);
+    await updateDoc(docRef, { isApproved: false });
+  },
+
+  async deleteUser(uid: string) {
+    const docRef = doc(db, 'users', uid);
+    await deleteDoc(docRef);
+  },
+
+  async updateUserProfile(uid: string, data: Partial<UserProfile>) {
+    const docRef = doc(db, 'users', uid);
+    await updateDoc(docRef, data);
   }
 };

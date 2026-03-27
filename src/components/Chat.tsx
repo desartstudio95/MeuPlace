@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { X, Send, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 import { playNotificationSound } from '@/utils/sound';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface Message {
   id: string;
@@ -23,7 +24,6 @@ interface ChatProps {
 
 export function Chat({ propertyId, agentName, onClose }: ChatProps) {
   const { currentUser, userProfile } = useAuth();
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -32,56 +32,60 @@ export function Chat({ propertyId, agentName, onClose }: ChatProps) {
   const guestIdRef = useRef('guest_' + Math.random().toString(36).substring(7));
   
   // Use a combination of property ID and user ID for the room
-  // In a real app, this would be more secure and persistent
   const currentUserId = currentUser?.uid || guestIdRef.current;
   const currentUserName = userProfile?.displayName || currentUser?.email?.split('@')[0] || 'Visitante';
   const roomId = `prop_${propertyId}_user_${currentUserId}`;
 
   useEffect(() => {
-    // Connect to Socket.IO server
-    // Use the current window location to connect to the same host/port
-    const newSocket = io(window.location.origin);
-    setSocket(newSocket);
+    const q = query(
+      collection(db, 'chats', roomId, 'messages'),
+      orderBy('timestamp', 'asc')
+    );
 
-    newSocket.on('connect', () => {
-      console.log('Connected to chat server');
-      newSocket.emit('join_room', roomId);
-    });
-
-    newSocket.on('previous_messages', (prevMessages: Message[]) => {
-      setMessages(prevMessages);
-    });
-
-    newSocket.on('receive_message', (message: Message) => {
-      setMessages((prev) => [...prev, message]);
-      if (message.senderId !== currentUserId) {
-        playNotificationSound();
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages: Message[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ id: doc.id, ...doc.data() } as Message);
+      });
+      
+      // Check if there are new messages from the other person
+      if (fetchedMessages.length > messages.length) {
+        const lastMessage = fetchedMessages[fetchedMessages.length - 1];
+        if (lastMessage && lastMessage.senderId !== currentUserId) {
+          playNotificationSound();
+        }
       }
+      
+      setMessages(fetchedMessages);
     });
 
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [roomId]);
+    return () => unsubscribe();
+  }, [roomId, currentUserId, messages.length]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !socket) return;
+    if (!newMessage.trim()) return;
 
     const messageData = {
       roomId,
       text: newMessage,
       senderId: currentUserId,
       senderName: currentUserName,
+      timestamp: new Date().toISOString()
     };
 
-    socket.emit('send_message', messageData);
     setNewMessage('');
+
+    try {
+      await addDoc(collection(db, 'chats', roomId, 'messages'), messageData);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   return (

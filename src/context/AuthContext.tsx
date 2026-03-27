@@ -22,7 +22,14 @@ export interface UserProfile {
   facebook?: string;
   agencyName?: string;
   resortName?: string;
+  resortDescription?: string;
+  resortPhotos?: string[];
+  resortAmenities?: string[];
+  resortLocation?: string;
   isApproved?: boolean;
+  rating?: number;
+  reviews?: number;
+  isResponsible?: boolean;
 }
 
 interface AuthContextType {
@@ -56,14 +63,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (userSnap.exists()) {
             const data = userSnap.data() as UserProfile;
             // Force admin role for this specific email
-            if (user.email === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
+            if (user.email?.toLowerCase() === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
               data.role = 'admin';
               data.isApproved = true;
-              await updateDoc(userRef, { role: 'admin', isApproved: true });
+              
+              const updatePayload: any = { role: 'admin', isApproved: true };
+              if (!data.createdAt) {
+                data.createdAt = new Date().toISOString();
+                updatePayload.createdAt = data.createdAt;
+              }
+              if (!data.uid) {
+                data.uid = user.uid;
+                updatePayload.uid = user.uid;
+              }
+              if (!data.email) {
+                data.email = user.email;
+                updatePayload.email = user.email;
+              }
+              
+              try {
+                await updateDoc(userRef, updatePayload);
+              } catch (updateError) {
+                console.error("Error updating admin role in Firestore:", updateError);
+                // Even if Firestore update fails, we set the profile locally so they can access the app
+              }
             }
             setUserProfile(data);
           } else {
-            const role: UserRole = user.email === 'desartstudiopro@gmail.com' ? 'admin' : 'user';
+            const role: UserRole = user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : 'user';
             
             const newProfile: UserProfile = {
               uid: user.uid,
@@ -101,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-        const finalRole: UserRole = user.email === 'desartstudiopro@gmail.com' ? 'admin' : role;
+        const finalRole: UserRole = user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : role;
         const newProfile: UserProfile = {
           uid: user.uid,
           email: user.email || '',
@@ -115,12 +142,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserProfile(newProfile);
       } else {
         const data = userSnap.data() as UserProfile;
-        if (user.email === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
+        if (user.email?.toLowerCase() === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
           data.role = 'admin';
           data.isApproved = true;
-          await updateDoc(userRef, { role: 'admin', isApproved: true });
-          setUserProfile(data);
+          
+          const updatePayload: any = { role: 'admin', isApproved: true };
+          if (!data.createdAt) {
+            data.createdAt = new Date().toISOString();
+            updatePayload.createdAt = data.createdAt;
+          }
+          if (!data.uid) {
+            data.uid = user.uid;
+            updatePayload.uid = user.uid;
+          }
+          if (!data.email) {
+            data.email = user.email;
+            updatePayload.email = user.email;
+          }
+          
+          try {
+            await updateDoc(userRef, updatePayload);
+          } catch (updateError) {
+            console.error("Error updating admin role in Firestore during login:", updateError);
+          }
         }
+        setUserProfile(data);
       }
     } catch (error) {
       console.error("Error signing in with Google", error);
@@ -164,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Add user to Firestore immediately upon registration
         const userRef = doc(db, 'users', userCredential.user.uid);
-        const finalRole: UserRole = email === 'desartstudiopro@gmail.com' ? 'admin' : role;
+        const finalRole: UserRole = email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : role;
         const newProfile: UserProfile = {
           uid: userCredential.user.uid,
           email: email,

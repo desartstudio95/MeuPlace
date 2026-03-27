@@ -9,7 +9,10 @@ import {
   LogOut, 
   Menu, 
   X,
-  Settings
+  Settings,
+  CreditCard,
+  BarChart,
+  FileText
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -36,6 +39,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: 'Imóveis', path: '/admin/properties', icon: Home },
     { name: 'Agentes', path: '/admin/agents', icon: Users },
     { name: 'Agências Premium', path: '/admin/agencies', icon: Building2 },
+    { name: 'Resorts e Hotéis', path: '/admin/resorts', icon: Home },
+    { name: 'Planos', path: '/admin/plans', icon: CreditCard },
+    { name: 'Estatísticas', path: '/admin/statistics', icon: BarChart },
+    { name: 'Páginas Estáticas', path: '/admin/pages', icon: FileText },
+    { name: 'Configurações', path: '/admin/settings', icon: Settings },
   ];
 
   return (
