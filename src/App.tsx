@@ -46,6 +46,7 @@ import { AdminPlans } from '@/pages/admin/Plans';
 import { AdminSettings } from '@/pages/admin/Settings';
 import { AdminStatistics } from '@/pages/admin/Statistics';
 import { AdminPages } from '@/pages/admin/Pages';
+import { SeoAudit } from '@/pages/admin/SeoAudit';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 export default function App() {
@@ -118,6 +119,7 @@ export default function App() {
               <Route path="/admin/plans" element={<AdminLayout><AdminPlans /></AdminLayout>} />
               <Route path="/admin/statistics" element={<AdminLayout><AdminStatistics /></AdminLayout>} />
               <Route path="/admin/pages" element={<AdminLayout><AdminPages /></AdminLayout>} />
+              <Route path="/admin/seo" element={<AdminLayout><SeoAudit /></AdminLayout>} />
               <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
             </Route>
 

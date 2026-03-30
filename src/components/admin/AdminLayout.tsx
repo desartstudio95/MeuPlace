@@ -43,6 +43,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: 'Planos', path: '/admin/plans', icon: CreditCard },
     { name: 'Estatísticas', path: '/admin/statistics', icon: BarChart },
     { name: 'Páginas Estáticas', path: '/admin/pages', icon: FileText },
+    { name: 'SEO & Sitemap', path: '/admin/seo', icon: BarChart },
     { name: 'Configurações', path: '/admin/settings', icon: Settings },
   ];
 
