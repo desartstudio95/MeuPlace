@@ -382,64 +382,124 @@ export function AddAccommodation() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Fotos da Acomodação</h3>
                 
-                <div 
-                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                    isDragging ? 'border-brand-green bg-brand-green/5' : 'border-gray-300 hover:border-brand-green/50'
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleFileChange}
-                >
-                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-1">Arraste suas fotos para cá</h4>
-                  <p className="text-gray-500 mb-4">ou clique para selecionar do seu computador</p>
-                  <p className="text-xs text-gray-400 mb-6">Máximo 10 fotos. Tamanho máximo 5MB por foto. Formatos: JPG, PNG.</p>
-                  
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden" 
-                    multiple 
-                    accept="image/jpeg, image/png, image/webp"
-                  />
-                  <Button 
-                    type="button"
+                {imagePreviews.length === 0 ? (
+                  <div 
+                    className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 ${
+                      isDragging ? 'border-brand-green bg-brand-green/5 scale-[1.01]' : 'border-gray-300 hover:border-brand-green/50 bg-gray-50/50'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleFileChange}
                     onClick={triggerFileInput}
-                    className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    style={{ cursor: 'pointer' }}
                   >
-                    Selecionar Fotos
-                  </Button>
-                </div>
-
-                {uploadError && (
-                  <p className="text-red-500 text-sm mt-2">{uploadError}</p>
-                )}
-
-                {imagePreviews.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Fotos Selecionadas ({imagePreviews.length}/10)</h4>
+                    <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+                      <Upload className="h-8 w-8 text-brand-green" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Arraste suas fotos para cá</h4>
+                    <p className="text-gray-500 mb-4 max-w-xs mx-auto text-sm">Clique para selecionar do seu computador ou arraste e solte os arquivos aqui.</p>
+                    <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
+                      <span>Máximo 10 fotos</span>
+                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                      <span>Até 5MB cada</span>
+                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                      <span>JPG, PNG, WEBP</span>
+                    </div>
+                    
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden" 
+                      multiple 
+                      accept="image/jpeg, image/png, image/webp"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                       {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200">
-                          <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-gray-100">
+                          <img src={preview} alt={`Preview ${index}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                          
+                          {/* Overlay with remove button */}
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-start justify-end p-2">
                             <button 
                               type="button"
-                              onClick={() => removeImage(index)}
-                              className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(index);
+                              }}
+                              className="p-1.5 bg-white/90 text-red-600 rounded-lg shadow-lg hover:bg-white hover:scale-110 transition-all"
+                              title="Remover imagem"
                             >
                               <X className="h-4 w-4" />
                             </button>
                           </div>
+
+                          {/* Mobile-friendly remove button (always visible but smaller) */}
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage(index);
+                            }}
+                            className="lg:hidden absolute top-1 right-1 p-1 bg-white/80 text-red-600 rounded-md shadow-sm"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          
                           {index === 0 && (
-                            <div className="absolute top-2 left-2 bg-brand-green text-white text-xs px-2 py-1 rounded shadow-sm">
+                            <div className="absolute bottom-2 left-2 bg-brand-green/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
                               Capa
                             </div>
                           )}
                         </div>
                       ))}
+                      
+                      {imagePreviews.length < 10 && (
+                        <button
+                          type="button"
+                          onClick={triggerFileInput}
+                          className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 hover:border-brand-green hover:bg-brand-green/5 transition-all text-gray-400 hover:text-brand-green group"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-brand-green/10 transition-colors">
+                            <Plus className="h-6 w-6" />
+                          </div>
+                          <span className="text-xs font-medium">Adicionar</span>
+                        </button>
+                      )}
                     </div>
+
+                    <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <Check className="h-4 w-4 text-green-500" />
+                        <span>{imagePreviews.length} de 10 fotos selecionadas</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={triggerFileInput}
+                        className="text-brand-green font-semibold hover:underline"
+                      >
+                        Enviar mais fotos
+                      </button>
+                    </div>
+
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden" 
+                      multiple 
+                      accept="image/jpeg, image/png, image/webp"
+                    />
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 text-red-600 text-sm animate-in slide-in-from-top-1">
+                    <X className="h-4 w-4" />
+                    <p>{uploadError}</p>
                   </div>
                 )}
               </div>
