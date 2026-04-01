@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useNotifications } from '@/context/NotificationContext';
 import { Trash2, Edit2, Plus, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export interface FeaturedAgent {
   id: string;
@@ -170,7 +171,7 @@ export function FeaturedAgentsAdmin() {
     setAgentToDelete(id);
   };
 
-  if (loading) return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-brand-green" /></div>;
+  if (loading) return <LoadingScreen />;
 
   return (
     <div className="space-y-6">

@@ -3,6 +3,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Trash2, Eye, Search, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ export function AdminProperties() {
   const [propertyToView, setPropertyToView] = useState<Property | null>(null);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   const filteredProperties = properties.filter(p => 

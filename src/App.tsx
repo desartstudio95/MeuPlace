@@ -30,10 +30,12 @@ import { ScrollToTop } from '@/components/ScrollToTop';
 import { CookieConsent } from '@/components/CookieConsent';
 import { HelmetProvider } from 'react-helmet-async';
 
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { Toaster } from 'sonner';
 import { useEffect, useState } from 'react';
 import { doc, getDocFromServer, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
 // Admin Pages
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -70,22 +72,38 @@ export default function App() {
     testConnection();
 
     // Listen to maintenance mode setting
+    const fetchMaintenance = async () => {
+      try {
+        const docSnap = await getDocFromServer(doc(db, 'settings', 'general'));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setIsMaintenance(data.maintenanceMode === true);
+        }
+        setLoadingConfig(false);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, 'settings/general');
+        setLoadingConfig(false);
+      }
+    };
+
+    fetchMaintenance();
+
+    // Also set up a listener for real-time updates
     const unsubscribe = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setIsMaintenance(data.maintenanceMode === true);
       }
-      setLoadingConfig(false);
     }, (error) => {
-      console.error("Error fetching maintenance setting:", error);
-      setLoadingConfig(false);
+      // Don't throw here to avoid crashing if listener fails after initial fetch
+      console.warn('Maintenance listener error:', error);
     });
 
     return () => unsubscribe();
   }, []);
 
   if (loadingConfig) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   // Allow admin routes even in maintenance mode
@@ -144,7 +162,9 @@ export default function App() {
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/contact" element={<Contact />} />
-                  <Route path="/plans" element={<Plans />} />
+                  <Route element={<ProtectedRoute requireRole={['admin', 'agent', 'resort']} />}>
+                    <Route path="/plans" element={<Plans />} />
+                  </Route>
                   
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>

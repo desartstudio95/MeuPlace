@@ -3,6 +3,7 @@ import { useResorts } from '@/hooks/useResorts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trash2, Edit2, Plus, Search, Loader2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,7 @@ export function AdminResorts() {
   });
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-brand-green" /></div>;
+    return <LoadingScreen />;
   }
 
   const filteredResorts = resorts.filter(r => 

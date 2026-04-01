@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Agent, Property } from '@/types';
-import { collection, query, getDocs, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, addDoc, serverTimestamp, getDocsFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AgentProfile() {
   const { name } = useParams();
@@ -35,7 +36,7 @@ export function AgentProfile() {
         // Try to fetch agent from users collection first
         const usersRef = collection(db, 'users');
         const userQuery = query(usersRef, where('displayName', '==', decodedName));
-        const userSnapshot = await getDocs(userQuery);
+        const userSnapshot = await getDocsFromServer(userQuery);
         
         let foundAgent: Agent | null = null;
         
@@ -61,7 +62,7 @@ export function AgentProfile() {
 
         // Fetch properties from Firebase where agent.name matches
         const q = query(collection(db, 'properties'), where('agent.name', '==', decodedName));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsFromServer(q);
         
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
@@ -125,7 +126,7 @@ export function AgentProfile() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   if (!agent) {
@@ -179,7 +180,7 @@ export function AgentProfile() {
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
                   {agent.name}
                   {agent.isVerified && (
-                    <BadgeCheck className="h-7 w-7 text-blue-500" title="Agente Verificado" />
+                    <BadgeCheck className="h-7 w-7 text-blue-500" />
                   )}
                   {agent.isResponsible && (
                     <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-blue-200 ml-2">
@@ -255,7 +256,7 @@ export function AgentProfile() {
                     <Building2 className="h-4 w-4 text-brand-green" />
                     <span className="font-medium text-gray-900 flex items-center gap-1">
                       {agent.agency}
-                      {agent.isVerified && <BadgeCheck className="h-3.5 w-3.5 text-blue-500" title="Agência Verificada" />}
+                      {agent.isVerified && <BadgeCheck className="h-3.5 w-3.5 text-blue-500" />}
                     </span>
                   </div>
                 )}

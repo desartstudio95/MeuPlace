@@ -125,14 +125,14 @@ export function Navbar() {
               </div>
             ) : (
               <Link to="/login">
-                <Button variant="ghost" size="sm">
+                <Button className="bg-brand-purple hover:bg-brand-purple-hover text-white shadow-sm" size="sm">
                   <User className="h-4 w-4 mr-2" />
                   Entrar
                 </Button>
               </Link>
             )}
             
-            {(!isAuthenticated || (userProfile?.role !== 'user' && userProfile?.role !== 'resort')) && (
+            {(!isAuthenticated || (userProfile?.role !== 'user')) && (
               <Link to="/add-property">
                 <Button className="bg-brand-green hover:bg-brand-green-hover text-white">
                   <PlusCircle className="h-4 w-4 mr-2" />
@@ -184,7 +184,7 @@ export function Navbar() {
                 Planos
               </Link>
             )}
-            {(!isAuthenticated || (userProfile?.role !== 'user' && userProfile?.role !== 'resort')) && (
+            {(!isAuthenticated || (userProfile?.role !== 'user')) && (
               <Link
                 to="/add-property"
                 className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
@@ -227,7 +227,7 @@ export function Navbar() {
             ) : (
               <div className="px-4">
                 <Link to="/login" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full justify-center">
+                  <Button className="w-full justify-center bg-brand-purple hover:bg-brand-purple-hover text-white">
                     <User className="h-4 w-4 mr-2" />
                     Entrar
                   </Button>

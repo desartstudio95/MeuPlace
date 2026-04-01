@@ -42,6 +42,7 @@ import { db, storage } from '@/lib/firebase';
 import { Property } from '@/types';
 import { resizeImage } from '@/utils/imageUtils';
 import { useNotifications } from '@/context/NotificationContext';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AgentDashboard() {
   const { currentUser, userProfile, logout } = useAuth();
@@ -293,6 +294,10 @@ export function AgentDashboard() {
     (msg.propertyTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (loadingProperties) {
+    return <LoadingScreen />;
+  }
+
   if (userProfile && !userProfile.isApproved) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
@@ -351,7 +356,7 @@ export function AgentDashboard() {
             <div>
               <h2 className="font-bold text-gray-900 truncate max-w-[140px] flex items-center gap-1">
                 {profileData.name}
-                {profileData.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Verificado" />}
+                {profileData.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />}
               </h2>
               <p className="text-xs text-gray-500">
                 {userProfile?.role === 'resort' ? 'Resort / Hotel' : 'Agente Verificado'}

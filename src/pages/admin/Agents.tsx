@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Shield, ShieldCheck, User, Search, CheckCircle, XCircle, Trash2, Ban, Star, Edit } from 'lucide-react';
 import { FeaturedAgentsAdmin } from '@/components/admin/FeaturedAgentsAdmin';
 import { AgentReviewsAdmin } from '@/components/admin/AgentReviewsAdmin';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AdminAgents() {
   const { users, loading, changeUserRole, approveUser, deactivateUser, deleteUser, updateUserRating, toggleResponsibleStatus } = useUsers();
@@ -18,7 +19,7 @@ export function AdminAgents() {
   const [reviewsCount, setReviewsCount] = useState<number>(0);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   const filteredUsers = users.filter(u => 

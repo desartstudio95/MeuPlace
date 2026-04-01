@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNotifications } from '@/context/NotificationContext';
 import { Loader2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
+import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
 export function AdminSettings() {
   const { addNotification } = useNotifications();
@@ -28,14 +30,15 @@ export function AdminSettings() {
 
   useEffect(() => {
     const fetchSettings = async () => {
+      const path = 'settings/general';
       try {
         const docRef = doc(db, 'settings', 'general');
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDocFromServer(docRef);
         if (docSnap.exists()) {
           setSettings(prev => ({ ...prev, ...docSnap.data() }));
         }
       } catch (error) {
-        console.error("Error fetching settings:", error);
+        handleFirestoreError(error, OperationType.GET, path);
       } finally {
         setLoading(false);
       }
@@ -46,11 +49,12 @@ export function AdminSettings() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const path = 'settings/general';
     try {
       await setDoc(doc(db, 'settings', 'general'), settings);
       addNotification({ title: 'Sucesso', message: 'Configurações salvas com sucesso.', type: 'success' });
     } catch (error) {
-      console.error("Error saving settings:", error);
+      handleFirestoreError(error, OperationType.WRITE, path);
       addNotification({ title: 'Erro', message: 'Falha ao salvar configurações.', type: 'error' });
     } finally {
       setSaving(false);
@@ -58,7 +62,7 @@ export function AdminSettings() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center p-12"><Loader2 className="h-8 w-8 animate-spin text-brand-green" /></div>;
+    return <LoadingScreen />;
   }
 
   return (

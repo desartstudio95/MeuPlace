@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocsFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { LoadingScreen } from '@/components/LoadingScreen';
+import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell
 } from 'recharts';
-import { Building2, Users, Eye, TrendingUp, Home, MapPin } from 'lucide-react';
+import { Building2, Users, Eye, TrendingUp } from 'lucide-react';
 
 export function AdminStatistics() {
   const [loading, setLoading] = useState(true);
@@ -18,18 +20,30 @@ export function AdminStatistics() {
     recentActivity: [] as any[]
   });
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+  const COLORS = ['#cb6ce6', '#72e331', '#3B82F6', '#FFBB28', '#FF8042'];
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         // Fetch properties
-        const propertiesSnapshot = await getDocs(collection(db, 'properties'));
-        const properties = propertiesSnapshot.docs.map(doc => doc.data());
+        const propertiesPath = 'properties';
+        let properties: any[] = [];
+        try {
+          const propertiesSnapshot = await getDocsFromServer(collection(db, propertiesPath));
+          properties = propertiesSnapshot.docs.map(doc => doc.data());
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, propertiesPath);
+        }
         
         // Fetch users
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const users = usersSnapshot.docs.map(doc => doc.data());
+        const usersPath = 'users';
+        let users: any[] = [];
+        try {
+          const usersSnapshot = await getDocsFromServer(collection(db, usersPath));
+          users = usersSnapshot.docs.map(doc => doc.data());
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, usersPath);
+        }
 
         // Calculate Category Stats
         const categoryCount: Record<string, number> = {};
@@ -83,7 +97,7 @@ export function AdminStatistics() {
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500">Carregando estatísticas...</div>;
+    return <LoadingScreen />;
   }
 
   return (
@@ -149,7 +163,7 @@ export function AdminStatistics() {
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
-                <Line type="monotone" dataKey="properties" stroke="#10B981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="properties" stroke="#72e331" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -168,7 +182,7 @@ export function AdminStatistics() {
                   cursor={{ fill: '#F3F4F6' }}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
-                <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="#cb6ce6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

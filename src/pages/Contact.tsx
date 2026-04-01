@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { playNotificationSound } from '@/utils/sound';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ export function Contact() {
     phone: ''
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [contactInfo, setContactInfo] = useState({
     contactPhone: '+258 84 123 4567',
@@ -43,10 +45,16 @@ export function Contact() {
         }
       } catch (error) {
         console.error("Error fetching contact info:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchContactInfo();
   }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

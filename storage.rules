@@ -8,11 +8,12 @@ service firebase.storage {
     }
     
     function isAdmin() {
-      return isAuthenticated() &&
-        (
-          (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-          request.auth.token.email == "desartstudiopro@gmail.com"
-        );
+      return isAuthenticated() && (
+        (request.auth.token.email == "desartstudiopro@gmail.com" && request.auth.token.email_verified == true) ||
+        (request.auth.uid == "7TlXuKjMWUQVh28kC9Dv7bOm2gP2") ||
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && 
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
     
     function isImage() {
@@ -29,11 +30,42 @@ service firebase.storage {
       allow create, update: if isAuthenticated() && isImage() && isLessThan5MB();
       allow delete: if isAuthenticated(); // Idealmente, verificar se é dono ou admin
     }
+
+    // Logotipos de agências
+    match /agency_logos/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isLessThan5MB();
+    }
     
-    // Avatares de utilizadores
+    // Avatares de agentes em destaque
+    match /agent_avatars/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isLessThan5MB();
+    }
+    
+    // Configurações do site (logotipos, etc)
+    match /settings/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isLessThan5MB();
+    }
+    
+    // Avatares de utilizadores (vários caminhos possíveis)
     match /avatars/{userId}/{fileName} {
       allow read: if true;
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan5MB();
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan5MB();
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // Uploads de utilizadores (MyFiles)
+    match /user_uploads/{userId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isLessThan5MB();
       allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
   }

@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { Upload, Save, ArrowLeft, Trash2, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
-import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import {
   Dialog,
   DialogContent,
@@ -45,7 +46,7 @@ export function EditProperty() {
       if (!id) return;
       try {
         const docRef = doc(db, 'properties', id);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDocFromServer(docRef);
         
         if (docSnap.exists()) {
           setFormData({ id: docSnap.id, ...docSnap.data() } as Property);
@@ -152,7 +153,7 @@ export function EditProperty() {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   return (

@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/components/Chat';
 import { PropertyMap } from '@/components/PropertyMap';
-import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove, getDocFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Dialog,
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { playNotificationSound } from '@/utils/sound';
 
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { SEO } from '@/components/SEO';
 
 export function PropertyDetails() {
@@ -40,7 +41,7 @@ export function PropertyDetails() {
       
       try {
         const docRef = doc(db, 'properties', id);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDocFromServer(docRef);
         
         if (docSnap.exists()) {
           const fetchedProperty = { id: docSnap.id, ...docSnap.data() } as Property;
@@ -192,19 +193,7 @@ export function PropertyDetails() {
   }, [property?.images?.length, isZoomModalOpen]);
 
   if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-1/3" />
-          <Skeleton className="h-[400px] w-full rounded-xl" />
-          <div className="grid grid-cols-3 gap-4">
-            <Skeleton className="h-24 w-full rounded-lg" />
-            <Skeleton className="h-24 w-full rounded-lg" />
-            <Skeleton className="h-24 w-full rounded-lg" />
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error) {
@@ -573,7 +562,7 @@ export function PropertyDetails() {
                 <Link to={`/agent/${encodeURIComponent(property.agent?.name || 'Agente')}`} className="hover:text-brand-green transition-colors flex items-center gap-1.5">
                   <h3 className="text-lg font-bold text-gray-900">{property.agent?.name || 'Agente'}</h3>
                   {property.agent?.isVerified && (
-                    <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" title="Agente Verificado" />
+                    <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   )}
                 </Link>
                 {property.agent?.agency && (

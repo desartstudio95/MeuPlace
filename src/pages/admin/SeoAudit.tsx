@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocsFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, CheckCircle, AlertTriangle, XCircle, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types';
+import { LoadingScreen } from '@/components/LoadingScreen';
+import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
 interface SeoIssue {
   id: string;
@@ -29,14 +31,15 @@ export function SeoAudit() {
 
   const fetchData = async () => {
     setLoading(true);
+    const path = 'properties';
     try {
-      const propertiesSnapshot = await getDocs(collection(db, 'properties'));
+      const propertiesSnapshot = await getDocsFromServer(collection(db, path));
       const propsData = propertiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
       setProperties(propsData);
       
       analyzeSeo(propsData);
     } catch (error) {
-      console.error("Error fetching data for SEO audit:", error);
+      handleFirestoreError(error, OperationType.LIST, path);
     } finally {
       setLoading(false);
     }
@@ -89,11 +92,7 @@ export function SeoAudit() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-brand-green" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

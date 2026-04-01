@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { playNotificationSound } from '@/utils/sound';
 import { toast } from 'sonner';
+import { messaging, onMessageListener } from '@/lib/firebase';
 
 export interface Notification {
   id: string;
@@ -54,6 +55,25 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         message: 'Configure alertas para receber notificações sobre novos imóveis.',
         type: 'info'
       });
+    }
+  }, []);
+
+  // Listen for Firebase messages
+  useEffect(() => {
+    if (messaging) {
+      const unsubscribe = onMessageListener().then((payload: any) => {
+        if (payload?.notification) {
+          addNotification({
+            title: payload.notification.title || 'Nova Notificação',
+            message: payload.notification.body || '',
+            type: 'info',
+            link: payload.data?.link
+          });
+        }
+      });
+      return () => {
+        // cleanup if needed
+      };
     }
   }, []);
 

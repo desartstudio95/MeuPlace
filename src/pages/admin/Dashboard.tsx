@@ -2,13 +2,14 @@ import React from 'react';
 import { Home, Building2, Users, CheckCircle, Clock } from 'lucide-react';
 import { useProperties } from '@/hooks/useProperties';
 import { useUsers } from '@/hooks/useUsers';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AdminDashboard() {
   const { properties, loading: loadingProps } = useProperties();
   const { users, loading: loadingUsers } = useUsers();
 
   if (loadingProps || loadingUsers) {
-    return <div className="flex justify-center items-center h-full">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   const stats = [

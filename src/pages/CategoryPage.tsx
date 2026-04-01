@@ -2,9 +2,10 @@ import { useParams } from 'react-router-dom';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDocsFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Property } from '@/types';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function CategoryPage() {
   const { type } = useParams<{ type: string }>();
@@ -30,7 +31,7 @@ export function CategoryPage() {
       setLoading(true);
       try {
         const q = query(collection(db, 'properties'), where('category', '==', filterCategory));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsFromServer(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
@@ -58,7 +59,7 @@ export function CategoryPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20">Carregando...</div>
+        <LoadingScreen />
       ) : filteredProperties.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {filteredProperties.map(property => (

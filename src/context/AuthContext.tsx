@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, deleteUser, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDocFromServer } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { auth, db, googleProvider, storage } from '../lib/firebase';
 
+import { LoadingScreen } from '../components/LoadingScreen';
 import { resizeImage } from '../utils/imageUtils';
 
 export type UserRole = 'admin' | 'agent' | 'user' | 'resort';
@@ -30,6 +31,7 @@ export interface UserProfile {
   rating?: number;
   reviews?: number;
   isResponsible?: boolean;
+  favorites?: string[];
 }
 
 interface AuthContextType {
@@ -58,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentUser(user);
         try {
           const userRef = doc(db, 'users', user.uid);
-          const userSnap = await getDoc(userRef);
+          const userSnap = await getDocFromServer(userRef);
           
           if (userSnap.exists()) {
             const data = userSnap.data() as UserProfile;
@@ -337,7 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ currentUser, userProfile, loading, login, loginWithEmail, registerWithEmail, updateUserProfile, deleteUserAccount, logout, resetPassword }}>
-      {!loading && children}
+      {loading ? <LoadingScreen /> : children}
     </AuthContext.Provider>
   );
 }

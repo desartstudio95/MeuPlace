@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
-export function ProtectedRoute({ requireRole }: { requireRole?: 'admin' | 'agent' | 'user' | 'resort' }) {
+export function ProtectedRoute({ requireRole }: { requireRole?: string | string[] }) {
   const { currentUser, userProfile, loading } = useAuth();
 
   // If auth state is still initializing, or if we have a user but their profile hasn't loaded yet
@@ -13,8 +13,11 @@ export function ProtectedRoute({ requireRole }: { requireRole?: 'admin' | 'agent
     return <Navigate to="/login" replace />;
   }
 
-  if (requireRole && userProfile?.role !== requireRole && userProfile?.role !== 'admin') {
-    return <Navigate to="/" replace />;
+  if (requireRole) {
+    const roles = Array.isArray(requireRole) ? requireRole : [requireRole];
+    if (!roles.includes(userProfile?.role || '') && userProfile?.role !== 'admin') {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <Outlet />;

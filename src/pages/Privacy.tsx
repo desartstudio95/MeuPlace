@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function Privacy() {
   const [content, setContent] = useState('');
@@ -27,7 +28,7 @@ export function Privacy() {
   }, []);
 
   if (loading) {
-    return <div className="min-h-screen flex justify-center items-center"><Loader2 className="h-8 w-8 animate-spin text-brand-green" /></div>;
+    return <LoadingScreen />;
   }
 
   return (

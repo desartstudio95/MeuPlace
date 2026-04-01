@@ -143,20 +143,83 @@
         }
       },
       "required": ["title", "description", "price", "currency", "location", "type", "category", "agentId", "createdAt", "status"]
+    },
+    "Plan": {
+      "title": "Subscription Plan",
+      "description": "Available subscription plans for agents",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "duration": { "type": "string" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "description": "In-app messages or contact form submissions",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "propertyId": { "type": "string" }
+      }
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User reviews for agents or resorts",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
     "users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/User"
-      },
+      "schema": { "$ref": "#/entities/User" },
       "description": "Stores user profiles and roles."
     },
     "properties/{propertyId}": {
-      "schema": {
-        "$ref": "#/entities/Property"
-      },
+      "schema": { "$ref": "#/entities/Property" },
       "description": "Stores property listings."
+    },
+    "settings/{settingId}": {
+      "schema": "object",
+      "description": "General site settings."
+    },
+    "resorts/{resortId}": {
+      "schema": "object",
+      "description": "Resort and hotel listings."
+    },
+    "resorts/{resortId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Resort reviews"
+    },
+    "premium_agencies/{agencyId}": {
+      "schema": "object",
+      "description": "Premium real estate agencies."
+    },
+    "featured_agents/{agentId}": {
+      "schema": "object",
+      "description": "Featured real estate agents."
+    },
+    "plans/{planId}": {
+      "schema": { "$ref": "#/entities/Plan" },
+      "description": "Subscription plans"
+    },
+    "messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Direct messages"
+    },
+    "agent_reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Reviews for agents"
     }
   }
 }

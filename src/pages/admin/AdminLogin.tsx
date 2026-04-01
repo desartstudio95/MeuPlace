@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Shield, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AdminLogin() {
   const { login, currentUser, userProfile } = useAuth();
@@ -50,6 +51,10 @@ export function AdminLogin() {
       navigate('/admin');
     }
   }, [currentUser, userProfile, navigate]);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

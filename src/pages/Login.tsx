@@ -119,8 +119,15 @@ export function Login() {
     } catch (error: any) {
       if (error.message === 'email-not-verified') {
         navigate('/verify-email', { state: { email } });
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        if (email.toLowerCase().endsWith('@gmail.com')) {
+          setAuthError('Email ou Senha Incorretos. Se você criou sua conta com o Google, use o botão "Entrar com Google" abaixo.');
+        } else {
+          setAuthError('Email ou Senha Incorretos. Verifique suas credenciais ou use o link "Esqueceu a senha?".');
+        }
       } else {
-        setAuthError('Email ou Senha Incorretos');
+        setAuthError('Ocorreu um erro ao entrar. Por favor, tente novamente mais tarde.');
+        console.error("Login error:", error);
       }
     }
   };

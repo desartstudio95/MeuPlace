@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function Help() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const [faqs, setFaqs] = useState<{question: string, answer: string}[]>([
     {
       question: "Como posso anunciar um imóvel no MeuPlace?",
@@ -42,10 +44,16 @@ export function Help() {
         }
       } catch (error) {
         console.error("Error fetching FAQs:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchFaqs();
   }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   const filteredFaqs = faqs.filter(faq => 
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 

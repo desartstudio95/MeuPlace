@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/context/NotificationContext';
 import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 interface Plan {
   id: string;
@@ -197,7 +198,7 @@ export function PlansAdmin() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center">Carregando planos...</div>;
+    return <LoadingScreen />;
   }
 
   return (

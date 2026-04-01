@@ -9,6 +9,7 @@ import { useNotifications } from '@/context/NotificationContext';
 import { Property } from '@/types';
 import { PremiumAgenciesAdmin } from '@/components/admin/PremiumAgenciesAdmin';
 import { PlansAdmin } from '@/components/admin/PlansAdmin';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AdminDashboard() {
   const { userProfile } = useAuth();
@@ -180,7 +181,7 @@ export function AdminDashboard() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando painel admin...</div>;
+    return <LoadingScreen />;
   }
 
   if (userProfile?.role !== 'admin') {

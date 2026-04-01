@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNotifications } from '@/context/NotificationContext';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AdminPages() {
   const { addNotification } = useNotifications();
@@ -80,7 +81,7 @@ export function AdminPages() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center p-12"><Loader2 className="h-8 w-8 animate-spin text-brand-green" /></div>;
+    return <LoadingScreen />;
   }
 
   return (

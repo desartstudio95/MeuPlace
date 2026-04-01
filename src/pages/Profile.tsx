@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { resizeImage } from '@/utils/imageUtils';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function Profile() {
   const { userProfile, updateUserProfile, deleteUserAccount } = useAuth();
@@ -136,11 +137,7 @@ export function Profile() {
   };
 
   if (!userProfile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>A carregar perfil...</p>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

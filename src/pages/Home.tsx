@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User } from 'lucide-react';
+import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User, Key, Heart, MousePointer2, Sparkles, Hotel, Users, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyMap } from '@/components/PropertyMap';
 import { LOCATIONS, CATEGORIES, Property, PremiumAgency, Resort } from '@/types';
-import { collection, query, getDocs, limit, where, doc, getDoc } from 'firebase/firestore';
+import { collection, query, getDocs, getDocsFromServer, limit, where, doc, getDocFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { SEO } from '@/components/SEO';
 
 export function Home() {
@@ -39,7 +41,7 @@ export function Home() {
     const fetchFeaturedProperties = async () => {
       try {
         const q = query(collection(db, 'properties'), where('isPromoted', '==', true), limit(6));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsFromServer(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
@@ -47,14 +49,14 @@ export function Home() {
         
         setFeaturedProperties(fetchedProperties);
       } catch (error) {
-        console.error("Error fetching featured properties:", error);
+        handleFirestoreError(error, OperationType.GET, 'properties');
       }
     };
 
     const fetchPremiumAgencies = async () => {
       try {
         const agenciesQ = query(collection(db, 'premium_agencies'), where('isActive', '==', true));
-        const agenciesSnapshot = await getDocs(agenciesQ);
+        const agenciesSnapshot = await getDocsFromServer(agenciesQ);
         const fetchedAgencies: PremiumAgency[] = [];
         agenciesSnapshot.forEach((doc) => {
           fetchedAgencies.push({ id: doc.id, ...doc.data() } as PremiumAgency);
@@ -65,28 +67,28 @@ export function Home() {
         
         setPremiumAgencies(fetchedAgencies);
       } catch (error) {
-        console.error("Error fetching premium agencies:", error);
+        handleFirestoreError(error, OperationType.GET, 'premium_agencies');
       }
     };
 
     const fetchResorts = async () => {
       try {
         const resortsQ = query(collection(db, 'resorts'), limit(6));
-        const resortsSnapshot = await getDocs(resortsQ);
+        const resortsSnapshot = await getDocsFromServer(resortsQ);
         const fetchedResorts: Resort[] = [];
         resortsSnapshot.forEach((doc) => {
           fetchedResorts.push({ id: doc.id, ...doc.data() } as Resort);
         });
         setResorts(fetchedResorts);
       } catch (error) {
-        console.error("Error fetching resorts:", error);
+        handleFirestoreError(error, OperationType.GET, 'resorts');
       }
     };
 
     const fetchFeaturedAgents = async () => {
       try {
         const agentsQ = query(collection(db, 'featured_agents'));
-        const agentsSnapshot = await getDocs(agentsQ);
+        const agentsSnapshot = await getDocsFromServer(agentsQ);
         const fetchedAgents: any[] = [];
         agentsSnapshot.forEach((doc) => {
           fetchedAgents.push({ id: doc.id, ...doc.data() });
@@ -100,19 +102,19 @@ export function Home() {
           setFeaturedAgents([]);
         }
       } catch (error) {
-        console.error("Error fetching featured agents:", error);
+        handleFirestoreError(error, OperationType.GET, 'featured_agents');
       }
     };
 
     const fetchSettings = async () => {
       try {
         const docRef = doc(db, 'settings', 'general');
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDocFromServer(docRef);
         if (docSnap.exists()) {
           setSettings(prev => ({ ...prev, ...docSnap.data() }));
         }
       } catch (error) {
-        console.error("Error fetching settings:", error);
+        handleFirestoreError(error, OperationType.GET, 'settings/general');
       }
     };
 
@@ -124,7 +126,7 @@ export function Home() {
   }, []);
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   if (userProfile?.role === 'admin') {
@@ -153,25 +155,58 @@ export function Home() {
         description={settings.heroSubtitle || "A forma mais simples e segura de comprar, vender ou arrendar o teu place."} 
       />
       {/* Hero Section */}
-      <section className="relative bg-[#cb6ce6] py-20 sm:py-32">
-        <div className="absolute inset-0 overflow-hidden">
-          <img
+      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-brand-purple">
+        <div className="absolute inset-0 z-0">
+          <motion.img
+            initial={{ scale: 1.1 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 10, repeat: Infinity, repeatType: "reverse", ease: "linear" }}
             src={settings.heroImage}
             alt="Hero Background"
-            className="w-full h-full object-cover opacity-95"
+            className="w-full h-full object-cover opacity-90"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#cb6ce6]/60 to-[#cb6ce6]/90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-brand-purple/40 via-brand-purple/70 to-brand-purple/95" />
+          
+          {/* Decorative Elements */}
+          <div className="absolute inset-0 pointer-events-none">
+            <motion.div 
+              animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-[15%] left-[10%] text-white/10"
+            >
+              <HomeIcon size={120} />
+            </motion.div>
+            <motion.div 
+              animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
+              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute bottom-[20%] right-[15%] text-white/10"
+            >
+              <Key size={100} />
+            </motion.div>
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-[40%] right-[10%] text-white/5"
+            >
+              <Heart size={80} />
+            </motion.div>
+          </div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green">Moçambique</span>') }}>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium mb-8">
+              <Crown className="h-4 w-4 text-amber-400" />
+              <span>O Maior Shopping de Imóveis em Moçambique</span>
+            </div>
+            
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-6 leading-tight" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green drop-shadow-[0_0_15px_rgba(114,227,49,0.5)]">Moçambique</span>') }}>
             </h1>
-            <p className="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10">
+            <p className="text-lg sm:text-2xl text-gray-200 max-w-3xl mx-auto mb-12 font-medium">
               {settings.heroSubtitle}
             </p>
           </motion.div>
@@ -181,20 +216,22 @@ export function Home() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="max-w-5xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300"
+            className="max-w-5xl mx-auto bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-white/20 transition-all duration-300"
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
-              <div className="flex items-center gap-2 text-gray-700 font-medium">
-                <Search className="h-4 w-4" />
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/80">
+              <div className="flex items-center gap-3 text-gray-800 font-semibold">
+                <div className="p-2 bg-brand-green/10 rounded-lg">
+                  <Search className="h-5 w-5 text-brand-green" />
+                </div>
                 <span>Encontre seu imóvel ideal</span>
               </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
+                className="h-10 w-10 p-0 text-gray-500 hover:text-brand-purple hover:bg-brand-purple/10 rounded-full"
               >
-                {isSearchExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                {isSearchExpanded ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
               </Button>
             </div>
             
@@ -287,6 +324,22 @@ export function Home() {
               </div>
             )}
           </motion.div>
+
+          {/* Scroll Down Indicator */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 1 }}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50"
+          >
+            <span className="text-[10px] uppercase tracking-[0.2em] font-bold">Explorar</span>
+            <motion.div
+              animate={{ y: [0, 10, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronDown size={20} />
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -296,46 +349,56 @@ export function Home() {
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
-        className="py-10 bg-white border-b border-gray-100 overflow-hidden"
+        className="py-16 bg-white relative overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 text-center">
-          <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-            Imobiliárias Premium
-          </p>
+        {/* Background Decoration */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#cb6ce6 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 relative z-10">
+          <div className="flex flex-col items-center text-center">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-xs font-bold uppercase tracking-widest mb-4 border border-brand-purple/20">
+              <Crown className="h-3 w-3" />
+              <span>Parceiros de Elite</span>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Imobiliárias Premium</h2>
+            <div className="h-1 w-20 bg-brand-purple rounded-full"></div>
+          </div>
         </div>
         
         <div className="relative w-full flex overflow-x-hidden group">
-          <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10"></div>
-          <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10"></div>
+          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white via-white/80 to-transparent z-10"></div>
+          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white via-white/80 to-transparent z-10"></div>
           
-          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center">
+          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center py-4">
             {/* First set of logos */}
             {premiumAgencies.length > 0 && (
               premiumAgencies.map((agency, idx) => (
-                <div key={`agency-1-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 transition-transform hover:scale-105 cursor-pointer">
-                  {agency.websiteUrl ? (
-                    <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
-                      {agency.logoUrl ? (
-                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-16 w-16 text-gray-400" />
-                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-                        </div>
-                      )}
-                    </a>
-                  ) : (
-                    <>
-                      {agency.logoUrl ? (
-                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-16 w-16 text-gray-400" />
-                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
+                <div key={`agency-1-${agency.id}`} className="flex items-center gap-3 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
+                  <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover/logo:shadow-xl group-hover/logo:border-brand-purple/30 transition-all duration-300">
+                    {agency.websiteUrl ? (
+                      <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+                        {agency.logoUrl ? (
+                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                          </div>
+                        )}
+                      </a>
+                    ) : (
+                      <>
+                        {agency.logoUrl ? (
+                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -343,30 +406,32 @@ export function Home() {
             {/* Second set of logos (duplicated for seamless loop) */}
             {premiumAgencies.length > 0 && (
               premiumAgencies.map((agency, idx) => (
-                <div key={`agency-2-${agency.id}`} className="flex items-center gap-3 mx-8 sm:mx-12 transition-transform hover:scale-105 cursor-pointer">
-                  {agency.websiteUrl ? (
-                    <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
-                      {agency.logoUrl ? (
-                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-16 w-16 text-gray-400" />
-                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-                        </div>
-                      )}
-                    </a>
-                  ) : (
-                    <>
-                      {agency.logoUrl ? (
-                        <img src={agency.logoUrl} alt={agency.name} className="h-24 object-contain max-w-[250px]" />
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-16 w-16 text-gray-400" />
-                          <span className="text-3xl font-bold text-gray-800 whitespace-nowrap">{agency.name}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
+                <div key={`agency-2-${agency.id}`} className="flex items-center gap-3 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
+                  <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover/logo:shadow-xl group-hover/logo:border-brand-purple/30 transition-all duration-300">
+                    {agency.websiteUrl ? (
+                      <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+                        {agency.logoUrl ? (
+                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                          </div>
+                        )}
+                      </a>
+                    ) : (
+                      <>
+                        {agency.logoUrl ? (
+                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -375,40 +440,68 @@ export function Home() {
       </motion.section>
 
       {/* Featured Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-gray-50 relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-brand-green/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-brand-purple/5 blur-3xl rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="flex justify-between items-end mb-8"
+            transition={{ duration: 0.6 }}
+            className="flex flex-col md:flex-row justify-between items-center md:items-end mb-10 gap-6"
           >
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900">Destaques da Semana</h2>
-              <p className="mt-2 text-gray-600">Imóveis promovidos e recomendados.</p>
+            <div className="text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/10 text-brand-green text-[10px] font-bold uppercase tracking-widest mb-3 border border-brand-green/20">
+                <Sparkles className="h-3 w-3" />
+                <span>Oportunidades Únicas</span>
+              </div>
+              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Destaques da Semana</h2>
+              <p className="mt-2 text-base text-gray-600 max-w-xl">Imóveis selecionados pela nossa equipa pela sua excelente relação qualidade-preço.</p>
             </div>
-            <Link to="/properties" className="hidden sm:block text-brand-green font-medium hover:text-brand-green-hover">
-              Ver todos os imóveis &rarr;
+            <Link to="/properties" className="group flex items-center gap-2 text-brand-green font-bold hover:text-brand-green-hover transition-all text-sm">
+              <span>Explorar todos os imóveis</span>
+              <div className="p-1.5 bg-brand-green/10 rounded-full group-hover:bg-brand-green group-hover:text-white transition-all">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </div>
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
-            {featuredProperties.map((property, idx) => (
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.15
+                }
+              }
+            }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
+            {featuredProperties.map((property) => (
               <motion.div
                 key={property.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
+                variants={{
+                  hidden: { opacity: 0, y: 30, scale: 0.95 },
+                  visible: { opacity: 1, y: 0, scale: 1 }
+                }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="hover:translate-y-[-8px] transition-transform duration-300"
               >
-                <PropertyCard property={property} />
+                <PropertyCard property={property} isHighlighted={true} />
               </motion.div>
             ))}
-          </div>
+          </motion.div>
            
-           <div className="mt-8 text-center sm:hidden">
+           <div className="mt-12 text-center sm:hidden">
             <Link to="/properties">
-                <Button variant="outline" className="w-full border-brand-green text-brand-green">
+                <Button variant="outline" className="w-full h-14 border-brand-green text-brand-green text-lg font-bold hover:bg-brand-green/10">
                     Ver todos os imóveis
                 </Button>
             </Link>
@@ -417,53 +510,79 @@ export function Home() {
       </section>
 
       {/* Resorts & Hotels Section */}
-      <section className="py-16 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#72e331 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex justify-between items-end mb-8"
+            className="flex flex-col md:flex-row justify-between items-center md:items-end mb-10 gap-6"
           >
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900">Resorts & Hotéis</h2>
-              <p className="mt-2 text-gray-600">As melhores estadias para as suas férias ou viagens de negócios.</p>
+            <div className="text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-[10px] font-bold uppercase tracking-widest mb-3 border border-brand-purple/20">
+                <Hotel className="h-3 w-3" />
+                <span>Estadias de Luxo</span>
+              </div>
+              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Resorts & Hotéis</h2>
+              <p className="mt-2 text-base text-gray-600 max-w-xl">As melhores estadias para as suas férias ou viagens de negócios.</p>
             </div>
-            <Link to="/properties?category=Resort" className="hidden sm:block text-brand-green font-medium hover:text-brand-green-hover">
-              Ver todos &rarr;
+            <Link to="/properties?category=Resort" className="group flex items-center gap-2 text-brand-purple font-bold hover:text-brand-purple-hover transition-all text-sm">
+              <span>Ver todos os destinos</span>
+              <div className="p-1.5 bg-brand-purple/10 rounded-full group-hover:bg-brand-purple group-hover:text-white transition-all">
+                <ArrowRight className="h-3.5 w-3.5" />
+              </div>
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {resorts.map((resort, idx) => (
               <motion.div
                 key={resort.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
               >
-                <Link to={`/resort/${resort.id}`} className="max-w-[350px] mx-auto w-full bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 group cursor-pointer block">
-                  <div className="relative h-36 overflow-hidden">
-                    <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-                      <Star className="h-3.5 w-3.5 text-amber-500 fill-current" />
-                      <span className="text-xs font-bold text-gray-900">{resort.rating}</span>
+                <Link to={`/resort/${resort.id}`} className="group block bg-white rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 h-full">
+                  <div className="relative h-64 overflow-hidden">
+                    <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/20">
+                      <Star className="h-4 w-4 text-amber-500 fill-current" />
+                      <span className="text-sm font-bold text-gray-900">{resort.rating}</span>
+                    </div>
+                    
+                    <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+                      <Button className="w-full bg-white text-brand-purple hover:bg-brand-purple hover:text-white font-bold rounded-xl shadow-xl">
+                        Ver Detalhes
+                      </Button>
                     </div>
                   </div>
-                  <div className="p-3">
-                    <h3 className="text-[15px] font-bold text-gray-900 mb-1 group-hover:text-brand-green transition-colors leading-tight">{resort.name}</h3>
-                    <div className="flex items-center text-gray-500 text-xs mb-2">
-                      <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
-                      <span className="truncate">{resort.location}</span>
+                  
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 text-brand-purple text-[10px] font-bold uppercase tracking-widest mb-2">
+                      <Crown className="h-3 w-3" />
+                      <span>Premium Choice</span>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                      <p className="text-sm text-brand-purple font-bold">
-                        {resort.price} <span className="text-xs font-normal text-gray-500">/noite</span>
-                      </p>
-                      <Button variant="outline" size="sm" className="h-7 px-2 text-[10px] text-brand-green border-brand-green hover:bg-brand-green/10">
-                        Reservar
-                      </Button>
+                    <h3 className="text-xl font-extrabold text-gray-900 mb-2 group-hover:text-brand-purple transition-colors leading-tight">{resort.name}</h3>
+                    <div className="flex items-center text-gray-500 text-sm mb-4">
+                      <MapPin className="h-4 w-4 mr-1.5 text-brand-green flex-shrink-0" />
+                      <span className="truncate font-medium">{resort.location}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Preço por noite</p>
+                        <p className="text-xl text-brand-purple font-black">
+                          {resort.price}
+                        </p>
+                      </div>
+                      <div className="h-10 w-10 rounded-full bg-brand-green/10 flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all">
+                        <ArrowRight className="h-5 w-5" />
+                      </div>
                     </div>
                   </div>
                 </Link>
@@ -474,56 +593,81 @@ export function Home() {
       </section>
 
       {/* Featured Agents Section */}
-      <section className="py-16 bg-gray-50 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-gray-50 relative overflow-hidden">
+        {/* Decorative Shapes */}
+        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-64 h-64 bg-brand-purple/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-64 h-64 bg-brand-green/5 rounded-full blur-3xl"></div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-gray-900">{settings.featuredAgentsTitle}</h2>
-            <p className="mt-2 text-gray-600">{settings.featuredAgentsSubtitle}</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-[10px] font-bold uppercase tracking-widest mb-3 border border-brand-purple/20">
+              <Users className="h-3 w-3" />
+              <span>Equipa de Sucesso</span>
+            </div>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">{settings.featuredAgentsTitle}</h2>
+            <p className="mt-2 text-base text-gray-600 max-w-2xl mx-auto">{settings.featuredAgentsSubtitle}</p>
           </motion.div>
 
-          <div className="flex overflow-x-auto pb-8 -mx-4 px-4 sm:mx-0 sm:px-0 gap-4 sm:gap-6 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex overflow-x-auto pb-12 -mx-4 px-4 sm:mx-0 sm:px-0 gap-6 sm:gap-8 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {featuredAgents.length > 0 ? (
               featuredAgents.map((agent, idx) => (
                 <motion.div
                   key={idx}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: idx * 0.1 }}
-                  className="group min-w-[200px] sm:min-w-[220px] snap-center flex-shrink-0"
+                  className="group min-w-[280px] sm:min-w-[320px] snap-center flex-shrink-0"
                 >
                   <Link to={`/agent/${encodeURIComponent(agent.name)}`} className="block h-full">
-                    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-green/30 transition-all text-center h-full flex flex-col">
-                      <div className="relative mx-auto mb-3">
-                        <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-gray-50 group-hover:border-brand-green/20 transition-colors mx-auto">
-                          <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover" />
+                    <div className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm hover:shadow-2xl hover:border-brand-purple/20 transition-all duration-500 text-center h-full flex flex-col relative overflow-hidden">
+                      {/* Card background decoration */}
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-brand-purple/5 rounded-bl-[5rem] -mr-8 -mt-8 transition-all group-hover:scale-150 duration-700"></div>
+                      
+                      <div className="relative mx-auto mb-6">
+                        <div className="h-32 w-32 rounded-full overflow-hidden border-4 border-white shadow-xl group-hover:border-brand-purple/30 transition-all duration-500 mx-auto relative z-10">
+                          <img src={agent.avatar} alt={agent.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
                         </div>
                         {agent.rating >= 4.9 && (
-                          <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white p-1 rounded-full shadow-sm">
-                            <Award className="h-3.5 w-3.5" />
+                          <div className="absolute -bottom-2 -right-2 bg-gradient-to-br from-amber-400 to-amber-600 text-white p-2.5 rounded-full shadow-xl z-20 border-2 border-white">
+                            <Award className="h-5 w-5" />
                           </div>
                         )}
                       </div>
                       
-                      <h3 className="text-base font-bold text-gray-900 group-hover:text-brand-green transition-colors line-clamp-1">{agent.name}</h3>
-                      <p className="text-xs text-brand-purple font-medium mb-2">{agent.agency}</p>
-                      
-                      <div className="flex items-center justify-center gap-1 text-amber-500 mb-3">
-                        <Star className="h-3.5 w-3.5 fill-current" />
-                        <span className="font-bold text-gray-900 ml-1 text-sm">{agent.rating.toFixed(1)}</span>
-                        <span className="text-gray-500 text-xs">({agent.reviews})</span>
+                      <div className="relative z-10">
+                        <h3 className="text-xl font-black text-gray-900 group-hover:text-brand-purple transition-colors mb-1">{agent.name}</h3>
+                        <p className="text-sm text-brand-purple font-bold uppercase tracking-widest mb-4">{agent.agency}</p>
+                        
+                        <div className="flex items-center justify-center gap-2 mb-6">
+                          <div className="flex items-center gap-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
+                            <Star className="h-4 w-4 text-amber-500 fill-current" />
+                            <span className="font-black text-gray-900 text-sm">{agent.rating.toFixed(1)}</span>
+                          </div>
+                          <span className="text-gray-400 text-xs font-medium">({agent.reviews} avaliações)</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-50">
+                          <div className="text-center">
+                            <p className="font-black text-gray-900 text-lg leading-none mb-1">{agent.propertiesSold}</p>
+                            <p className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Imóveis</p>
+                          </div>
+                          <div className="text-center border-l border-gray-50">
+                            <p className="font-black text-brand-green text-lg leading-none mb-1">Top</p>
+                            <p className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Performance</p>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="mt-auto pt-3 border-t border-gray-50 flex justify-center gap-4 text-sm">
-                        <div className="text-center">
-                          <p className="font-bold text-gray-900 text-sm">{agent.propertiesSold}</p>
-                          <p className="text-[10px] uppercase tracking-wider text-gray-500">Imóveis</p>
-                        </div>
+                      <div className="mt-8 pt-4">
+                        <Button className="w-full bg-gray-900 text-white group-hover:bg-brand-purple transition-colors rounded-xl font-bold py-6">
+                          Ver Perfil Completo
+                        </Button>
                       </div>
                     </div>
                   </Link>
@@ -539,16 +683,16 @@ export function Home() {
       </section>
 
       {/* Map Section */}
-      <section className="py-16 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-10"
+            className="text-center mb-8"
           >
-            <h2 className="text-3xl font-bold text-gray-900">Explore no Mapa</h2>
-            <p className="mt-2 text-gray-600">Encontre imóveis em todas as províncias de Moçambique.</p>
+            <h2 className="text-2xl font-bold text-gray-900">Explore no Mapa</h2>
+            <p className="mt-2 text-sm text-gray-600">Encontre imóveis em todas as províncias de Moçambique.</p>
           </motion.div>
           <motion.div
             initial={{ opacity: 0 }}
@@ -562,13 +706,13 @@ export function Home() {
       </section>
 
       {/* Categories Section */}
-      <section className="py-16 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl font-bold text-gray-900 mb-8 text-center"
+            className="text-2xl font-bold text-gray-900 mb-6 text-center"
           >
             Explorar por Categoria
           </motion.h2>

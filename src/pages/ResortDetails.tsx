@@ -3,13 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Star, Phone, Mail, Globe, Check, ChevronLeft, Calendar, Send, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { doc, getDoc, collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, getDocs, addDoc, serverTimestamp, getDocFromServer, getDocsFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
 import { useAuth } from '@/context/AuthContext';
 import { PropertyMap } from '@/components/PropertyMap';
 import { SEO } from '@/components/SEO';
 import { Property } from '@/types';
+
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function ResortDetails() {
   const { id } = useParams();
@@ -36,7 +38,7 @@ export function ResortDetails() {
       if (!id) return;
       try {
         const docRef = doc(db, 'resorts', id);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDocFromServer(docRef);
         if (docSnap.exists()) {
           setResort({ id: docSnap.id, ...docSnap.data() });
         } else {
@@ -47,7 +49,7 @@ export function ResortDetails() {
         // Fetch reviews
         const reviewsRef = collection(db, 'resorts', id, 'reviews');
         const q = query(reviewsRef, orderBy('createdAt', 'desc'));
-        const reviewsSnap = await getDocs(q);
+        const reviewsSnap = await getDocsFromServer(q);
         const fetchedReviews: any[] = [];
         reviewsSnap.forEach((doc) => {
           fetchedReviews.push({ id: doc.id, ...doc.data() });
@@ -113,7 +115,7 @@ export function ResortDetails() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   if (!resort) {

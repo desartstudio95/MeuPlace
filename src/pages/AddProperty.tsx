@@ -10,6 +10,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
 import { propertyService } from '@/services/propertyService';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AddProperty() {
   const [searchParams] = useSearchParams();
@@ -269,6 +270,10 @@ export function AddProperty() {
       features: ['Topo da lista', 'Destaque na Home', 'Redes Sociais', 'Gestor de conta']
     }
   ];
+
+  if (isUploading) {
+    return <LoadingScreen />;
+  }
 
   if (isSubmitted) {
     return (

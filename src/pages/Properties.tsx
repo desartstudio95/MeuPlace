@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/context/NotificationContext';
 import { useAuth } from '@/context/AuthContext';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, getDocsFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { Search, Filter, X, Bell, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, Star } from 'lucide-react';
 import { SEO } from '@/components/SEO';
 
@@ -33,7 +35,7 @@ export function Properties() {
     const fetchProperties = async () => {
       try {
         const q = query(collection(db, 'properties'));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocsFromServer(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
@@ -41,7 +43,7 @@ export function Properties() {
         
         setProperties(fetchedProperties);
       } catch (error) {
-        console.error("Error fetching properties:", error);
+        handleFirestoreError(error, OperationType.GET, 'properties');
       } finally {
         setLoading(false);
       }
@@ -51,7 +53,7 @@ export function Properties() {
   }, []);
 
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   if (userProfile?.role === 'admin') {
@@ -354,16 +356,22 @@ export function Properties() {
                 
                 <Button 
                   variant="outline" 
-                  className="w-full mt-2"
-                  onClick={() => setFilters({
-                    location: '', 
-                    category: '', 
-                    type: '', 
-                    minPrice: '', 
-                    maxPrice: '',
-                    bedrooms: '',
-                    minArea: ''
-                  })}
+                  className="w-full mt-2 text-brand-purple border-brand-purple hover:bg-brand-purple/10"
+                  onClick={() => {
+                    setFilters({
+                      location: '', 
+                      category: '', 
+                      type: '', 
+                      minPrice: '', 
+                      maxPrice: '',
+                      bedrooms: '',
+                      minArea: ''
+                    });
+                    setSortOrder('newest');
+                    setFeaturedCurrentPage(1);
+                    setFreeCurrentPage(1);
+                    setSearchParams({});
+                  }}
                 >
                   Limpar Filtros
                 </Button>
@@ -564,8 +572,14 @@ export function Properties() {
                   </p>
                   <Button 
                     variant="outline" 
-                    onClick={() => setFilters({ location: '', category: '', type: '', minPrice: '', maxPrice: '', bedrooms: '', minArea: '' })}
-                    className="text-brand-green border-brand-green hover:bg-brand-green/10"
+                    onClick={() => {
+                      setFilters({ location: '', category: '', type: '', minPrice: '', maxPrice: '', bedrooms: '', minArea: '' });
+                      setSortOrder('newest');
+                      setFeaturedCurrentPage(1);
+                      setFreeCurrentPage(1);
+                      setSearchParams({});
+                    }}
+                    className="text-brand-purple border-brand-purple hover:bg-brand-purple/10"
                   >
                     Limpar Filtros
                   </Button>

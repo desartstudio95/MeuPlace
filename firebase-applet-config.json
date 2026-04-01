@@ -1,10 +1,10 @@
 {
-  "apiKey": "AIzaSyB2QHESflWGB910DbfcE15Aw9_bEbu9dxE",
-  "authDomain": "meuplace-2fa32.firebaseapp.com",
-  "projectId": "meuplace-2fa32",
-  "storageBucket": "meuplace-2fa32.firebasestorage.app",
-  "messagingSenderId": "567376364527",
-  "appId": "1:567376364527:web:191707fb9640547b0b6c1a",
-  "measurementId": "G-F35B1H85NP",
-  "firestoreDatabaseId": "(default)"
+  "projectId": "fxbros---school-of-skills",
+  "appId": "1:137923317345:web:cc6e5b780637ad7b206420",
+  "apiKey": "AIzaSyBSAPCEhRixRTwJTafrXKoiwHITSqVJvqA",
+  "authDomain": "fxbros---school-of-skills.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-24b6f1d6-35d6-4a6f-87b2-cf4ed130b1d6",
+  "storageBucket": "fxbros---school-of-skills.firebasestorage.app",
+  "messagingSenderId": "137923317345",
+  "measurementId": ""
 }
