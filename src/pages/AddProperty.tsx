@@ -588,7 +588,7 @@ export function AddProperty() {
                 {step === 3 ? 'Continuar para Promoção' : 'Próximo'}
               </Button>
             ) : (
-              <Button type="submit" disabled={isUploading} className="bg-brand-green hover:bg-brand-green-hover px-8 py-6 text-lg">
+              <Button type="submit" disabled={isUploading} className="bg-brand-green hover:bg-brand-green-hover px-6 py-2">
                 {isUploading ? 'Publicando...' : (selectedPackage ? 'Pagar e Publicar' : 'Publicar Gratuitamente')}
               </Button>
             )}

@@ -33,7 +33,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Toaster } from 'sonner';
 import { useEffect, useState } from 'react';
-import { doc, getDocFromServer, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
@@ -56,37 +56,52 @@ export default function App() {
   const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
-    // Connection test to Firestore
-    const testConnection = async () => {
-      try {
-        await getDocFromServer(doc(db, '_connection_test_', 'ping'));
-        console.log("Firestore connection successful.");
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Firestore connection failed: The client is offline. Check your Firebase configuration.");
-        } else {
-          console.log("Firestore backend reached (though maybe with permissions issues):", error);
+    // Small delay before starting connection tests to allow SDK to initialize
+    const initDelay = setTimeout(() => {
+      // Connection test to Firestore
+      const testConnection = async (retryCount = 0) => {
+        try {
+          await getDoc(doc(db, 'settings', 'general'));
+          console.log("Firestore connection successful.");
+        } catch (error) {
+          if (retryCount < 5 && error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable'))) {
+            console.warn(`Firestore connection test offline, retrying (${retryCount + 1}/5)...`);
+            setTimeout(() => testConnection(retryCount + 1), 3000);
+            return;
+          }
+          if (error instanceof Error && error.message.includes('the client is offline')) {
+            console.error("Firestore connection failed: The client is offline. Check your Firebase configuration.");
+          } else {
+            console.log("Firestore backend reached (though maybe with permissions issues):", error);
+          }
         }
-      }
-    };
-    testConnection();
+      };
+      testConnection();
 
-    // Listen to maintenance mode setting
-    const fetchMaintenance = async () => {
-      try {
-        const docSnap = await getDocFromServer(doc(db, 'settings', 'general'));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setIsMaintenance(data.maintenanceMode === true);
+      // Listen to maintenance mode setting
+      const fetchMaintenance = async (retryCount = 0) => {
+        try {
+          // Use getDoc instead of getDocFromServer for better resilience
+          const docSnap = await getDoc(doc(db, 'settings', 'general'));
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setIsMaintenance(data.maintenanceMode === true);
+          }
+          setLoadingConfig(false);
+        } catch (error) {
+          if (retryCount < 5 && error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable'))) {
+            console.warn(`Firestore offline, retrying (${retryCount + 1}/5)...`);
+            setTimeout(() => fetchMaintenance(retryCount + 1), 2000);
+            return;
+          }
+          console.error('Error fetching initial config:', error);
+          // Don't throw hard error to allow app to load with defaults
+          setLoadingConfig(false);
         }
-        setLoadingConfig(false);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, 'settings/general');
-        setLoadingConfig(false);
-      }
-    };
+      };
 
-    fetchMaintenance();
+      fetchMaintenance();
+    }, 1000);
 
     // Also set up a listener for real-time updates
     const unsubscribe = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
@@ -99,7 +114,10 @@ export default function App() {
       console.warn('Maintenance listener error:', error);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(initDelay);
+      unsubscribe();
+    };
   }, []);
 
   if (loadingConfig) {

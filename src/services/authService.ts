@@ -1,4 +1,4 @@
-import { collection, doc, updateDoc, deleteDoc, query, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserProfile } from '@/context/AuthContext';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
@@ -8,7 +8,7 @@ export const authService = {
     const path = 'users';
     try {
       const q = query(collection(db, path));
-      const snapshot = await getDocsFromServer(q);
+      const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, path);
@@ -20,7 +20,7 @@ export const authService = {
     const path = `users/${uid}`;
     try {
       const docRef = doc(db, 'users', uid);
-      const docSnap = await getDocFromServer(docRef);
+      const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return { uid: docSnap.id, ...docSnap.data() } as UserProfile;
       }

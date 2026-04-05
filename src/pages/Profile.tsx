@@ -145,39 +145,48 @@ export function Profile() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Header/Cover */}
         <div className="h-32 bg-brand-green/10 relative">
-          <div className="absolute -bottom-16 left-8">
-            <div className="h-32 w-32 rounded-full border-4 border-white bg-white overflow-hidden shadow-md flex items-center justify-center">
-              {photoURL || userProfile.photoURL ? (
-                <img 
-                  src={isEditing ? photoURL : userProfile.photoURL} 
-                  alt={userProfile.displayName} 
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <User className="h-16 w-16 text-gray-400" />
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Content */}
-        <div className="pt-20 px-8 pb-8">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{userProfile.displayName || 'Sem Nome'}</h1>
-              <p className="text-gray-500 flex items-center mt-1">
-                <Mail className="h-4 w-4 mr-2" />
-                {userProfile.email}
-              </p>
-              <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green capitalize">
-                {userProfile.role}
+        <div className="px-4 sm:px-8 pb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-center sm:items-end gap-6 mb-8 -mt-12 sm:-mt-16">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end space-y-4 sm:space-y-0 sm:space-x-6 min-w-0 w-full sm:w-auto">
+              <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-white bg-white overflow-hidden shadow-md flex-shrink-0">
+                {photoURL || userProfile.photoURL ? (
+                  <img 
+                    src={isEditing ? photoURL : userProfile.photoURL} 
+                    alt={userProfile.displayName} 
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                    <User className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="min-w-0 pb-2 text-center sm:text-left">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">
+                  {userProfile.displayName || 'Sem Nome'}
+                </h1>
+                <div className="flex flex-col items-center sm:items-start mt-1">
+                  <p className="text-gray-500 flex items-center text-sm sm:text-base truncate">
+                    <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">{userProfile.email}</span>
+                  </p>
+                  <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-green/10 text-brand-green capitalize">
+                    {userProfile.role}
+                  </div>
+                </div>
               </div>
             </div>
-            
+
             {!isEditing && (
-              <Button onClick={() => setIsEditing(true)} variant="outline">
-                Editar Perfil
-              </Button>
+              <div className="pb-2 w-full sm:w-auto flex justify-center sm:justify-end">
+                <Button onClick={() => setIsEditing(true)} variant="outline" className="w-full sm:w-auto shadow-sm px-8">
+                  Editar Perfil
+                </Button>
+              </div>
             )}
           </div>
 
@@ -196,19 +205,19 @@ export function Profile() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Foto de Perfil</label>
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Foto de Perfil</label>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="relative flex-1 sm:flex-none">
                       <Button 
                         type="button" 
                         variant="outline" 
                         onClick={() => fileInputRef.current?.click()}
                         disabled={loading}
-                        className="flex items-center"
+                        className="w-full sm:w-auto flex items-center justify-center px-6"
                       >
                         <Upload className="h-4 w-4 mr-2" />
                         {loading && uploadProgress > 0 && uploadProgress < 100 
-                          ? `A carregar... ${Math.round(uploadProgress)}%` 
+                          ? `Carregando... ${Math.round(uploadProgress)}%` 
                           : 'Escolher Imagem'}
                       </Button>
                       <input 
@@ -224,10 +233,10 @@ export function Profile() {
                         type="button" 
                         variant="ghost" 
                         onClick={() => setPhotoURL('')}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="w-full sm:w-auto text-red-500 hover:text-red-700 hover:bg-red-50 flex items-center justify-center px-6"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Remover
+                        Remover Foto
                       </Button>
                     )}
                   </div>

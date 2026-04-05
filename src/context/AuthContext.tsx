@@ -1,11 +1,35 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, deleteUser, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, getDocFromServer } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { auth, db, googleProvider, storage } from '../lib/firebase';
 
 import { LoadingScreen } from '../components/LoadingScreen';
 import { resizeImage } from '../utils/imageUtils';
+import { OperationType, FirestoreErrorInfo } from '../types';
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export type UserRole = 'admin' | 'agent' | 'user' | 'resort';
 
@@ -58,58 +82,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user && user.emailVerified) {
         setCurrentUser(user);
-        try {
-          const userRef = doc(db, 'users', user.uid);
-          const userSnap = await getDocFromServer(userRef);
-          
-          if (userSnap.exists()) {
-            const data = userSnap.data() as UserProfile;
-            // Force admin role for this specific email
-            if (user.email?.toLowerCase() === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
-              data.role = 'admin';
-              data.isApproved = true;
+        const fetchProfile = async (retryCount = 0) => {
+          try {
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+            
+            if (userSnap.exists()) {
+              const data = userSnap.data() as UserProfile;
+              // Force admin role for this specific email
+              if (user.email?.toLowerCase() === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
+                data.role = 'admin';
+                data.isApproved = true;
+                
+                const updatePayload: any = { role: 'admin', isApproved: true };
+                if (!data.createdAt) {
+                  data.createdAt = new Date().toISOString();
+                  updatePayload.createdAt = data.createdAt;
+                }
+                if (!data.uid) {
+                  data.uid = user.uid;
+                  updatePayload.uid = user.uid;
+                }
+                if (!data.email) {
+                  data.email = user.email;
+                  updatePayload.email = user.email;
+                }
+                
+                try {
+                  await updateDoc(userRef, updatePayload);
+                } catch (updateError) {
+                  handleFirestoreError(updateError, OperationType.UPDATE, `users/${user.uid}`);
+                }
+              }
+              setUserProfile(data);
+            } else {
+              const role: UserRole = user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : 'user';
               
-              const updatePayload: any = { role: 'admin', isApproved: true };
-              if (!data.createdAt) {
-                data.createdAt = new Date().toISOString();
-                updatePayload.createdAt = data.createdAt;
-              }
-              if (!data.uid) {
-                data.uid = user.uid;
-                updatePayload.uid = user.uid;
-              }
-              if (!data.email) {
-                data.email = user.email;
-                updatePayload.email = user.email;
-              }
+              const newProfile: UserProfile = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || '',
+                photoURL: user.photoURL || '',
+                role,
+                isApproved: role === 'admin',
+                createdAt: new Date().toISOString()
+              };
               
               try {
-                await updateDoc(userRef, updatePayload);
-              } catch (updateError) {
-                console.error("Error updating admin role in Firestore:", updateError);
-                // Even if Firestore update fails, we set the profile locally so they can access the app
+                await setDoc(userRef, newProfile);
+              } catch (setError) {
+                handleFirestoreError(setError, OperationType.CREATE, `users/${user.uid}`);
               }
+              setUserProfile(newProfile);
             }
-            setUserProfile(data);
-          } else {
-            const role: UserRole = user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : 'user';
-            
-            const newProfile: UserProfile = {
-              uid: user.uid,
-              email: user.email || '',
-              displayName: user.displayName || '',
-              photoURL: user.photoURL || '',
-              role,
-              isApproved: role === 'admin',
-              createdAt: new Date().toISOString()
-            };
-            
-            await setDoc(userRef, newProfile);
-            setUserProfile(newProfile);
+          } catch (error) {
+            if (retryCount < 5 && error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable'))) {
+              console.warn(`Profile fetch offline, retrying (${retryCount + 1}/5)...`);
+              setTimeout(() => fetchProfile(retryCount + 1), 2000);
+              return;
+            }
+            handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
           }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-        }
+        };
+
+        fetchProfile();
       } else {
         setCurrentUser(null);
         setUserProfile(null);
@@ -140,7 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isApproved: finalRole === 'admin' || finalRole === 'user',
           createdAt: new Date().toISOString()
         };
-        await setDoc(userRef, newProfile);
+        try {
+          await setDoc(userRef, newProfile);
+        } catch (setError) {
+          handleFirestoreError(setError, OperationType.CREATE, `users/${user.uid}`);
+        }
         setUserProfile(newProfile);
       } else {
         const data = userSnap.data() as UserProfile;
@@ -165,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             await updateDoc(userRef, updatePayload);
           } catch (updateError) {
-            console.error("Error updating admin role in Firestore during login:", updateError);
+            handleFirestoreError(updateError, OperationType.UPDATE, `users/${user.uid}`);
           }
         }
         setUserProfile(data);
@@ -222,7 +262,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isApproved: finalRole === 'admin' || finalRole === 'user',
           createdAt: new Date().toISOString()
         };
-        await setDoc(userRef, newProfile);
+        try {
+          await setDoc(userRef, newProfile);
+        } catch (setError) {
+          handleFirestoreError(setError, OperationType.CREATE, `users/${userCredential.user.uid}`);
+        }
 
         await sendEmailVerification(userCredential.user);
         await signOut(auth);
@@ -261,7 +305,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Update Firestore document
       const userRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userRef, data);
+      try {
+        await updateDoc(userRef, data);
+      } catch (updateError) {
+        handleFirestoreError(updateError, OperationType.UPDATE, `users/${currentUser.uid}`);
+      }
       
       // Update agent data in all properties owned by this user
       try {
@@ -306,7 +354,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Delete Firestore document
       const userRef = doc(db, 'users', currentUser.uid);
-      await deleteDoc(userRef);
+      try {
+        await deleteDoc(userRef);
+      } catch (deleteError) {
+        handleFirestoreError(deleteError, OperationType.DELETE, `users/${currentUser.uid}`);
+      }
       
       // Delete Firebase Auth user
       await deleteUser(currentUser);

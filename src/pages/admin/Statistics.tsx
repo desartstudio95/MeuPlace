@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocsFromServer } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
@@ -29,7 +29,7 @@ export function AdminStatistics() {
         const propertiesPath = 'properties';
         let properties: any[] = [];
         try {
-          const propertiesSnapshot = await getDocsFromServer(collection(db, propertiesPath));
+          const propertiesSnapshot = await getDocs(collection(db, propertiesPath));
           properties = propertiesSnapshot.docs.map(doc => doc.data());
         } catch (error) {
           handleFirestoreError(error, OperationType.LIST, propertiesPath);
@@ -39,7 +39,7 @@ export function AdminStatistics() {
         const usersPath = 'users';
         let users: any[] = [];
         try {
-          const usersSnapshot = await getDocsFromServer(collection(db, usersPath));
+          const usersSnapshot = await getDocs(collection(db, usersPath));
           users = usersSnapshot.docs.map(doc => doc.data());
         } catch (error) {
           handleFirestoreError(error, OperationType.LIST, usersPath);

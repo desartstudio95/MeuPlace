@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { PropertyMap } from '@/components/PropertyMap';
 import { LOCATIONS, CATEGORIES, Property, PremiumAgency, Resort } from '@/types';
-import { collection, query, getDocs, getDocsFromServer, limit, where, doc, getDocFromServer } from 'firebase/firestore';
+import { collection, query, getDocs, limit, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
@@ -41,7 +41,7 @@ export function Home() {
     const fetchFeaturedProperties = async () => {
       try {
         const q = query(collection(db, 'properties'), where('isPromoted', '==', true), limit(6));
-        const querySnapshot = await getDocsFromServer(q);
+        const querySnapshot = await getDocs(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
@@ -56,7 +56,7 @@ export function Home() {
     const fetchPremiumAgencies = async () => {
       try {
         const agenciesQ = query(collection(db, 'premium_agencies'), where('isActive', '==', true));
-        const agenciesSnapshot = await getDocsFromServer(agenciesQ);
+        const agenciesSnapshot = await getDocs(agenciesQ);
         const fetchedAgencies: PremiumAgency[] = [];
         agenciesSnapshot.forEach((doc) => {
           fetchedAgencies.push({ id: doc.id, ...doc.data() } as PremiumAgency);
@@ -74,7 +74,7 @@ export function Home() {
     const fetchResorts = async () => {
       try {
         const resortsQ = query(collection(db, 'resorts'), limit(6));
-        const resortsSnapshot = await getDocsFromServer(resortsQ);
+        const resortsSnapshot = await getDocs(resortsQ);
         const fetchedResorts: Resort[] = [];
         resortsSnapshot.forEach((doc) => {
           fetchedResorts.push({ id: doc.id, ...doc.data() } as Resort);
@@ -88,7 +88,7 @@ export function Home() {
     const fetchFeaturedAgents = async () => {
       try {
         const agentsQ = query(collection(db, 'featured_agents'));
-        const agentsSnapshot = await getDocsFromServer(agentsQ);
+        const agentsSnapshot = await getDocs(agentsQ);
         const fetchedAgents: any[] = [];
         agentsSnapshot.forEach((doc) => {
           fetchedAgents.push({ id: doc.id, ...doc.data() });
@@ -109,7 +109,7 @@ export function Home() {
     const fetchSettings = async () => {
       try {
         const docRef = doc(db, 'settings', 'general');
-        const docSnap = await getDocFromServer(docRef);
+        const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setSettings(prev => ({ ...prev, ...docSnap.data() }));
         }

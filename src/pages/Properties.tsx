@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/context/NotificationContext';
 import { useAuth } from '@/context/AuthContext';
-import { collection, query, getDocs, getDocsFromServer } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 import {
@@ -35,7 +35,7 @@ export function Properties() {
     const fetchProperties = async () => {
       try {
         const q = query(collection(db, 'properties'));
-        const querySnapshot = await getDocsFromServer(q);
+        const querySnapshot = await getDocs(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);

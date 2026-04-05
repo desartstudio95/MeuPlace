@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, getDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { Property } from '@/types';
@@ -9,7 +9,7 @@ export const propertyService = {
     const path = 'properties';
     try {
       const q = query(collection(db, path), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocsFromServer(q);
+      const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, path);
@@ -21,7 +21,7 @@ export const propertyService = {
     const path = `properties/${id}`;
     try {
       const docRef = doc(db, 'properties', id);
-      const docSnap = await getDocFromServer(docRef);
+      const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return { id: docSnap.id, ...docSnap.data() } as Property;
       }
@@ -85,7 +85,10 @@ export const propertyService = {
 
   async uploadImage(file: File): Promise<string> {
     const storageRef = ref(storage, `properties/${Date.now()}_${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const metadata = {
+      contentType: file.type,
+    };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
     
     return new Promise((resolve, reject) => {
       uploadTask.on(

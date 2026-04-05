@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, updateDoc, doc, deleteDoc, deleteField } from 'firebase/firestore';
+import { collection, query, getDocs, updateDoc, doc, deleteDoc, deleteField, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { UserProfile } from '@/context/AuthContext';
@@ -63,6 +63,17 @@ export function AdminDashboard() {
     try {
       const userRef = doc(db, 'users', uid);
       await updateDoc(userRef, { isApproved: true });
+      
+      // Add notification in Firestore for the agent
+      await addDoc(collection(db, 'user_notifications'), {
+        userId: uid,
+        title: 'Cadastro Aprovado!',
+        message: 'Parabéns! Seu cadastro como agente foi aprovado. Agora você já pode publicar seus imóveis.',
+        type: 'success',
+        read: false,
+        createdAt: serverTimestamp()
+      });
+
       setUsers(users.map(u => u.uid === uid ? { ...u, isApproved: true } : u));
       addNotification({
         title: 'Sucesso',
@@ -83,6 +94,20 @@ export function AdminDashboard() {
     try {
       const propertyRef = doc(db, 'properties', propertyId);
       await updateDoc(propertyRef, { isApproved: true });
+      
+      // Add notification for the property owner
+      const property = properties.find(p => p.id === propertyId);
+      if (property && property.agentId) {
+        await addDoc(collection(db, 'user_notifications'), {
+          userId: property.agentId,
+          title: 'Imóvel Aprovado!',
+          message: `Seu imóvel "${property.title}" foi aprovado e já está visível para todos os usuários.`,
+          type: 'success',
+          read: false,
+          createdAt: serverTimestamp()
+        });
+      }
+
       setProperties(properties.map(p => p.id === propertyId ? { ...p, isApproved: true } : p));
       addNotification({
         title: 'Sucesso',

@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, getDocsFromServer } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Property } from '@/types';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -31,7 +31,7 @@ export function CategoryPage() {
       setLoading(true);
       try {
         const q = query(collection(db, 'properties'), where('category', '==', filterCategory));
-        const querySnapshot = await getDocsFromServer(q);
+        const querySnapshot = await getDocs(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);

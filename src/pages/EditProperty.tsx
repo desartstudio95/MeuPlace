@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { Upload, Save, ArrowLeft, Trash2, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
-import { doc, getDoc, updateDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
@@ -46,7 +46,7 @@ export function EditProperty() {
       if (!id) return;
       try {
         const docRef = doc(db, 'properties', id);
-        const docSnap = await getDocFromServer(docRef);
+        const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
           setFormData({ id: docSnap.id, ...docSnap.data() } as Property);

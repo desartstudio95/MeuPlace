@@ -1,56 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: userId (UID)
-    // Fields:
-    //   - uid: string (required)
-    //   - email: string (required)
-    //   - displayName: string (optional)
-    //   - photoURL: string (optional)
-    //   - role: string (required, ['admin', 'agent', 'user', 'resort'])
-    //   - isApproved: bool (optional)
-    //   - isResponsible: bool (optional)
-    //   - rating: number (optional)
-    //   - reviews: number (optional)
-    //   - createdAt: timestamp (required)
-    //
-    // Collection: properties
-    // Document ID: propertyId
-    // Fields:
-    //   - title: string (required)
-    //   - description: string (required)
-    //   - price: number (required)
-    //   - agentId: string (required)
-    //   - isApproved: bool (optional)
-    //   - isPromoted: bool (optional)
-    //   - status: string (required)
-    //   - createdAt: timestamp (required)
-    //
-    // Collection: settings
-    // Document ID: general, pages, seo
-    //
-    // Collection: resorts
-    // Document ID: resortId
-    //
-    // Collection: premium_agencies
-    // Document ID: agencyId
-    //
-    // Collection: featured_agents
-    // Document ID: agentId
-    //
-    // Collection: messages
-    // Document ID: messageId
-    //
-    // Collection: agent_reviews
-    // Document ID: reviewId
-    //
-    // ===============================================================
-
+    
     // ===============================================================
     // Helper Functions
     // ===============================================================
@@ -58,94 +9,37 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
-    
+
     function isAdmin() {
       return isAuthenticated() && (
-        (request.auth.token.email == "desartstudiopro@gmail.com" && request.auth.token.email_verified == true) ||
-        (request.auth.uid == "7TlXuKjMWUQVh28kC9Dv7bOm2gP2") ||
+        request.auth.token.email == "desartstudiopro@gmail.com" ||
+        request.auth.token.email == "ruiisacmugabe@gmail.com" ||
+        request.auth.uid == "uLmbTm46KCXcMeRG6tGOkF6JYSe2" ||
+        request.auth.uid == "7TlXuKjMWUQVh28kC9Dv7bOm2gP2" ||
+        request.auth.uid == "2k6QiD1a6bTG5xgN7HbeLyGvpu32" ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
-    
-    function isAgent() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent';
-    }
-
-    function isResort() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'resort';
-    }
-
-    function isApproved() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true;
-    }
-
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
-    }
-
-    function isValidUser(data) {
-      return data.uid is string &&
-             data.email is string &&
-             data.role in ['admin', 'agent', 'user', 'resort'] &&
-             data.createdAt is timestamp;
-    }
-
-    function isValidProperty(data) {
-      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.description is string && data.description.size() > 0 && data.description.size() < 5000 &&
-             data.price is number &&
-             data.agentId is string &&
-             data.status in ['Disponível', 'Vendido', 'Arrendado', 'Pendente'] &&
-             data.createdAt is timestamp;
-    }
 
     // ===============================================================
-    // Rules
+    // Collection Rules
     // ===============================================================
 
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
-      allow update: if isAdmin() || (isOwner(userId) && 
-                      hasOnlyAllowedFields(['displayName', 'photoURL', 'phoneNumber', 'bio', 'location', 'whatsapp', 'facebook', 'instagram', 'linkedin']) &&
-                      (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
-                      (!('isApproved' in request.resource.data) || request.resource.data.isApproved == resource.data.isApproved));
-      allow delete: if isAdmin();
-    }
-
-    match /properties/{propertyId} {
-      allow read: if true; // Publicly readable
-      allow create: if (isAgent() || isResort() || isAdmin()) && isApproved() && 
-                    isValidProperty(request.resource.data) && 
-                    (isAdmin() || (request.resource.data.agentId == request.auth.uid && request.resource.data.isApproved == false));
-      allow update: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid && 
-                    isValidProperty(request.resource.data) && 
-                    (!('isApproved' in request.resource.data) || request.resource.data.isApproved == resource.data.isApproved));
-      allow delete: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
-    }
-
+    // Public Collections (Everyone can read, only Admins can write)
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    match /_connection_test_/{docId} {
+    match /properties/{propertyId} {
       allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.authorUid == request.auth.uid);
     }
 
     match /resorts/{resortId} {
@@ -174,19 +68,31 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /messages/{messageId} {
-      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
-    }
-
     match /agent_reviews/{reviewId} {
       allow read: if true;
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 
-    // Default deny
+    // Private Collections (Restricted access)
+    match /users/{userId} {
+      // Allow reading basic profile info if authenticated, but protect PII
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isOwner(userId);
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /user_notifications/{notificationId} {
+      allow read, update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin();
+    }
+
+    // Default Deny
     match /{document=**} {
       allow read, write: if isAdmin();
     }

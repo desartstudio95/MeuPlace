@@ -11,8 +11,8 @@ service firebase.storage {
       return isAuthenticated() && (
         (request.auth.token.email == "desartstudiopro@gmail.com" && request.auth.token.email_verified == true) ||
         (request.auth.uid == "7TlXuKjMWUQVh28kC9Dv7bOm2gP2") ||
-        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && 
-         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        (firestore.exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         firestore.get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
     
@@ -20,52 +20,52 @@ service firebase.storage {
       return request.resource.contentType.matches('image/.*');
     }
     
-    function isLessThan5MB() {
-      return request.resource.size < 5 * 1024 * 1024; // 5MB
+    function isLessThan10MB() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB
     }
 
     // Imagens das propriedades
     match /properties/{fileName} {
       allow read: if true; // Qualquer pessoa pode ver as imagens
-      allow create, update: if isAuthenticated() && isImage() && isLessThan5MB();
+      allow create, update: if isAuthenticated() && isLessThan10MB();
       allow delete: if isAuthenticated(); // Idealmente, verificar se é dono ou admin
     }
 
     // Logotipos de agências
     match /agency_logos/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() && isImage() && isLessThan5MB();
+      allow write: if isAdmin() && isImage() && isLessThan10MB();
     }
     
     // Avatares de agentes em destaque
     match /agent_avatars/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() && isImage() && isLessThan5MB();
+      allow write: if isAdmin() && isImage() && isLessThan10MB();
     }
     
     // Configurações do site (logotipos, etc)
     match /settings/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() && isImage() && isLessThan5MB();
+      allow write: if isAdmin() && isImage() && isLessThan10MB();
     }
     
     // Avatares de utilizadores (vários caminhos possíveis)
     match /avatars/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan5MB();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan10MB();
       allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
     match /users/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan5MB();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan10MB();
       allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
     
     // Uploads de utilizadores (MyFiles)
     match /user_uploads/{userId}/{fileName} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isLessThan5MB();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isLessThan10MB();
       allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
   }

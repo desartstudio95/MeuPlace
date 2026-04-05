@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/components/Chat';
 import { PropertyMap } from '@/components/PropertyMap';
-import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove, getDocFromServer } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Dialog,
@@ -41,7 +41,7 @@ export function PropertyDetails() {
       
       try {
         const docRef = doc(db, 'properties', id);
-        const docSnap = await getDocFromServer(docRef);
+        const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
           const fetchedProperty = { id: docSnap.id, ...docSnap.data() } as Property;

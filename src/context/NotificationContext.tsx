@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { playNotificationSound } from '@/utils/sound';
 import { toast } from 'sonner';
-import { messaging, onMessageListener } from '@/lib/firebase';
+import { messaging, onMessageListener, db } from '@/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 
 export interface Notification {
   id: string;
@@ -37,7 +39,63 @@ interface NotificationProviderProps {
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+  const { currentUser } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  // Listen for Firestore notifications
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const q = query(
+      collection(db, 'user_notifications'),
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          const notification = {
+            id: change.doc.id,
+            title: data.title,
+            message: data.message,
+            type: data.type || 'info',
+            read: data.read || false,
+            date: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            link: data.link
+          };
+
+          // Add to local state if not already there
+          setNotifications(prev => {
+            const exists = prev.some(n => n.id === notification.id);
+            if (exists) return prev;
+            
+            // Play sound and show toast for new notifications
+            if (!notification.read) {
+              playNotificationSound();
+              if (notification.type === 'success') {
+                toast.success(notification.title, { description: notification.message });
+              } else if (notification.type === 'error') {
+                toast.error(notification.title, { description: notification.message });
+              } else {
+                toast.info(notification.title, { description: notification.message });
+              }
+            }
+            
+            return [notification, ...prev];
+          });
+        } else if (change.type === 'modified') {
+          const data = change.doc.data();
+          setNotifications(prev => prev.map(n => n.id === change.doc.id ? { ...n, read: data.read } : n));
+        } else if (change.type === 'removed') {
+          setNotifications(prev => prev.filter(n => n.id !== change.doc.id));
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // Load notifications from local storage on mount
   useEffect(() => {
@@ -60,21 +118,31 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Listen for Firebase messages
   useEffect(() => {
-    if (messaging) {
-      const unsubscribe = onMessageListener().then((payload: any) => {
-        if (payload?.notification) {
+    let isMounted = true;
+    
+    const setupListener = async () => {
+      try {
+        const payload: any = await onMessageListener();
+        if (isMounted && payload?.notification) {
           addNotification({
             title: payload.notification.title || 'Nova Notificação',
             message: payload.notification.body || '',
             type: 'info',
             link: payload.data?.link
           });
+          // Set up next listener
+          setupListener();
         }
-      });
-      return () => {
-        // cleanup if needed
-      };
-    }
+      } catch (error) {
+        console.error('Error in onMessageListener:', error);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Save notifications to local storage whenever they change
@@ -131,17 +199,45 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     });
   };
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
+    // Update Firestore if it's a Firestore notification
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+      try {
+        const notificationRef = doc(db, 'user_notifications', id);
+        await updateDoc(notificationRef, { read: true });
+      } catch (e) {
+        // Might be a local notification, ignore error
+      }
+    }
+
     setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, read: true } : n))
     );
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    const unreadNotifications = notifications.filter(n => !n.read);
+    for (const n of unreadNotifications) {
+      try {
+        const notificationRef = doc(db, 'user_notifications', n.id);
+        await updateDoc(notificationRef, { read: true });
+      } catch (e) {
+        // Ignore
+      }
+    }
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const clearNotifications = () => {
+  const clearNotifications = async () => {
+    for (const n of notifications) {
+      try {
+        const notificationRef = doc(db, 'user_notifications', n.id);
+        await deleteDoc(notificationRef);
+      } catch (e) {
+        // Ignore
+      }
+    }
     setNotifications([]);
   };
 

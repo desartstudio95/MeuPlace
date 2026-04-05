@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Resort } from '@/types';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
@@ -10,7 +10,7 @@ export const resortService = {
     const path = COLLECTION_NAME;
     try {
       const q = query(collection(db, path), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocsFromServer(q);
+      const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -25,7 +25,7 @@ export const resortService = {
     const path = `${COLLECTION_NAME}/${id}`;
     try {
       const docRef = doc(db, COLLECTION_NAME, id);
-      const docSnap = await getDocFromServer(docRef);
+      const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         return { id: docSnap.id, ...docSnap.data() } as Resort;
       }

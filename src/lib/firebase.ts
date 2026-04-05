@@ -4,28 +4,53 @@ import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 import { getAnalytics } from 'firebase/analytics';
-import { getMessaging, onMessage, getToken } from 'firebase/messaging';
+import { getMessaging, onMessage, getToken, isSupported } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 // Enable long polling to bypass potential network restrictions in some environments
-export const db = firebaseConfig.firestoreDatabaseId === '(default)' 
-  ? getFirestore(app)
-  : initializeFirestore(app, { experimentalForceLongPolling: true }, firebaseConfig.firestoreDatabaseId);
+export const db = initializeFirestore(app, { 
+  experimentalForceLongPolling: true,
+  ignoreUndefinedProperties: true
+}, firebaseConfig.firestoreDatabaseId === '(default)' ? undefined : firebaseConfig.firestoreDatabaseId);
+
+import { enableNetwork } from 'firebase/firestore';
+enableNetwork(db).catch(console.error);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
-export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+
+// Initialize messaging lazily to handle unsupported browsers
+let messagingInstance: any = null;
+export const getMessagingInstance = async () => {
+  if (typeof window === 'undefined') return null;
+  if (messagingInstance !== null) return messagingInstance;
+  
+  try {
+    const supported = await isSupported();
+    if (supported) {
+      messagingInstance = getMessaging(app);
+    }
+  } catch (error) {
+    console.error('Error checking messaging support:', error);
+  }
+  return messagingInstance;
+};
+
+// For backward compatibility, but it might be null
+export const messaging = null; 
+
 export const googleProvider = new GoogleAuthProvider();
 
 export const requestNotificationPermission = async () => {
-  if (!messaging) return null;
+  const msg = await getMessagingInstance();
+  if (!msg) return null;
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      const token = await getToken(messaging, {
+      const token = await getToken(msg, {
         vapidKey: 'BPIpI_y8uLp6fX_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8_lI8' // Placeholder VAPID key
       });
       return token;
@@ -36,13 +61,16 @@ export const requestNotificationPermission = async () => {
   return null;
 };
 
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    if (!messaging) return;
-    onMessage(messaging, (payload) => {
+export const onMessageListener = async () => {
+  const msg = await getMessagingInstance();
+  if (!msg) return new Promise(() => {}); // Return a never-resolving promise or handle accordingly
+  
+  return new Promise((resolve) => {
+    onMessage(msg, (payload) => {
       resolve(payload);
     });
   });
+};
 
 export const signInWithGoogle = async () => {
   try {

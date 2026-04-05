@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy, getDocsFromServer } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ export function PremiumAgenciesAdmin() {
   const fetchAgencies = async () => {
     try {
       const q = query(collection(db, 'premium_agencies'), orderBy('order', 'asc'));
-      const querySnapshot = await getDocsFromServer(q);
+      const querySnapshot = await getDocs(q);
       const fetchedAgencies: PremiumAgency[] = [];
       querySnapshot.forEach((doc) => {
         fetchedAgencies.push({ id: doc.id, ...doc.data() } as PremiumAgency);
@@ -45,7 +45,7 @@ export function PremiumAgenciesAdmin() {
       // Fallback if index doesn't exist yet
       try {
         const q2 = query(collection(db, 'premium_agencies'));
-        const qs2 = await getDocsFromServer(q2);
+        const qs2 = await getDocs(q2);
         const fetched2: PremiumAgency[] = [];
         qs2.forEach((doc) => {
           fetched2.push({ id: doc.id, ...doc.data() } as PremiumAgency);

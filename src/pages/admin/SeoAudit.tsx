@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocsFromServer } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, CheckCircle, AlertTriangle, XCircle, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ export function SeoAudit() {
     setLoading(true);
     const path = 'properties';
     try {
-      const propertiesSnapshot = await getDocsFromServer(collection(db, path));
+      const propertiesSnapshot = await getDocs(collection(db, path));
       const propsData = propertiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
       setProperties(propsData);
       

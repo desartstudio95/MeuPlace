@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Agent, Property } from '@/types';
-import { collection, query, getDocs, where, addDoc, serverTimestamp, getDocsFromServer } from 'firebase/firestore';
+import { collection, query, getDocs, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -36,7 +36,7 @@ export function AgentProfile() {
         // Try to fetch agent from users collection first
         const usersRef = collection(db, 'users');
         const userQuery = query(usersRef, where('displayName', '==', decodedName));
-        const userSnapshot = await getDocsFromServer(userQuery);
+        const userSnapshot = await getDocs(userQuery);
         
         let foundAgent: Agent | null = null;
         
@@ -62,7 +62,7 @@ export function AgentProfile() {
 
         // Fetch properties from Firebase where agent.name matches
         const q = query(collection(db, 'properties'), where('agent.name', '==', decodedName));
-        const querySnapshot = await getDocsFromServer(q);
+        const querySnapshot = await getDocs(q);
         
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
