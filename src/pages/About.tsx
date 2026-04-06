@@ -28,7 +28,7 @@ export function About() {
                 <Target className="h-4 w-4" />
                 <span>Nossa Missão</span>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Liderando a Transformação Imobiliária em Moçambique</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Liderando a Transformação Imobiliária em Moçambique</h2>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
                 O MeuPlace nasceu da necessidade de modernizar a forma como os moçambicanos interagem com o mercado imobiliário. Percebemos que encontrar o "place" ideal era um processo muitas vezes lento e incerto.
               </p>
@@ -113,7 +113,7 @@ export function About() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Por que escolher o nosso portal?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">Por que escolher o nosso portal?</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">Oferecemos a melhor experiência para quem busca o imóvel dos sonhos em Moçambique.</p>
           </div>
 
@@ -152,7 +152,7 @@ export function About() {
           transition={{ duration: 0.6 }}
           className="max-w-4xl mx-auto px-4 text-center relative z-10"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold mb-6">Pronto para encontrar o seu lugar?</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6">Pronto para encontrar o seu lugar?</h2>
           <p className="text-xl text-gray-300 mb-8">
             Comece sua jornada hoje mesmo com o portal imobiliário mais confiável de Moçambique.
           </p>

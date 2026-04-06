@@ -21,6 +21,8 @@ export function PremiumAgenciesAdmin() {
   const [name, setName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
@@ -92,6 +94,8 @@ export function PremiumAgenciesAdmin() {
     setName('');
     setLogoUrl('');
     setWebsiteUrl('');
+    setFacebookUrl('');
+    setInstagramUrl('');
     setIsActive(true);
     setIsAdding(false);
     setEditingId(null);
@@ -107,13 +111,15 @@ export function PremiumAgenciesAdmin() {
     try {
       if (editingId) {
         const agencyRef = doc(db, 'premium_agencies', editingId);
-        await updateDoc(agencyRef, { name, logoUrl, websiteUrl, isActive });
+        await updateDoc(agencyRef, { name, logoUrl, websiteUrl, facebookUrl, instagramUrl, isActive });
         addNotification({ title: 'Sucesso', message: 'Agência atualizada com sucesso.', type: 'success' });
       } else {
         await addDoc(collection(db, 'premium_agencies'), {
           name,
           logoUrl,
           websiteUrl,
+          facebookUrl,
+          instagramUrl,
           isActive,
           order: agencies.length
         });
@@ -131,6 +137,8 @@ export function PremiumAgenciesAdmin() {
     setName(agency.name);
     setLogoUrl(agency.logoUrl);
     setWebsiteUrl(agency.websiteUrl || '');
+    setFacebookUrl(agency.facebookUrl || '');
+    setInstagramUrl(agency.instagramUrl || '');
     setIsActive(agency.isActive);
     setEditingId(agency.id);
     setIsAdding(true);
@@ -188,6 +196,17 @@ export function PremiumAgenciesAdmin() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Link do Website (Opcional)</label>
               <Input value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="Ex: https://www.remax.co.mz" type="url" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Facebook (Opcional)</label>
+                <Input value={facebookUrl} onChange={(e) => setFacebookUrl(e.target.value)} placeholder="Ex: https://facebook.com/remax" type="url" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instagram (Opcional)</label>
+                <Input value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="Ex: https://instagram.com/remax" type="url" />
+              </div>
             </div>
             
             <div>

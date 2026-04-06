@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, Upload, Eye, EyeOff } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { User, Upload, Eye, EyeOff, Building2, Phone, FileCheck, MapPin, Info } from 'lucide-react';
 import { useAuth, UserRole } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 
@@ -18,6 +19,14 @@ export function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
+  // Extra fields
+  const [agencyName, setAgencyName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [resortName, setResortName] = useState('');
+  const [resortLocation, setResortLocation] = useState('');
+  const [resortDescription, setResortDescription] = useState('');
+  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [authError, setAuthError] = useState('');
   const [userExists, setUserExists] = useState(false);
@@ -30,7 +39,7 @@ export function Register() {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        setErrors({ ...errors, photo: 'Por favor, selecione uma imagem.' });
+        setErrors({ ...errors, photo: 'Por favor, selecione uma imagem válida.' });
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -45,14 +54,24 @@ export function Register() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!name) newErrors.name = 'O nome é obrigatório.';
-    if (!email) newErrors.email = 'O email é obrigatório.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Email inválido.';
+    if (!name) newErrors.name = 'O nome é obrigatório';
+    if (!email) newErrors.email = 'O e-mail é obrigatório';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'E-mail inválido';
     
-    if (!password) newErrors.password = 'A senha é obrigatória.';
-    else if (password.length < 6) newErrors.password = 'A senha deve ter pelo menos 6 caracteres.';
+    if (!password) newErrors.password = 'A senha é obrigatória';
+    else if (password.length < 6) newErrors.password = 'A senha deve ter pelo menos 6 caracteres';
     
-    if (password !== repeatPassword) newErrors.repeatPassword = 'As senhas não coincidem.';
+    if (password !== repeatPassword) newErrors.repeatPassword = 'As senhas não coincidem';
+
+    if (role === 'agent') {
+      if (!agencyName) newErrors.agencyName = 'O nome da agência é obrigatório';
+      if (!phone) newErrors.phone = 'O telefone é obrigatório';
+    }
+
+    if (role === 'resort') {
+      if (!resortName) newErrors.resortName = 'O nome do resort/hotel é obrigatório';
+      if (!resortLocation) newErrors.resortLocation = 'A localização é obrigatória';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -62,15 +81,15 @@ export function Register() {
     try {
       await login(role);
       addNotification({
-        title: 'Registro bem-sucedido',
-        message: 'A sua conta foi criada. Aguarde a aprovação de um administrador para ter acesso completo.',
+        title: 'Sucesso!',
+        message: 'Conta criada com sucesso com o Google.',
         type: 'success'
       });
       navigate('/');
     } catch (error) {
       addNotification({
-        title: 'Erro no registro',
-        message: 'Não foi possível criar a conta com o Google.',
+        title: 'Erro',
+        message: 'Ocorreu um erro ao registrar com o Google.',
         type: 'error'
       });
     }
@@ -85,13 +104,25 @@ export function Register() {
 
     setIsRegistering(true);
     try {
-      await registerWithEmail(email, password, name, role, photoFile);
+      const extraData: any = {};
+      if (role === 'agent') {
+        extraData.agencyName = agencyName;
+        extraData.phone = phone;
+        extraData.whatsapp = phone;
+        extraData.licenseNumber = licenseNumber;
+      } else if (role === 'resort') {
+        extraData.resortName = resortName;
+        extraData.resortLocation = resortLocation;
+        extraData.resortDescription = resortDescription;
+      }
+
+      await registerWithEmail(email, password, name, role, photoFile, extraData);
       navigate('/verify-email', { state: { email } });
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') {
         setUserExists(true);
       } else {
-        setAuthError('Ocorreu um erro ao criar a conta. Tente novamente.');
+        setAuthError('Ocorreu um erro ao criar sua conta. Tente novamente.');
       }
     } finally {
       setIsRegistering(false);
@@ -106,13 +137,13 @@ export function Register() {
             <User className="h-6 w-6 text-brand-green" />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Crie sua conta
+        <h2 className="mt-6 text-center text-2xl font-extrabold text-gray-900">
+          Criar uma conta
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Já tem uma conta?{' '}
           <Link to="/login" className="font-medium text-brand-green hover:text-brand-green-hover">
-            Entrar
+            Faça login
           </Link>
         </p>
       </div>
@@ -123,9 +154,9 @@ export function Register() {
           <form className="space-y-5" onSubmit={handleSubmit}>
             {userExists && (
               <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md text-sm text-center font-medium">
-                User already exists.{' '}
+                Este e-mail já está em uso.{' '}
                 <Link to="/login" className="underline font-bold hover:text-yellow-900">
-                  Sign in?
+                  Faça login
                 </Link>
               </div>
             )}
@@ -144,15 +175,15 @@ export function Register() {
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="user">Usuário (Comprador/Inquilino)</option>
-                  <option value="agent">Agente Imobiliário / Agência</option>
-                  <option value="resort">Resort / Hotel</option>
+                  <option value="user">Usuário (Comprador/Arrendatário)</option>
+                  <option value="agent">Agente Imobiliário / Consultor</option>
+                  <option value="resort">Resort / Hotel / Alojamento</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Foto de Perfil (Opcional)</label>
+              <label className="block text-sm font-medium text-gray-700">Foto de Perfil</label>
               <div className="mt-1 flex items-center space-x-4">
                 <div className="h-12 w-12 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
                   {photoPreview ? (
@@ -181,14 +212,123 @@ export function Register() {
                   value={name}
                   onChange={(e) => { setName(e.target.value); setErrors({...errors, name: ''}); }}
                   className={errors.name ? 'border-red-500' : ''}
-                  placeholder="Seu nome"
+                  placeholder="Seu nome completo"
                 />
                 {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
               </div>
             </div>
 
+            {/* Conditional Fields for Agent */}
+            {role === 'agent' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Nome da Agência</label>
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Input
+                      type="text"
+                      value={agencyName}
+                      onChange={(e) => { setAgencyName(e.target.value); setErrors({...errors, agencyName: ''}); }}
+                      className={`pl-10 ${errors.agencyName ? 'border-red-500' : ''}`}
+                      placeholder="Nome da sua agência ou empresa"
+                    />
+                  </div>
+                  {errors.agencyName && <p className="mt-1 text-sm text-red-600">{errors.agencyName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Telefone / WhatsApp</label>
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => { setPhone(e.target.value); setErrors({...errors, phone: ''}); }}
+                      className={`pl-10 ${errors.phone ? 'border-red-500' : ''}`}
+                      placeholder="+351 9xx xxx xxx"
+                    />
+                  </div>
+                  {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Número da Licença (AMI)</label>
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FileCheck className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Input
+                      type="text"
+                      value={licenseNumber}
+                      onChange={(e) => setLicenseNumber(e.target.value)}
+                      className="pl-10"
+                      placeholder="Opcional"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Conditional Fields for Resort */}
+            {role === 'resort' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Nome do Resort / Hotel</label>
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Input
+                      type="text"
+                      value={resortName}
+                      onChange={(e) => { setResortName(e.target.value); setErrors({...errors, resortName: ''}); }}
+                      className={`pl-10 ${errors.resortName ? 'border-red-500' : ''}`}
+                      placeholder="Nome do estabelecimento"
+                    />
+                  </div>
+                  {errors.resortName && <p className="mt-1 text-sm text-red-600">{errors.resortName}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Localização</label>
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MapPin className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Input
+                      type="text"
+                      value={resortLocation}
+                      onChange={(e) => { setResortLocation(e.target.value); setErrors({...errors, resortLocation: ''}); }}
+                      className={`pl-10 ${errors.resortLocation ? 'border-red-500' : ''}`}
+                      placeholder="Cidade, Região"
+                    />
+                  </div>
+                  {errors.resortLocation && <p className="mt-1 text-sm text-red-600">{errors.resortLocation}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Descrição</label>
+                  <div className="mt-1 relative">
+                    <div className="absolute top-3 left-3 pointer-events-none">
+                      <Info className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <Textarea
+                      value={resortDescription}
+                      onChange={(e) => setResortDescription(e.target.value)}
+                      className="pl-10 min-h-[100px]"
+                      placeholder="Breve descrição do resort ou hotel"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block text-sm font-medium text-gray-700">E-mail</label>
               <div className="mt-1">
                 <Input
                   type="email"
@@ -202,7 +342,7 @@ export function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <label className="block text-sm font-medium text-gray-700">Senha</label>
               <div className="mt-1 relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -227,7 +367,7 @@ export function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Repetir Password</label>
+              <label className="block text-sm font-medium text-gray-700">Confirmar Senha</label>
               <div className="mt-1 relative">
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
@@ -253,7 +393,7 @@ export function Register() {
 
             <div>
               <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white" disabled={isRegistering}>
-                {isRegistering ? 'A criar conta...' : 'Criar Conta'}
+                {isRegistering ? 'Criando conta...' : 'Criar conta'}
               </Button>
             </div>
           </form>
@@ -277,7 +417,7 @@ export function Register() {
                 <svg className="w-5 h-5 mr-2" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
                 </svg>
-                Criar conta com Google
+                Google
               </Button>
             </div>
           </div>

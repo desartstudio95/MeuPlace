@@ -45,6 +45,8 @@ export interface PremiumAgency {
   name: string;
   logoUrl: string;
   websiteUrl?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
   isActive: boolean;
   order?: number;
 }

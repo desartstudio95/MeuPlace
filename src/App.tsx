@@ -137,11 +137,11 @@ export default function App() {
 
   return (
     <HelmetProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <Router>
-          <ScrollToTop />
-          <Routes>
+        <AuthProvider>
+          <NotificationProvider>
+            <Router>
+            <ScrollToTop />
+            <Routes>
             {/* Secret Admin Login Route */}
             <Route path="/admin-secret-access" element={<AdminLogin />} />
 

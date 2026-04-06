@@ -135,7 +135,7 @@ export function AgentProfile() {
         <User className="h-16 w-16 mx-auto text-gray-300 mb-4" />
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Agente não encontrado</h2>
         <p className="text-gray-500 mb-6">Não conseguimos encontrar o perfil deste agente.</p>
-        <Button onClick={() => navigate('/properties')} className="bg-brand-green hover:bg-brand-green-hover">
+        <Button onClick={() => navigate('/properties')} size="sm" className="bg-brand-green hover:bg-brand-green-hover">
           Ver todos os imóveis
         </Button>
       </div>

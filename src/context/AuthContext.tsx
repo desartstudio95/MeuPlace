@@ -64,7 +64,7 @@ interface AuthContextType {
   loading: boolean;
   login: (role?: UserRole) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (email: string, password: string, name: string, role?: UserRole, file?: File | null) => Promise<void>;
+  registerWithEmail: (email: string, password: string, name: string, role?: UserRole, file?: File | null, extraData?: Partial<UserProfile>) => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
   deleteUserAccount: () => Promise<void>;
   logout: () => Promise<void>;
@@ -230,7 +230,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const registerWithEmail = async (email: string, password: string, name: string, role: UserRole = 'user', file?: File | null) => {
+  const registerWithEmail = async (email: string, password: string, name: string, role: UserRole = 'user', file?: File | null, extraData?: Partial<UserProfile>) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       if (userCredential.user) {
@@ -260,7 +260,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: uploadedPhotoURL,
           role: finalRole,
           isApproved: finalRole === 'admin' || finalRole === 'user',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          ...extraData
         };
         try {
           await setDoc(userRef, newProfile);

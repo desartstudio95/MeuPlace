@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User, Key, Heart, MousePointer2, Sparkles, Hotel, Users, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User, Key, Heart, MousePointer2, Sparkles, Hotel, Users, ArrowRight, Facebook, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -193,7 +193,7 @@ export function Home() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -204,7 +204,7 @@ export function Home() {
               <span>O Maior Shopping de Imóveis em Moçambique</span>
             </div>
             
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-6 leading-tight" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green drop-shadow-[0_0_15px_rgba(114,227,49,0.5)]">Moçambique</span>') }}>
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green drop-shadow-[0_0_15px_rgba(114,227,49,0.5)]">Moçambique</span>') }}>
             </h1>
             <p className="text-lg sm:text-2xl text-gray-200 max-w-3xl mx-auto mb-12 font-medium">
               {settings.heroSubtitle}
@@ -354,13 +354,13 @@ export function Home() {
         {/* Background Decoration */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#cb6ce6 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 relative z-10">
           <div className="flex flex-col items-center text-center">
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-xs font-bold uppercase tracking-widest mb-4 border border-brand-purple/20">
               <Crown className="h-3 w-3" />
               <span>Parceiros de Elite</span>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Imobiliárias Premium</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Imobiliárias Premium</h2>
             <div className="h-1 w-20 bg-brand-purple rounded-full"></div>
           </div>
         </div>
@@ -373,7 +373,7 @@ export function Home() {
             {/* First set of logos */}
             {premiumAgencies.length > 0 && (
               premiumAgencies.map((agency, idx) => (
-                <div key={`agency-1-${agency.id}`} className="flex items-center gap-3 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
+                <div key={`agency-1-${agency.id}`} className="flex flex-col items-center gap-2 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
                   <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover/logo:shadow-xl group-hover/logo:border-brand-purple/30 transition-all duration-300">
                     {agency.websiteUrl ? (
                       <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
@@ -382,7 +382,7 @@ export function Home() {
                         ) : (
                           <div className="flex items-center gap-3">
                             <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
                           </div>
                         )}
                       </a>
@@ -393,12 +393,28 @@ export function Home() {
                         ) : (
                           <div className="flex items-center gap-3">
                             <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
                           </div>
                         )}
                       </>
                     )}
                   </div>
+                  
+                  {/* Social Links */}
+                  {(agency.facebookUrl || agency.instagramUrl) && (
+                    <div className="flex gap-3 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
+                      {agency.facebookUrl && (
+                        <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                          <Facebook className="h-4 w-4" />
+                        </a>
+                      )}
+                      {agency.instagramUrl && (
+                        <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
+                          <Instagram className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -406,7 +422,7 @@ export function Home() {
             {/* Second set of logos (duplicated for seamless loop) */}
             {premiumAgencies.length > 0 && (
               premiumAgencies.map((agency, idx) => (
-                <div key={`agency-2-${agency.id}`} className="flex items-center gap-3 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
+                <div key={`agency-2-${agency.id}`} className="flex flex-col items-center gap-2 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
                   <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover/logo:shadow-xl group-hover/logo:border-brand-purple/30 transition-all duration-300">
                     {agency.websiteUrl ? (
                       <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
@@ -415,7 +431,7 @@ export function Home() {
                         ) : (
                           <div className="flex items-center gap-3">
                             <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
                           </div>
                         )}
                       </a>
@@ -426,12 +442,28 @@ export function Home() {
                         ) : (
                           <div className="flex items-center gap-3">
                             <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-3xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
                           </div>
                         )}
                       </>
                     )}
                   </div>
+
+                  {/* Social Links */}
+                  {(agency.facebookUrl || agency.instagramUrl) && (
+                    <div className="flex gap-3 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
+                      {agency.facebookUrl && (
+                        <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                          <Facebook className="h-4 w-4" />
+                        </a>
+                      )}
+                      {agency.instagramUrl && (
+                        <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
+                          <Instagram className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -445,7 +477,7 @@ export function Home() {
         <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-brand-green/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
         <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-brand-purple/5 blur-3xl rounded-full translate-y-1/2 -translate-x-1/2"></div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -458,7 +490,7 @@ export function Home() {
                 <Sparkles className="h-3 w-3" />
                 <span>Oportunidades Únicas</span>
               </div>
-              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Destaques da Semana</h2>
+              <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Destaques da Semana</h2>
               <p className="mt-2 text-base text-gray-600 max-w-xl">Imóveis selecionados pela nossa equipa pela sua excelente relação qualidade-preço.</p>
             </div>
             <Link to="/properties" className="group flex items-center gap-2 text-brand-green font-bold hover:text-brand-green-hover transition-all text-sm">
@@ -501,7 +533,7 @@ export function Home() {
            
            <div className="mt-12 text-center sm:hidden">
             <Link to="/properties">
-                <Button variant="outline" className="w-full h-14 border-brand-green text-brand-green text-lg font-bold hover:bg-brand-green/10">
+                <Button variant="outline" size="sm" className="w-full border-brand-green text-brand-green font-bold hover:bg-brand-green/10">
                     Ver todos os imóveis
                 </Button>
             </Link>
@@ -514,7 +546,7 @@ export function Home() {
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#72e331 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -526,7 +558,7 @@ export function Home() {
                 <Hotel className="h-3 w-3" />
                 <span>Estadias de Luxo</span>
               </div>
-              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Resorts & Hotéis</h2>
+              <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Resorts & Hotéis</h2>
               <p className="mt-2 text-base text-gray-600 max-w-xl">As melhores estadias para as suas férias ou viagens de negócios.</p>
             </div>
             <Link to="/properties?category=Resort" className="group flex items-center gap-2 text-brand-purple font-bold hover:text-brand-purple-hover transition-all text-sm">
@@ -598,7 +630,7 @@ export function Home() {
         <div className="absolute top-1/2 left-0 -translate-y-1/2 w-64 h-64 bg-brand-purple/5 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 right-0 -translate-y-1/2 w-64 h-64 bg-brand-green/5 rounded-full blur-3xl"></div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -609,7 +641,7 @@ export function Home() {
               <Users className="h-3 w-3" />
               <span>Equipa de Sucesso</span>
             </div>
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">{settings.featuredAgentsTitle}</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">{settings.featuredAgentsTitle}</h2>
             <p className="mt-2 text-base text-gray-600 max-w-2xl mx-auto">{settings.featuredAgentsSubtitle}</p>
           </motion.div>
 
@@ -684,14 +716,14 @@ export function Home() {
 
       {/* Map Section */}
       <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-8"
           >
-            <h2 className="text-2xl font-bold text-gray-900">Explore no Mapa</h2>
+            <h2 className="text-xl font-bold text-gray-900">Explore no Mapa</h2>
             <p className="mt-2 text-sm text-gray-600">Encontre imóveis em todas as províncias de Moçambique.</p>
           </motion.div>
           <motion.div
@@ -707,12 +739,12 @@ export function Home() {
 
       {/* Categories Section */}
       <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-2xl font-bold text-gray-900 mb-6 text-center"
+            className="text-xl font-bold text-gray-900 mb-6 text-center"
           >
             Explorar por Categoria
           </motion.h2>
@@ -747,7 +779,7 @@ export function Home() {
             transition={{ duration: 0.6 }}
             className="max-w-4xl mx-auto px-4 text-center relative z-10"
           >
-              <h2 className="text-3xl sm:text-4xl font-bold mb-6">Quer vender ou arrendar o seu imóvel?</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-6">Quer vender ou arrendar o seu imóvel?</h2>
               <p className="text-xl text-gray-300 mb-8">
                   Junte-se a milhares de proprietários e alcance potenciais clientes em todo Moçambique.
               </p>
