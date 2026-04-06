@@ -80,11 +80,13 @@ export interface Property {
   isHighlighted?: boolean;
   isPromoted?: boolean;
   isApproved?: boolean;
+  views?: number;
   category?: string;
   bedrooms?: number;
   bathrooms?: number;
   area?: number;
   features?: string[];
+  detailedLocation?: string;
   requestedPackage?: string;
 }
 

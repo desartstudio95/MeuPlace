@@ -6,8 +6,7 @@ import { Property } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { Chat } from '@/components/Chat';
-import { PropertyMap } from '@/components/PropertyMap';
-import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Dialog,
@@ -22,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { playNotificationSound } from '@/utils/sound';
 
+import { resizeImage } from '@/utils/imageUtils';
+import { useNotifications } from '@/context/NotificationContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { SEO } from '@/components/SEO';
 
@@ -29,6 +30,7 @@ export function PropertyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
+  const { addNotification } = useNotifications();
   const isAuthenticated = !!currentUser;
   
   const [property, setProperty] = useState<Property | null>(null);
@@ -54,6 +56,17 @@ export function PropertyDetails() {
             setProperty(null);
           } else {
             setProperty(fetchedProperty);
+            
+            // Increment views if not the owner viewing their own property
+            if (currentUser?.uid !== fetchedProperty.agentId) {
+              try {
+                await updateDoc(docRef, {
+                  views: increment(1)
+                });
+              } catch (err) {
+                console.error("Error incrementing views:", err);
+              }
+            }
           }
         } else {
           setError('Imóvel não encontrado.');
@@ -292,6 +305,19 @@ export function PropertyDetails() {
   const encodedUrl = encodeURIComponent(shareUrl);
   const shareText = `Encontrei este imóvel incrível: ${property.title} em ${property.location}. Preço: ${property.currency} ${property.price.toLocaleString()}. Confira!`;
   const encodedTitle = encodeURIComponent(shareText);
+
+  const handleChatOpen = () => {
+    if (!isAuthenticated) {
+      addNotification({
+        title: 'Acesso Restrito',
+        message: 'Você precisa estar logado para usar o chat ao vivo.',
+        type: 'error'
+      });
+      navigate('/login');
+      return;
+    }
+    setIsChatOpen(true);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
@@ -538,10 +564,22 @@ export function PropertyDetails() {
             </div>
           </div>
 
-          {/* Location Map */}
+          {/* Location */}
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Localização</h2>
-            <PropertyMap properties={[property]} height="400px" zoom={14} />
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+              <div className="flex items-start gap-3">
+                <MapPin className="h-6 w-6 text-brand-green shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-gray-900">{property.location}</p>
+                  {property.detailedLocation && (
+                    <p className="text-gray-600 mt-2 whitespace-pre-line">
+                      {property.detailedLocation}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -641,7 +679,7 @@ export function PropertyDetails() {
               
               <Button 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg" 
-                onClick={() => setIsChatOpen(true)}
+                onClick={handleChatOpen}
               >
                 <MessageSquare className="h-5 w-5 mr-2" />
                 Chat ao Vivo
@@ -806,6 +844,7 @@ export function PropertyDetails() {
       {isChatOpen && (
         <Chat 
           propertyId={property.id} 
+          agentId={property.agentId}
           agentName={property.agent?.name || 'Agente'} 
           onClose={() => setIsChatOpen(false)} 
         />

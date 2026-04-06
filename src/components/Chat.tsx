@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 import { playNotificationSound } from '@/utils/sound';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Message {
@@ -18,22 +18,22 @@ interface Message {
 
 interface ChatProps {
   propertyId: string;
+  agentId: string;
   agentName: string;
   onClose: () => void;
 }
 
-export function Chat({ propertyId, agentName, onClose }: ChatProps) {
+export function Chat({ propertyId, agentId, agentName, onClose }: ChatProps) {
   const { currentUser, userProfile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Memoize guest ID to prevent infinite re-renders
-  const guestIdRef = useRef('guest_' + Math.random().toString(36).substring(7));
+  if (!currentUser) return null;
   
   // Use a combination of property ID and user ID for the room
-  const currentUserId = currentUser?.uid || guestIdRef.current;
-  const currentUserName = userProfile?.displayName || currentUser?.email?.split('@')[0] || 'Visitante';
+  const currentUserId = currentUser.uid;
+  const currentUserName = userProfile?.displayName || currentUser.email?.split('@')[0] || 'Usuário';
   const roomId = `prop_${propertyId}_user_${currentUserId}`;
 
   useEffect(() => {
@@ -82,7 +82,21 @@ export function Chat({ propertyId, agentName, onClose }: ChatProps) {
     setNewMessage('');
 
     try {
+      // 1. Add the message to the messages subcollection
       await addDoc(collection(db, 'chats', roomId, 'messages'), messageData);
+      
+      // 2. Update or create the chat room metadata so the agent can find it
+      await setDoc(doc(db, 'chatRooms', roomId), {
+        id: roomId,
+        propertyId,
+        agentId,
+        userId: currentUserId,
+        userName: currentUserName,
+        lastMessage: newMessage,
+        lastTimestamp: new Date().toISOString(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      
     } catch (error) {
       console.error('Error sending message:', error);
     }

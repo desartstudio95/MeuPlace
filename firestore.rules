@@ -92,6 +92,15 @@ service cloud.firestore {
       allow create: if isAdmin();
     }
 
+    match /chatRooms/{roomId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.agentId || request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if isAuthenticated();
+    }
+
+    match /chats/{roomId}/messages/{messageId} {
+      allow read, write: if isAuthenticated() || isAdmin();
+    }
+
     // Default Deny
     match /{document=**} {
       allow read, write: if isAdmin();

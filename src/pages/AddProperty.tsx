@@ -2,6 +2,7 @@ import React, { useState, FormEvent, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { Upload, CheckCircle, Star, Zap, Crown, Check, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
@@ -52,6 +53,7 @@ export function AddProperty() {
     description: '',
     location: LOCATIONS[0],
     zone: '',
+    detailedLocation: '',
     bedrooms: '',
     bathrooms: '',
     area: '',
@@ -191,6 +193,7 @@ export function AddProperty() {
         price: Number(formData.price),
         currency: formData.currency,
         location: formData.location,
+        detailedLocation: formData.detailedLocation,
         type: formData.type,
         category: formData.category,
         bedrooms: Number(formData.bedrooms) || 0,
@@ -392,6 +395,17 @@ export function AddProperty() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Bairro / Zona</label>
                   <Input name="zone" value={formData.zone} onChange={handleInputChange} placeholder="Ex: Polana Cimento" />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Localização Detalhada (Por escrito)</label>
+                  <Textarea 
+                    name="detailedLocation" 
+                    value={formData.detailedLocation} 
+                    onChange={handleInputChange} 
+                    placeholder="Ex: Rua da Argélia, Prédio 123, 4º Andar, Maputo" 
+                    rows={2}
+                  />
                 </div>
 
                 <div>

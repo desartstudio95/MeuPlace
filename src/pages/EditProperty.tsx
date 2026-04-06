@@ -2,6 +2,7 @@ import React, { useState, useEffect, FormEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { LOCATIONS, CATEGORIES, Property } from '@/types';
 import { Upload, Save, ArrowLeft, Trash2, X } from 'lucide-react';
 import { playNotificationSound } from '@/utils/sound';
@@ -285,6 +286,16 @@ export function EditProperty() {
               <Input 
                 value={formData.location} 
                 onChange={(e) => setFormData({...formData, location: e.target.value})} 
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Localização Detalhada (Por escrito)</label>
+              <Textarea 
+                value={formData.detailedLocation || ''} 
+                onChange={(e) => setFormData({...formData, detailedLocation: e.target.value})} 
+                placeholder="Ex: Rua da Argélia, Prédio 123, 4º Andar, Maputo"
+                rows={2}
               />
             </div>
 

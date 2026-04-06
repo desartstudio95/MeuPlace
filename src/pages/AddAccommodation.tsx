@@ -43,6 +43,7 @@ export function AddAccommodation() {
     guests: '2',
     beds: '1',
     bathrooms: '1',
+    detailedLocation: '',
     features: [] as string[],
   });
 
@@ -153,6 +154,7 @@ export function AddAccommodation() {
         price: Number(formData.price),
         currency: formData.currency,
         location: userProfile.resortLocation || '',
+        detailedLocation: formData.detailedLocation,
         type: 'Acomodação', // Special type for resorts
         category: formData.type,
         bedrooms: Number(formData.beds) || 1,
@@ -331,18 +333,29 @@ export function AddAccommodation() {
 
               {/* Description */}
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Descrição</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição Detalhada *</label>
-                  <textarea 
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={5}
-                    className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    placeholder="Descreva a acomodação em detalhes..."
-                    required
-                  ></textarea>
+                <h3 className="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Descrição e Localização</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição Detalhada *</label>
+                    <textarea 
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={5}
+                      className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      placeholder="Descreva a acomodação em detalhes..."
+                      required
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Localização Detalhada (Opcional)</label>
+                    <Input 
+                      name="detailedLocation"
+                      value={formData.detailedLocation}
+                      onChange={handleInputChange}
+                      placeholder="Ex: Bloco A, Próximo à Piscina Principal" 
+                    />
+                  </div>
                 </div>
               </div>
 

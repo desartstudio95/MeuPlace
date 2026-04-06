@@ -55,7 +55,7 @@ async function startServer() {
   app.get("/sitemap.xml", async (req, res) => {
     try {
       const projectId = "meuplace-2fa32";
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const baseUrl = "https://www.meuplace.com";
       
       // Fetch properties from Firestore REST API
       const response = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/properties?pageSize=1000`);

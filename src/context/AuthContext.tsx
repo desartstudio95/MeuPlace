@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 displayName: user.displayName || '',
                 photoURL: user.photoURL || '',
                 role,
-                isApproved: role === 'admin',
+                isApproved: role === 'admin' || role === 'user',
                 createdAt: new Date().toISOString()
               };
               

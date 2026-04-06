@@ -9,21 +9,24 @@ interface SEOProps {
   url?: string;
 }
 
-export function SEO({ title, description, name = "Desart Studio", type = "website", image, url }: SEOProps) {
-  const siteTitle = `${title} | Desart Studio`;
+export function SEO({ title, description, name = "MeuPlace", type = "website", image, url }: SEOProps) {
+  const siteTitle = `${title} | MeuPlace`;
+  const baseUrl = "https://www.meuplace.com";
+  const canonicalUrl = url ? `${baseUrl}${url}` : baseUrl;
   
   return (
     <Helmet>
       {/* Standard metadata tags */}
       <title>{siteTitle}</title>
       <meta name='description' content={description} />
+      <link rel="canonical" href={canonicalUrl} />
       
       {/* Open Graph tags */}
       <meta property="og:type" content={type} />
       <meta property="og:title" content={siteTitle} />
       <meta property="og:description" content={description} />
       {image && <meta property="og:image" content={image} />}
-      {url && <meta property="og:url" content={url} />}
+      <meta property="og:url" content={canonicalUrl} />
       
       {/* Twitter tags */}
       <meta name="twitter:creator" content={name} />

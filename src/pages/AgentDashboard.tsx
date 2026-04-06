@@ -32,11 +32,13 @@ import {
   Check,
   Menu,
   X,
-  BadgeCheck
+  BadgeCheck,
+  Send,
+  ArrowLeft
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, onSnapshot, orderBy, serverTimestamp, setDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { Property } from '@/types';
@@ -51,6 +53,12 @@ export function AgentDashboard() {
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
+  const [chatRooms, setChatRooms] = useState<any[]>([]);
+  const [activeChatRoom, setActiveChatRoom] = useState<any>(null);
+  const [showArchivedChats, setShowArchivedChats] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [newChatMessage, setNewChatMessage] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,18 +136,117 @@ export function AgentDashboard() {
       console.error("Error listening to messages:", error);
     });
 
-    return () => unsubscribe();
+    // Listen for live chat rooms
+    if (!currentUser) return;
+    const chatRoomsQ = query(collection(db, 'chatRooms'), where('agentId', '==', currentUser.uid));
+    const unsubscribeChatRooms = onSnapshot(chatRoomsQ, (snapshot) => {
+      const fetchedRooms: any[] = [];
+      snapshot.forEach((doc) => {
+        fetchedRooms.push({ id: doc.id, ...doc.data() });
+      });
+      // Sort by last activity
+      fetchedRooms.sort((a, b) => new Date(b.lastTimestamp).getTime() - new Date(a.lastTimestamp).getTime());
+      setChatRooms(fetchedRooms);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeChatRooms();
+    };
   }, [currentUser]);
+
+  // Listen for messages in the active chat room
+  useEffect(() => {
+    if (!activeChatRoom) {
+      setChatMessages([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'chats', activeChatRoom.id, 'messages'),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedMessages: any[] = [];
+      snapshot.forEach((doc) => {
+        fetchedMessages.push({ id: doc.id, ...doc.data() });
+      });
+      setChatMessages(fetchedMessages);
+      
+      // Scroll to bottom
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    });
+
+    return () => unsubscribe();
+  }, [activeChatRoom]);
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChatMessage.trim() || !activeChatRoom || !currentUser) return;
+
+    const messageData = {
+      roomId: activeChatRoom.id,
+      text: newChatMessage,
+      senderId: currentUser.uid,
+      senderName: userProfile?.displayName || 'Agente',
+      timestamp: new Date().toISOString()
+    };
+
+    setNewChatMessage('');
+
+    try {
+      await addDoc(collection(db, 'chats', activeChatRoom.id, 'messages'), messageData);
+      
+      // Update room metadata
+      await setDoc(doc(db, 'chatRooms', activeChatRoom.id), {
+        lastMessage: newChatMessage,
+        lastTimestamp: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
+        isArchived: false // Ensure it's unarchived on new message
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+    }
+  };
+
+  const handleToggleArchive = async (roomId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'chatRooms', roomId), {
+        isArchived: !currentStatus,
+        updatedAt: serverTimestamp()
+      });
+      if (activeChatRoom?.id === roomId) {
+        setActiveChatRoom({ ...activeChatRoom, isArchived: !currentStatus });
+      }
+      addNotification({
+        title: !currentStatus ? 'Conversa Arquivada' : 'Conversa Desarquivada',
+        message: !currentStatus ? 'A conversa foi movida para o arquivo.' : 'A conversa foi movida para as ativas.',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error toggling archive status:', error);
+      addNotification({ title: 'Erro', message: 'Erro ao alterar status da conversa.', type: 'error' });
+    }
+  };
+
+  const filteredChatRooms = chatRooms.filter(room => 
+    showArchivedChats ? room.isArchived : !room.isArchived
+  );
 
   const isResort = userProfile?.role === 'resort';
   const propertyLabel = isResort ? 'Acomodações' : 'Imóveis';
   const propertyLabelSingular = isResort ? 'Acomodação' : 'Imóvel';
 
+  const totalViews = myProperties.reduce((acc, prop) => acc + (prop.views || 0), 0);
+
   const stats = [
     { label: `${propertyLabel} Ativos`, value: myProperties.length, icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'Visualizações Totais', value: '1,234', icon: Eye, color: 'text-green-600', bg: 'bg-green-100' },
+    { label: 'Visualizações Totais', value: totalViews.toLocaleString(), icon: Eye, color: 'text-green-600', bg: 'bg-green-100' },
     { label: isResort ? 'Reservas (Mensagens)' : 'Leads (Mensagens)', value: messages.length, icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { label: 'Taxa de Conversão', value: '2.4%', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-100' },
+    { label: 'Taxa de Conversão', value: messages.length > 0 && totalViews > 0 ? `${((messages.length / totalViews) * 100).toFixed(1)}%` : '0%', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-100' },
   ];
 
   const [profileData, setProfileData] = useState({
@@ -404,6 +511,22 @@ export function AgentDashboard() {
               )}
             </button>
             <button
+              onClick={() => { setActiveTab('live-chat'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'live-chat' 
+                  ? 'bg-brand-green/10 text-brand-green' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <Send className="mr-3 h-5 w-5" />
+              Chat ao Vivo
+              {chatRooms.length > 0 && (
+                <span className="ml-auto bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {chatRooms.length}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => { setActiveTab('profile'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'profile' 
@@ -574,6 +697,7 @@ export function AgentDashboard() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{propertyLabelSingular}</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preço</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visualizações</th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                     </tr>
@@ -609,6 +733,12 @@ export function AgentDashboard() {
                             <option value="Vendido">Vendido</option>
                             <option value="Arrendado">Arrendado</option>
                           </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm text-gray-900">
+                            <Eye className="h-4 w-4 mr-1 text-gray-400" />
+                            {property.views || 0}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(property.createdAt).toLocaleDateString()}
@@ -791,6 +921,132 @@ export function AgentDashboard() {
                 </form>
               </DialogContent>
             </Dialog>
+          </div>
+        )}
+
+        {activeTab === 'live-chat' && (
+          <div className="h-[calc(100vh-120px)] flex flex-col sm:flex-row gap-4 animate-in fade-in duration-500">
+            {/* Chat Rooms List */}
+            <div className={`w-full sm:w-80 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col ${activeChatRoom ? 'hidden sm:flex' : 'flex'}`}>
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="font-bold text-gray-900">{showArchivedChats ? 'Conversas Arquivadas' : 'Conversas Ativas'}</h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowArchivedChats(!showArchivedChats)}
+                  className="text-xs text-brand-green"
+                >
+                  {showArchivedChats ? 'Ver Ativas' : 'Ver Arquivo'}
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {filteredChatRooms.length > 0 ? (
+                  filteredChatRooms.map((room) => (
+                    <div 
+                      key={room.id}
+                      onClick={() => setActiveChatRoom(room)}
+                      className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${activeChatRoom?.id === room.id ? 'bg-brand-green/5 border-l-4 border-l-brand-green' : ''}`}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-sm text-gray-900">{room.userName}</span>
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(room.lastTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">{room.lastMessage}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-gray-400 text-sm">
+                    {showArchivedChats ? 'Nenhuma conversa arquivada.' : 'Nenhuma conversa ativa no momento.'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Chat Window */}
+            <div className={`flex-1 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col ${!activeChatRoom ? 'hidden sm:flex items-center justify-center' : 'flex'}`}>
+              {activeChatRoom ? (
+                <>
+                  {/* Chat Header */}
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
+                    <div className="flex items-center gap-3">
+                      <Button variant="ghost" size="icon" className="sm:hidden" onClick={() => setActiveChatRoom(null)}>
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                      <div>
+                        <h3 className="font-bold text-gray-900">{activeChatRoom.userName}</h3>
+                        <p className="text-[10px] text-gray-500">ID do Imóvel: {activeChatRoom.propertyId}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-xs flex items-center gap-1"
+                        onClick={() => handleToggleArchive(activeChatRoom.id, activeChatRoom.isArchived)}
+                      >
+                        {activeChatRoom.isArchived ? (
+                          <>Desarquivar</>
+                        ) : (
+                          <>Arquivar</>
+                        )}
+                      </Button>
+                      <Link to={`/properties/${activeChatRoom.propertyId}`}>
+                        <Button variant="outline" size="sm" className="text-xs">Ver Imóvel</Button>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Messages Area */}
+                  <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 bg-gray-50/30">
+                    {chatMessages.map((msg) => {
+                      const isMe = msg.senderId === currentUser?.uid;
+                      return (
+                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                          <div 
+                            className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+                              isMe 
+                                ? 'bg-brand-green text-white rounded-tr-sm' 
+                                : 'bg-white border border-gray-200 text-gray-800 rounded-tl-sm shadow-sm'
+                            }`}
+                          >
+                            {msg.text}
+                          </div>
+                          <span className="text-[10px] text-gray-400 mt-1 px-1">
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input Area */}
+                  <form onSubmit={handleSendChatMessage} className="p-4 border-t border-gray-100 flex gap-2">
+                    <Input
+                      value={newChatMessage}
+                      onChange={(e) => setNewChatMessage(e.target.value)}
+                      placeholder="Digite sua resposta..."
+                      className="flex-1 rounded-full bg-gray-50 border-gray-200"
+                    />
+                    <Button 
+                      type="submit" 
+                      size="icon" 
+                      className="rounded-full bg-brand-green hover:bg-brand-green-hover text-white shrink-0"
+                      disabled={!newChatMessage.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                  <p>Selecione uma conversa para começar</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

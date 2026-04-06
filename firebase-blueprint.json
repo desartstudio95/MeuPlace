@@ -239,6 +239,14 @@
     "agent_reviews/{reviewId}": {
       "schema": { "$ref": "#/entities/Review" },
       "description": "Reviews for agents"
+    },
+    "chatRooms/{roomId}": {
+      "schema": "object",
+      "description": "Metadata for active chat rooms between users and agents."
+    },
+    "chats/{roomId}/messages/{messageId}": {
+      "schema": "object",
+      "description": "Real-time messages within a chat room."
     }
   }
 }
