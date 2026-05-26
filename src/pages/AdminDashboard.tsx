@@ -4,11 +4,13 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { UserProfile } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { User, Shield, ShieldCheck, Trash2, Home, CheckCircle, XCircle, Building2, CreditCard } from 'lucide-react';
+import { User, Shield, ShieldCheck, Trash2, Home, CheckCircle, XCircle, Building2, CreditCard, Database } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { Property } from '@/types';
 import { PremiumAgenciesAdmin } from '@/components/admin/PremiumAgenciesAdmin';
 import { PlansAdmin } from '@/components/admin/PlansAdmin';
+import { SubscriptionPlansAdmin } from '@/components/admin/SubscriptionPlansAdmin';
+import { MockDataAdmin } from '@/components/admin/MockDataAdmin';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 export function AdminDashboard() {
@@ -17,7 +19,7 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'properties' | 'agencies' | 'plans'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'properties' | 'agencies' | 'plans' | 'subscription_plans' | 'mock'>('users');
 
   useEffect(() => {
     fetchUsers();
@@ -222,7 +224,7 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      <div className="flex space-x-4 mb-6 border-b border-gray-200">
+      <div className="flex space-x-4 mb-6 border-b border-gray-200 overflow-x-auto whitespace-nowrap pb-2">
         <button
           className={`pb-4 px-2 text-sm font-medium border-b-2 ${
             activeTab === 'users'
@@ -264,6 +266,19 @@ export function AdminDashboard() {
         </button>
         <button
           className={`pb-4 px-2 text-sm font-medium border-b-2 ${
+            activeTab === 'subscription_plans'
+              ? 'border-brand-green text-brand-green'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+          onClick={() => setActiveTab('subscription_plans')}
+        >
+          <div className="flex items-center">
+            <CreditCard className="w-4 h-4 mr-2" />
+            Planos (Publicação)
+          </div>
+        </button>
+        <button
+          className={`pb-4 px-2 text-sm font-medium border-b-2 ${
             activeTab === 'plans'
               ? 'border-brand-green text-brand-green'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -272,10 +287,31 @@ export function AdminDashboard() {
         >
           <div className="flex items-center">
             <CreditCard className="w-4 h-4 mr-2" />
-            Planos
+            Planos (Promoção)
+          </div>
+        </button>
+        <button
+          className={`pb-4 px-2 text-sm font-medium border-b-2 ${
+            activeTab === 'mock'
+              ? 'border-brand-green text-brand-green'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+          onClick={() => setActiveTab('mock')}
+        >
+          <div className="flex items-center">
+            <Database className="w-4 h-4 mr-2" />
+            Ferramentas
           </div>
         </button>
       </div>
+
+      {activeTab === 'mock' && (
+        <MockDataAdmin />
+      )}
+
+      {activeTab === 'subscription_plans' && (
+        <SubscriptionPlansAdmin />
+      )}
 
       {activeTab === 'plans' && (
         <PlansAdmin />

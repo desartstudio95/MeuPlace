@@ -49,6 +49,7 @@ export interface PremiumAgency {
   instagramUrl?: string;
   isActive: boolean;
   order?: number;
+  agentId?: string;
 }
 
 export interface User {
@@ -58,6 +59,9 @@ export interface User {
   photoURL: string | null;
   role: UserRole;
   createdAt: any;
+  planId?: string;
+  planLimit?: number;
+  planExpiration?: string;
   favorites?: any;
 }
 

@@ -133,29 +133,41 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Premium Background Layer */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop" 
+          alt="Luxury Real Estate" 
+          className="w-full h-full object-cover"
+        />
+        {/* Gradient overlays to ensure text readability and add a premium feel */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-gray-900/80 to-brand-purple/90" />
+        <div className="absolute inset-0 bg-black/30" />
+      </div>
+
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="h-12 w-12 rounded-full bg-brand-green/10 flex items-center justify-center">
-            <User className="h-6 w-6 text-brand-green" />
+          <div className="h-16 w-16 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl rotate-3 transition-transform hover:rotate-6 shadow-brand-green/20">
+            <User className="h-8 w-8 text-brand-green" />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-2xl font-extrabold text-gray-900">
-          {isForgotPassword ? 'Recuperar senha' : 'Acesse sua conta'}
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-white tracking-tight drop-shadow-md">
+          {isForgotPassword ? 'Recuperar senha' : 'Acesso Exclusivo'}
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-300 drop-shadow-md">
           {isForgotPassword 
-            ? 'Insira o seu email para receber um link de redefinição de senha.' 
-            : 'Faça login para gerir os seus imóveis, resorts ou hotéis'}
+            ? 'Insira o seu email para receber um link de redefinição.' 
+            : 'Faça login para aceder à sua área de gestão imobiliária.'}
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-gray-100">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-white/95 backdrop-blur-2xl py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-white">
           
           {resetSent ? (
             <div className="text-center">
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm font-medium mb-6">
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium mb-6">
                 Email de redefinição enviado com sucesso! Verifique sua caixa de entrada.
               </div>
               <Button 
@@ -164,7 +176,7 @@ export function Login() {
                   setResetSent(false);
                   setAuthError('');
                 }} 
-                className="w-full bg-brand-green hover:bg-brand-green-hover text-white"
+                className="w-full bg-brand-green hover:bg-brand-green-hover text-white rounded-xl h-12 font-medium"
               >
                 Voltar ao Login
               </Button>
@@ -172,7 +184,7 @@ export function Login() {
           ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>
               {authError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm text-center font-medium">
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm text-center font-medium">
                   {authError}
                 </div>
               )}
@@ -184,17 +196,17 @@ export function Login() {
                     type="email"
                     value={email}
                     onChange={handleEmailChange}
-                    className={emailError ? 'border-red-500' : ''}
+                    className={`${emailError ? 'border-red-500' : 'border-gray-200 focus:border-brand-green'} rounded-xl h-11 bg-white/50 backdrop-blur-sm transition-all duration-200`}
                     placeholder="seu@email.com"
                   />
-                  {emailError && <p className="mt-1 text-sm text-red-600">{emailError}</p>}
+                  {emailError && <p className="mt-1 text-sm text-red-600 font-medium">{emailError}</p>}
                 </div>
               </div>
 
               {!isForgotPassword && (
                 <div>
-                  <div className="flex justify-between items-center">
-                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Palavra-passe</label>
                     <button 
                       type="button" 
                       onClick={() => {
@@ -203,22 +215,22 @@ export function Login() {
                         setEmailError('');
                         setPasswordError('');
                       }} 
-                      className="text-sm font-medium text-brand-green hover:text-brand-green-hover"
+                      className="text-sm font-semibold text-brand-green hover:text-brand-green-hover transition-colors"
                     >
                       Esqueceu a senha?
                     </button>
                   </div>
-                  <div className="mt-1 relative">
+                  <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={handlePasswordChange}
-                      className={`${passwordError ? 'border-red-500' : ''} pr-10`}
+                      className={`${passwordError ? 'border-red-500' : 'border-gray-200 focus:border-brand-green'} pr-10 rounded-xl h-11 bg-white/50 backdrop-blur-sm transition-all duration-200`}
                       placeholder="••••••••"
                     />
                     <button
                       type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-brand-purple transition-colors"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
@@ -227,14 +239,14 @@ export function Login() {
                         <Eye className="h-5 w-5" aria-hidden="true" />
                       )}
                     </button>
-                    {passwordError && <p className="mt-1 text-sm text-red-600">{passwordError}</p>}
+                    {passwordError && <p className="mt-1 text-sm text-red-600 font-medium">{passwordError}</p>}
                   </div>
                 </div>
               )}
 
               <div>
-                <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white">
-                  {isForgotPassword ? 'Enviar Link' : 'Entrar'}
+                <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white rounded-xl h-12 font-medium text-base shadow-lg shadow-brand-green/25 transition-all hover:-translate-y-0.5">
+                  {isForgotPassword ? 'Enviar Link de Recuperação' : 'Entrar'}
                 </Button>
               </div>
               
@@ -247,7 +259,7 @@ export function Login() {
                       setAuthError('');
                       setEmailError('');
                     }} 
-                    className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                    className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
                   >
                     Voltar ao Login
                   </button>
@@ -258,13 +270,13 @@ export function Login() {
 
           {!isForgotPassword && !resetSent && (
             <>
-              <div className="mt-6">
+              <div className="mt-8">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
+                    <div className="w-full border-t border-gray-200" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Ou continue com</span>
+                    <span className="px-4 bg-white/95 text-gray-500 font-medium">Ou aceda com</span>
                   </div>
                 </div>
 
@@ -272,20 +284,24 @@ export function Login() {
                   <Button
                     onClick={handleGoogleLogin}
                     type="button"
-                    className="w-full flex justify-center py-6 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="w-full flex justify-center py-6 px-4 border border-gray-200 rounded-xl shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all focus:ring-2 focus:ring-brand-green/20"
                   >
-                    <svg className="w-5 h-5 mr-2" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                    <svg className="w-5 h-5 mr-3" aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                      <path d="M1 1h22v22H1z" fill="none" />
                     </svg>
-                    Entrar com Google
+                    Continuar com Google
                   </Button>
                 </div>
               </div>
               
-              <div className="mt-6 text-center">
+              <div className="mt-8 text-center bg-gray-50/50 py-4 rounded-xl -mx-4 -mb-4 mt-8 border-t border-gray-100">
                 <p className="text-sm text-gray-600">
                   Ainda não tem conta?{' '}
-                  <Link to="/register" className="font-medium text-brand-green hover:text-brand-green-hover">
+                  <Link to="/register" className="font-semibold text-brand-green hover:text-brand-green-hover transition-colors">
                     Criar conta
                   </Link>
                 </p>

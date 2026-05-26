@@ -320,7 +320,7 @@ export function PropertyDetails() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
       <SEO 
         title={property.title} 
         description={property.description} 
@@ -368,7 +368,7 @@ export function PropertyDetails() {
         <div className="lg:col-span-2 space-y-8">
           {/* Image Carousel */}
           <div className="space-y-4">
-            <div className="relative h-96 md:h-[500px] rounded-2xl overflow-hidden shadow-lg group bg-gray-100 cursor-pointer" onClick={() => setIsZoomModalOpen(true)}>
+            <div className="relative h-80 md:h-[450px] rounded-2xl overflow-hidden shadow-lg group bg-gray-100 cursor-pointer" onClick={() => setIsZoomModalOpen(true)}>
               {imageLoading && (
                 <Skeleton className="absolute inset-0 w-full h-full" />
               )}
@@ -504,7 +504,7 @@ export function PropertyDetails() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{property.title}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{property.title}</h1>
                 {(property.status === 'Vendido' || property.status === 'Arrendado') && (
                   <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm whitespace-nowrap">
                     {property.status}
@@ -517,9 +517,9 @@ export function PropertyDetails() {
               </div>
             </div>
             <div className="text-left sm:text-right">
-              <p className="text-3xl font-bold text-brand-green">
+              <p className="text-2xl font-bold text-brand-green">
                 {property.currency} {property.price.toLocaleString()}
-                {property.type === 'Arrendamento' && <span className="text-lg text-gray-500 font-normal">/mês</span>}
+                {property.type === 'Arrendamento' && <span className="text-base text-gray-500 font-normal">/mês</span>}
               </p>
             </div>
           </div>
@@ -545,7 +545,7 @@ export function PropertyDetails() {
 
           {/* Description */}
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Descrição</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Descrição</h2>
             <p className="text-gray-600 leading-relaxed whitespace-pre-line">
               {property.description}
             </p>
@@ -553,7 +553,7 @@ export function PropertyDetails() {
 
           {/* Amenities */}
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Comodidades</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Comodidades</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {property.features.map((feature, index) => (
                 <div key={index} className="flex items-center text-gray-600">
@@ -566,7 +566,7 @@ export function PropertyDetails() {
 
           {/* Location */}
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Localização</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Localização</h2>
             <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
               <div className="flex items-start gap-3">
                 <MapPin className="h-6 w-6 text-brand-green shrink-0 mt-0.5" />
@@ -598,7 +598,7 @@ export function PropertyDetails() {
               <div>
                 <p className="text-sm text-gray-500">Agente Responsável</p>
                 <Link to={`/agent/${encodeURIComponent(property.agent?.name || 'Agente')}`} className="hover:text-brand-green transition-colors flex items-center gap-1.5">
-                  <h3 className="text-lg font-bold text-gray-900">{property.agent?.name || 'Agente'}</h3>
+                  <h3 className="text-base font-bold text-gray-900">{property.agent?.name || 'Agente'}</h3>
                   {property.agent?.isVerified && (
                     <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   )}

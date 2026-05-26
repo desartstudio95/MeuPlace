@@ -34,7 +34,10 @@ import {
   X,
   BadgeCheck,
   Send,
-  ArrowLeft
+  ArrowLeft,
+  CreditCard,
+  ShieldCheck,
+  Star
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
@@ -73,6 +76,53 @@ export function AgentDashboard() {
   // Mock data for the dashboard
   const [myProperties, setMyProperties] = useState<Property[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
+  const [premiumAgency, setPremiumAgency] = useState<any>(null);
+  const [loadingPremium, setLoadingPremium] = useState(false);
+  const [isSavingPremium, setIsSavingPremium] = useState(false);
+  const [premiumFormData, setPremiumFormData] = useState({
+    name: '',
+    websiteUrl: '',
+    facebookUrl: '',
+    instagramUrl: '',
+    logoUrl: ''
+  });
+  const [uploadingPremiumLogo, setUploadingPremiumLogo] = useState(false);
+
+  useEffect(() => {
+    if (premiumAgency) {
+      setPremiumFormData({
+        name: premiumAgency.name || '',
+        websiteUrl: premiumAgency.websiteUrl || '',
+        facebookUrl: premiumAgency.facebookUrl || '',
+        instagramUrl: premiumAgency.instagramUrl || '',
+        logoUrl: premiumAgency.logoUrl || ''
+      });
+    } else if (userProfile) {
+      setPremiumFormData(prev => ({
+        ...prev,
+        name: userProfile.agencyName || userProfile.displayName || ''
+      }));
+    }
+  }, [premiumAgency, userProfile]);
+
+  useEffect(() => {
+    const fetchPremiumAgency = async () => {
+      if (!currentUser || userProfile?.planId !== 'unlimited') return;
+      setLoadingPremium(true);
+      try {
+        const q = query(collection(db, 'premium_agencies'), where('agentId', '==', currentUser.uid));
+        const qs = await getDocs(q);
+        if (!qs.empty) {
+          setPremiumAgency({ id: qs.docs[0].id, ...qs.docs[0].data() });
+        }
+      } catch (error) {
+        console.error("Error fetching premium agency:", error);
+      } finally {
+        setLoadingPremium(false);
+      }
+    };
+    fetchPremiumAgency();
+  }, [currentUser, userProfile?.planId]);
 
   useEffect(() => {
     if (location.state?.activeTab) {
@@ -241,9 +291,11 @@ export function AgentDashboard() {
   const propertyLabelSingular = isResort ? 'Acomodação' : 'Imóvel';
 
   const totalViews = myProperties.reduce((acc, prop) => acc + (prop.views || 0), 0);
+  const planLimit = userProfile?.planLimit || 5;
+  const isUnlimited = planLimit >= 900000;
 
   const stats = [
-    { label: `${propertyLabel} Ativos`, value: myProperties.length, icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: `${propertyLabel} Ativos`, value: `${myProperties.length} / ${isUnlimited ? '∞' : planLimit}`, icon: Home, color: 'text-blue-600', bg: 'bg-blue-100' },
     { label: 'Visualizações Totais', value: totalViews.toLocaleString(), icon: Eye, color: 'text-green-600', bg: 'bg-green-100' },
     { label: isResort ? 'Reservas (Mensagens)' : 'Leads (Mensagens)', value: messages.length, icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-100' },
     { label: 'Taxa de Conversão', value: messages.length > 0 && totalViews > 0 ? `${((messages.length / totalViews) * 100).toFixed(1)}%` : '0%', icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-100' },
@@ -264,6 +316,77 @@ export function AgentDashboard() {
 
   const { updateUserProfile } = useAuth();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handlePremiumLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    setUploadingPremiumLogo(true);
+    try {
+      const storageRef = ref(storage, `agency_logos/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on(
+        'state_changed',
+        () => {},
+        (error) => {
+          console.error("Upload error:", error);
+          addNotification({ title: 'Erro', message: 'Falha ao carregar o logotipo.', type: 'error' });
+          setUploadingPremiumLogo(false);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setPremiumFormData(prev => ({ ...prev, logoUrl: downloadURL }));
+          setUploadingPremiumLogo(false);
+        }
+      );
+    } catch (error) {
+      console.error("Error initiating upload:", error);
+      setUploadingPremiumLogo(false);
+    }
+  };
+
+  const handlePremiumSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !userProfile) return;
+    if (userProfile.planId !== 'unlimited') {
+      addNotification({ title: 'Acesso Restrito', message: 'Apenas usuários do plano Unlimited podem gerenciar agência premium.', type: 'error' });
+      return;
+    }
+
+    if (!premiumFormData.name || !premiumFormData.logoUrl) {
+      addNotification({ title: 'Aviso', message: 'Nome e Logotipo são obrigatórios.', type: 'info' });
+      return;
+    }
+
+    setIsSavingPremium(true);
+    try {
+      if (premiumAgency?.id) {
+        const agencyRef = doc(db, 'premium_agencies', premiumAgency.id);
+        await updateDoc(agencyRef, {
+          ...premiumFormData,
+          updatedAt: serverTimestamp()
+        });
+        addNotification({ title: 'Sucesso', message: 'Informações premium atualizadas!', type: 'success' });
+      } else {
+        const newAgency = {
+          ...premiumFormData,
+          agentId: currentUser.uid,
+          isActive: true,
+          order: 99,
+          createdAt: serverTimestamp()
+        };
+        const docRef = await addDoc(collection(db, 'premium_agencies'), newAgency);
+        setPremiumAgency({ id: docRef.id, ...newAgency });
+        addNotification({ title: 'Sucesso', message: 'Agência Premium ativada com sucesso!', type: 'success' });
+      }
+    } catch (error) {
+      console.error("Error saving premium agency:", error);
+      addNotification({ title: 'Erro', message: 'Não foi possível salvar as informações.', type: 'error' });
+    } finally {
+      setIsSavingPremium(false);
+    }
+  };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -537,6 +660,26 @@ export function AgentDashboard() {
               <User className="mr-3 h-5 w-5" />
               Meu Perfil
             </button>
+            <button
+              onClick={() => { navigate('/plans'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900`}
+            >
+              <CreditCard className="mr-3 h-5 w-5" />
+              Assinatura e Planos
+            </button>
+            {userProfile?.planId === 'unlimited' && (
+              <button
+                onClick={() => { setActiveTab('agency-premium'); setIsMobileMenuOpen(false); }}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'agency-premium' 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'text-amber-600 hover:bg-amber-50'
+                }`}
+              >
+                <ShieldCheck className="mr-3 h-5 w-5" />
+                Agência Premium
+              </button>
+            )}
           </nav>
         </div>
         
@@ -1069,7 +1212,7 @@ export function AgentDashboard() {
                     />
                     <div 
                       className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      onClick={triggerFileInput}
+                      onClick={() => fileInputRef.current?.click()}
                     >
                       <Camera className="h-8 w-8 text-white" />
                     </div>
@@ -1084,7 +1227,7 @@ export function AgentDashboard() {
                       accept="image/*" 
                       onChange={handleFileChange} 
                     />
-                    <Button type="button" variant="outline" size="sm" onClick={triggerFileInput} disabled={uploadingAvatar}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingAvatar}>
                       {uploadingAvatar ? 'A Carregar...' : 'Alterar Foto'}
                     </Button>
                   </div>
@@ -1162,7 +1305,7 @@ export function AgentDashboard() {
                 </div>
 
                 <div className="pt-4 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setActiveTab('overview')}>
+                  <Button type="button" variant="outline" onClick={() => setActiveTab('dashboard')}>
                     Cancelar
                   </Button>
                   <Button type="submit" className="bg-brand-green hover:bg-brand-green-hover">
@@ -1170,6 +1313,124 @@ export function AgentDashboard() {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'agency-premium' && userProfile?.planId === 'unlimited' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Configuração de Agência Premium</h1>
+              <p className="text-gray-500">Como assinante do Plano Unlimited, sua agência tem direito a um espaço de destaque na página inicial.</p>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-100 max-w-4xl">
+              <form onSubmit={handlePremiumSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Agência</label>
+                    <Input 
+                      value={premiumFormData.name} 
+                      onChange={(e) => setPremiumFormData({...premiumFormData, name: e.target.value})} 
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Website (Opcional)</label>
+                    <Input 
+                      type="url"
+                      placeholder="https://sua-agencia.com"
+                      value={premiumFormData.websiteUrl} 
+                      onChange={(e) => setPremiumFormData({...premiumFormData, websiteUrl: e.target.value})} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Facebook (Opcional)</label>
+                    <Input 
+                      type="url"
+                      placeholder="https://facebook.com/sua-agencia"
+                      value={premiumFormData.facebookUrl} 
+                      onChange={(e) => setPremiumFormData({...premiumFormData, facebookUrl: e.target.value})} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Instagram (Opcional)</label>
+                    <Input 
+                      type="url"
+                      placeholder="https://instagram.com/sua-agencia"
+                      value={premiumFormData.instagramUrl} 
+                      onChange={(e) => setPremiumFormData({...premiumFormData, instagramUrl: e.target.value})} 
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Logotipo da Agência</label>
+                  <p className="text-xs text-gray-500 mb-4">Recomendamos um logotipo em formato horizontal ou quadrado com fundo transparente ou branco.</p>
+                  
+                  <div className="flex flex-col sm:flex-row items-center gap-6 p-4 border rounded-lg bg-gray-50">
+                    <div className="w-40 h-24 bg-white border border-dashed rounded-lg flex items-center justify-center overflow-hidden">
+                      {premiumFormData.logoUrl ? (
+                        <img src={premiumFormData.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+                      ) : (
+                        <ShieldCheck className="h-8 w-8 text-gray-300" />
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 w-full space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => document.getElementById('premium-logo-upload')?.click()}
+                          disabled={uploadingPremiumLogo}
+                          className="w-full sm:w-auto"
+                        >
+                          {uploadingPremiumLogo ? 'Subindo...' : 'Selecionar Logotipo'}
+                        </Button>
+                        <input 
+                          id="premium-logo-upload"
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={handlePremiumLogoUpload}
+                        />
+                        {premiumFormData.logoUrl && (
+                          <span className="text-xs text-brand-green font-medium flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" /> Logotipo pronto
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400">Tamanho máximo: 2MB. Formatos: PNG, JPG.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t">
+                  <Button 
+                    type="submit" 
+                    className="bg-brand-green hover:bg-brand-green-hover text-white px-8"
+                    disabled={isSavingPremium || uploadingPremiumLogo}
+                  >
+                    {isSavingPremium ? 'Salvando...' : 'Salvar Configurações Premium'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 max-w-4xl">
+              <div className="flex gap-4">
+                <div className="p-2 bg-amber-100 rounded-lg h-inner">
+                  <Star className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-900">O que é a Agência Premium?</h4>
+                  <p className="text-sm text-amber-800 mt-1">
+                    Como assinante Unlimited, seu logotipo aparecerá na seção "Imobiliárias de Confiança" na página inicial, 
+                    com link direto para o seu perfil ou website. Isso garante máxima visibilidade e autoridade para sua marca.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}

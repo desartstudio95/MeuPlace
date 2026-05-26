@@ -52,6 +52,9 @@ export interface UserProfile {
   resortAmenities?: string[];
   resortLocation?: string;
   isApproved?: boolean;
+  planId?: string;
+  planLimit?: number;
+  planExpiration?: string;
   rating?: number;
   reviews?: number;
   isResponsible?: boolean;
@@ -125,6 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 photoURL: user.photoURL || '',
                 role,
                 isApproved: role === 'admin' || role === 'user',
+                planId: 'free',
+                planLimit: 5,
                 createdAt: new Date().toISOString()
               };
               
@@ -174,6 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: user.photoURL || '',
           role: finalRole,
           isApproved: finalRole === 'admin' || finalRole === 'user',
+          planId: 'free',
+          planLimit: 5,
           createdAt: new Date().toISOString()
         };
         try {
@@ -260,6 +267,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: uploadedPhotoURL,
           role: finalRole,
           isApproved: finalRole === 'admin' || finalRole === 'user',
+          planId: 'free',
+          planLimit: 5,
           createdAt: new Date().toISOString(),
           ...extraData
         };

@@ -348,125 +348,103 @@ export function Home() {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.8 }}
-        className="py-16 bg-white relative overflow-hidden"
+        transition={{ duration: 1 }}
+        className="py-24 bg-gray-50 relative overflow-hidden flex flex-col items-center"
       >
-        {/* Background Decoration */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#cb6ce6 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
-        
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-10 relative z-10">
-          <div className="flex flex-col items-center text-center">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-xs font-bold uppercase tracking-widest mb-4 border border-brand-purple/20">
-              <Crown className="h-3 w-3" />
-              <span>Parceiros de Elite</span>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 relative z-10 text-center">
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="flex flex-col items-center"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-xs font-bold uppercase tracking-widest mb-4 border border-brand-purple/20">
+              <Sparkles className="h-4 w-4" />
+              <span>Rede de Elite MeuPlace</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Imobiliárias Premium</h2>
-            <div className="h-1 w-20 bg-brand-purple rounded-full"></div>
-          </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
+              Imobiliárias Premium
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
+              As agências mais conceituadas e confiáveis do mercado imobiliário em Moçambique.
+            </p>
+          </motion.div>
         </div>
         
-        <div className="relative w-full flex overflow-x-hidden group">
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white via-white/80 to-transparent z-10"></div>
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white via-white/80 to-transparent z-10"></div>
+        <div className="relative w-full flex overflow-x-hidden group z-10">
+          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
           
-          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center py-4">
-            {/* First set of logos */}
-            {premiumAgencies.length > 0 && (
-              premiumAgencies.map((agency, idx) => (
-                <div key={`agency-1-${agency.id}`} className="flex flex-col items-center gap-2 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
-                  <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover/logo:shadow-xl group-hover/logo:border-brand-purple/30 transition-all duration-300">
-                    {agency.websiteUrl ? (
-                      <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
-                        {agency.logoUrl ? (
-                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
-                          </div>
-                        )}
-                      </a>
-                    ) : (
-                      <>
-                        {agency.logoUrl ? (
-                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  
-                  {/* Social Links */}
-                  {(agency.facebookUrl || agency.instagramUrl) && (
-                    <div className="flex gap-3 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
-                      {agency.facebookUrl && (
-                        <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                          <Facebook className="h-4 w-4" />
+          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center py-8">
+            {/* DUPLICATED Content for seamless scroll */}
+            {[...Array(2)].map((_, loopIdx) => (
+              <div key={`loop-${loopIdx}`} className="flex items-center">
+                {premiumAgencies.length > 0 && premiumAgencies.map((agency) => (
+                  <div 
+                    key={`agency-loop-${loopIdx}-${agency.id}`} 
+                    className="flex flex-col items-center gap-3 mx-6 sm:mx-10 cursor-pointer group/logo transition-transform duration-300 hover:-translate-y-2"
+                  >
+                    <div className="p-4 sm:p-6 bg-white rounded-3xl shadow-sm border border-gray-100 flex items-center justify-center min-w-[280px] sm:min-w-[380px] h-48 sm:h-56 transition-all duration-300 group-hover/logo:shadow-2xl group-hover/logo:border-gray-200">
+                      {agency.websiteUrl ? (
+                        <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="w-full h-full flex items-center justify-center">
+                          {agency.logoUrl ? (
+                            <img 
+                              src={agency.logoUrl} 
+                              alt={agency.name} 
+                              className="max-h-[85%] max-w-[85%] object-contain filter grayscale opacity-80 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-110 transition-all duration-500" 
+                            />
+                          ) : (
+                            <div className="flex items-center gap-4">
+                              <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                              <span className="text-2xl font-extrabold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            </div>
+                          )}
                         </a>
-                      )}
-                      {agency.instagramUrl && (
-                        <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
-                          <Instagram className="h-4 w-4" />
-                        </a>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          {agency.logoUrl ? (
+                            <img 
+                              src={agency.logoUrl} 
+                              alt={agency.name} 
+                              className="max-h-[85%] max-w-[85%] object-contain filter grayscale opacity-80 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-110 transition-all duration-500" 
+                            />
+                          ) : (
+                            <div className="flex items-center gap-4">
+                              <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                              <span className="text-2xl font-extrabold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              ))
-            )}
-            
-            {/* Second set of logos (duplicated for seamless loop) */}
-            {premiumAgencies.length > 0 && (
-              premiumAgencies.map((agency, idx) => (
-                <div key={`agency-2-${agency.id}`} className="flex flex-col items-center gap-2 mx-10 sm:mx-16 transition-all duration-300 hover:scale-110 cursor-pointer group/logo">
-                  <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover/logo:shadow-xl group-hover/logo:border-brand-purple/30 transition-all duration-300">
-                    {agency.websiteUrl ? (
-                      <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
-                        {agency.logoUrl ? (
-                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
-                          </div>
-                        )}
-                      </a>
-                    ) : (
-                      <>
-                        {agency.logoUrl ? (
-                          <img src={agency.logoUrl} alt={agency.name} className="h-20 sm:h-24 object-contain max-w-[250px] filter grayscale group-hover/logo:grayscale-0 transition-all duration-500" />
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                            <span className="text-2xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
+                    
+                    {/* Floating Agency Info */}
+                    <div className="flex flex-col items-center gap-2 min-h-[30px] mt-2">
 
-                  {/* Social Links */}
-                  {(agency.facebookUrl || agency.instagramUrl) && (
-                    <div className="flex gap-3 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-300">
-                      {agency.facebookUrl && (
-                        <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                          <Facebook className="h-4 w-4" />
-                        </a>
-                      )}
-                      {agency.instagramUrl && (
-                        <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
-                          <Instagram className="h-4 w-4" />
-                        </a>
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest group-hover/logo:text-brand-purple transition-colors">
+                        {agency.name}
+                      </span>
+                      {(agency.facebookUrl || agency.instagramUrl) && (
+                        <div className="flex gap-2 opacity-0 translate-y-1 group-hover/logo:opacity-100 group-hover/logo:translate-y-0 transition-all duration-300">
+                          {agency.facebookUrl && (
+                            <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                              <Facebook className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                          {agency.instagramUrl && (
+                            <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
+                              <Instagram className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              ))
-            )}
+                  </div>
+                ))}
+              </div>
+            ))}
+            
           </div>
         </div>
       </motion.section>

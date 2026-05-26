@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, getDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, getDoc, where, getCountFromServer } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { Property } from '@/types';
@@ -14,6 +14,30 @@ export const propertyService = {
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, path);
       return [];
+    }
+  },
+
+  async getPropertiesByAgent(agentId: string) {
+    const path = 'properties';
+    try {
+      const q = query(collection(db, path), where('agentId', '==', agentId), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async getAgentPropertyCount(agentId: string) {
+    const path = 'properties';
+    try {
+      const q = query(collection(db, path), where('agentId', '==', agentId));
+      const snapshot = await getCountFromServer(q);
+      return snapshot.data().count;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, path);
+      return 0;
     }
   },
 

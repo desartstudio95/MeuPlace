@@ -12,12 +12,15 @@ import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
 import { propertyService } from '@/services/propertyService';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { PLANS, DEFAULT_PLAN_LIMIT } from '@/constants/plans';
 
 export function AddProperty() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
   const { addNotification } = useNotifications();
+  const [propertyCount, setPropertyCount] = useState<number | null>(null);
+  const [isCheckingLimit, setIsCheckingLimit] = useState(true);
   const initialStep = parseInt(searchParams.get('step') || '1');
   const [step, setStep] = useState(initialStep);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -25,17 +28,46 @@ export function AddProperty() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Check approval status
+  // Check approval status and property limit
   useEffect(() => {
-    if (userProfile && !userProfile.isApproved) {
-      addNotification({
-        title: 'Acesso Restrito',
-        message: 'Seu cadastro está pendente de aprovação. Você não pode adicionar imóveis no momento.',
-        type: 'error'
-      });
-      navigate('/');
-    }
-  }, [userProfile, navigate, addNotification]);
+    const checkUserStatus = async () => {
+      if (!userProfile || !currentUser) return;
+
+      // Check approval
+      if (!userProfile.isApproved) {
+        addNotification({
+          title: 'Acesso Restrito',
+          message: 'Seu cadastro está pendente de aprovação. Você não pode adicionar imóveis no momento.',
+          type: 'error'
+        });
+        navigate('/');
+        return;
+      }
+
+      // Check limit
+      try {
+        const count = await propertyService.getAgentPropertyCount(currentUser.uid);
+        setPropertyCount(count);
+        
+        const limit = userProfile.planLimit || DEFAULT_PLAN_LIMIT;
+        
+        if (count >= limit && userProfile.role !== 'admin') {
+          addNotification({
+            title: 'Limite de Anúncios Atingido',
+            message: `Você atingiu o limite de ${limit} anúncios do seu plano atual. Faça o upgrade para anunciar mais.`,
+            type: 'warning'
+          });
+          navigate('/plans');
+        }
+      } catch (error) {
+        console.error("Error checking property limit:", error);
+      } finally {
+        setIsCheckingLimit(false);
+      }
+    };
+
+    checkUserStatus();
+  }, [userProfile, currentUser, navigate, addNotification]);
   
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -237,6 +269,10 @@ export function AddProperty() {
       setIsUploading(false);
     }
   };
+
+  if (isCheckingLimit || isUploading) {
+    return <LoadingScreen />;
+  }
 
   const packages = [
     {
