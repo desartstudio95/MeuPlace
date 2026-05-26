@@ -50,6 +50,7 @@ import { AdminStatistics } from '@/pages/admin/Statistics';
 import { AdminPages } from '@/pages/admin/Pages';
 import { SeoAudit } from '@/pages/admin/SeoAudit';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
+import { AdminTools } from '@/pages/admin/Tools';
 
 export default function App() {
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -157,6 +158,7 @@ export default function App() {
               <Route path="/admin/pages" element={<AdminLayout><AdminPages /></AdminLayout>} />
               <Route path="/admin/seo" element={<AdminLayout><SeoAudit /></AdminLayout>} />
               <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
+              <Route path="/admin/tools" element={<AdminLayout><AdminTools /></AdminLayout>} />
             </Route>
 
             {/* Public and User Routes */}

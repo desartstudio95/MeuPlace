@@ -26,6 +26,7 @@ const mockProperties = [
     area: 950,
     features: ['Piscina Borda Infinita', 'Smart Home', 'Ginásio', 'Cinema', 'Adega', 'Garagem p/ 5 Carros', 'Segurança 24h'],
     isApproved: true,
+    isPromoted: true,
   },
   {
     title: 'Cobertura Triplex de Luxo na Polana',
@@ -46,6 +47,7 @@ const mockProperties = [
     area: 420,
     features: ['Vista Mar 360º', 'Jacuzzi Privado', 'Elevador Exclusivo', 'Área Gourmet', 'Cozinha de Chef'],
     isApproved: true,
+    isPromoted: true,
   },
   {
     title: 'Eco-Villa Frente ao Mar em Ponta do Ouro',
@@ -66,6 +68,7 @@ const mockProperties = [
     area: 600,
     features: ['Acesso Privado à Praia', '100% Energia Solar', 'Deck Panorâmico', 'Design Ecológico', 'Zonas Verdes Privadas'],
     isApproved: true,
+    isPromoted: true,
   },
   {
     title: 'Propriedade Equestre Premium Matola Rio',
@@ -85,6 +88,7 @@ const mockProperties = [
     area: 15000,
     features: ['Estábulos', 'Picadeiro Coberto', 'Arborização Abundante', 'Trilhos Privados', 'Casa de Hóspedes'],
     isApproved: true,
+    isPromoted: true,
   }
 ];
 
@@ -146,6 +150,37 @@ const mockResorts = [
   }
 ];
 
+const mockAgencies = [
+  {
+    name: 'Pam Golding Properties',
+    logoUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',
+    websiteUrl: 'https://www.pamgolding.co.mz',
+    isActive: true,
+    order: 1
+  },
+  {
+    name: 'RE/MAX Moçambique',
+    logoUrl: 'https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',
+    websiteUrl: 'https://www.remax.co.mz',
+    isActive: true,
+    order: 2
+  },
+  {
+    name: 'ERA Imobiliária',
+    logoUrl: 'https://images.unsplash.com/photo-1560520031-3a4dc4e9de0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',
+    websiteUrl: 'https://www.era.co.mz',
+    isActive: true,
+    order: 3
+  },
+  {
+    name: 'Century 21',
+    logoUrl: 'https://images.unsplash.com/photo-1560448205-4d9b3e6bb6db?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80',
+    websiteUrl: 'https://www.century21.co.mz',
+    isActive: true,
+    order: 4
+  }
+];
+
 export function MockDataAdmin() {
   const { addNotification } = useNotifications();
   const { currentUser } = useAuth();
@@ -182,9 +217,17 @@ export function MockDataAdmin() {
         });
       }
 
+      // Add premium agencies
+      for (const agency of mockAgencies) {
+        await addDoc(collection(db, 'premium_agencies'), {
+          ...agency,
+          createdAt: serverTimestamp()
+        });
+      }
+
       addNotification({
         title: 'Sucesso',
-        message: 'Foram gerados imóveis, resorts e hotéis de teste.',
+        message: 'Foram gerados imóveis, resorts e agências de demonstração.',
         type: 'success'
       });
       

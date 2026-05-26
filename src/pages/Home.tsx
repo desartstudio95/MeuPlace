@@ -349,9 +349,9 @@ export function Home() {
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1 }}
-        className="py-24 bg-gray-50 relative overflow-hidden flex flex-col items-center"
+        className="py-12 bg-gray-50 relative overflow-hidden flex flex-col items-center"
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 relative z-10 text-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6 relative z-10 text-center">
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
@@ -359,45 +359,45 @@ export function Home() {
             transition={{ duration: 0.7 }}
             className="flex flex-col items-center"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-xs font-bold uppercase tracking-widest mb-4 border border-brand-purple/20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-[10px] font-bold uppercase tracking-widest mb-3 border border-brand-purple/20">
               <Sparkles className="h-4 w-4" />
               <span>Rede de Elite MeuPlace</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">
               Imobiliárias Premium
             </h2>
-            <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto">
+            <p className="text-gray-600 text-sm max-w-2xl mx-auto">
               As agências mais conceituadas e confiáveis do mercado imobiliário em Moçambique.
             </p>
           </motion.div>
         </div>
         
         <div className="relative w-full flex overflow-x-hidden group z-10">
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
           
-          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center py-8">
+          <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center py-4">
             {/* DUPLICATED Content for seamless scroll */}
             {[...Array(2)].map((_, loopIdx) => (
               <div key={`loop-${loopIdx}`} className="flex items-center">
                 {premiumAgencies.length > 0 && premiumAgencies.map((agency) => (
                   <div 
                     key={`agency-loop-${loopIdx}-${agency.id}`} 
-                    className="flex flex-col items-center gap-3 mx-6 sm:mx-10 cursor-pointer group/logo transition-transform duration-300 hover:-translate-y-2"
+                    className="flex flex-col items-center gap-2 mx-4 sm:mx-6 cursor-pointer group/logo transition-transform duration-300 hover:-translate-y-1"
                   >
-                    <div className="p-4 sm:p-6 bg-white rounded-3xl shadow-sm border border-gray-100 flex items-center justify-center min-w-[280px] sm:min-w-[380px] h-48 sm:h-56 transition-all duration-300 group-hover/logo:shadow-2xl group-hover/logo:border-gray-200">
+                    <div className="p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center min-w-[200px] sm:min-w-[240px] h-24 sm:h-28 transition-all duration-300 group-hover/logo:shadow-xl group-hover/logo:border-gray-200">
                       {agency.websiteUrl ? (
                         <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="w-full h-full flex items-center justify-center">
                           {agency.logoUrl ? (
                             <img 
                               src={agency.logoUrl} 
                               alt={agency.name} 
-                              className="max-h-[85%] max-w-[85%] object-contain filter grayscale opacity-80 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-110 transition-all duration-500" 
+                              className="max-h-[80%] max-w-[80%] object-contain filter grayscale opacity-70 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-105 transition-all duration-500" 
                             />
                           ) : (
-                            <div className="flex items-center gap-4">
-                              <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                              <span className="text-2xl font-extrabold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            <div className="flex items-center gap-3">
+                              <Building2 className="h-8 w-8 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                              <span className="text-xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
                             </div>
                           )}
                         </a>
@@ -407,12 +407,12 @@ export function Home() {
                             <img 
                               src={agency.logoUrl} 
                               alt={agency.name} 
-                              className="max-h-[85%] max-w-[85%] object-contain filter grayscale opacity-80 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-110 transition-all duration-500" 
+                              className="max-h-[80%] max-w-[80%] object-contain filter grayscale opacity-70 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-105 transition-all duration-500" 
                             />
                           ) : (
-                            <div className="flex items-center gap-4">
-                              <Building2 className="h-16 w-16 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
-                              <span className="text-2xl font-extrabold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
+                            <div className="flex items-center gap-3">
+                              <Building2 className="h-8 w-8 text-gray-400 group-hover/logo:text-brand-purple transition-colors" />
+                              <span className="text-xl font-bold text-gray-800 whitespace-nowrap group-hover/logo:text-brand-purple transition-colors">{agency.name}</span>
                             </div>
                           )}
                         </div>
@@ -420,21 +420,21 @@ export function Home() {
                     </div>
                     
                     {/* Floating Agency Info */}
-                    <div className="flex flex-col items-center gap-2 min-h-[30px] mt-2">
+                    <div className="flex flex-col items-center gap-1 min-h-[20px] mt-1">
 
-                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest group-hover/logo:text-brand-purple transition-colors">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover/logo:text-brand-purple transition-colors">
                         {agency.name}
                       </span>
                       {(agency.facebookUrl || agency.instagramUrl) && (
                         <div className="flex gap-2 opacity-0 translate-y-1 group-hover/logo:opacity-100 group-hover/logo:translate-y-0 transition-all duration-300">
                           {agency.facebookUrl && (
-                            <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                              <Facebook className="h-3.5 w-3.5" />
+                            <a href={agency.facebookUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                              <Facebook className="h-3 w-3" />
                             </a>
                           )}
                           {agency.instagramUrl && (
-                            <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
-                              <Instagram className="h-3.5 w-3.5" />
+                            <a href={agency.instagramUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-colors">
+                              <Instagram className="h-3 w-3" />
                             </a>
                           )}
                         </div>
@@ -547,57 +547,67 @@ export function Home() {
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {resorts.map((resort, idx) => (
-              <motion.div
-                key={resort.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-              >
-                <Link to={`/resort/${resort.id}`} className="group block bg-white rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 h-full">
-                  <div className="relative h-64 overflow-hidden">
-                    <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    
-                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/20">
-                      <Star className="h-4 w-4 text-amber-500 fill-current" />
-                      <span className="text-sm font-bold text-gray-900">{resort.rating}</span>
-                    </div>
-                    
-                    <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-                      <Button className="w-full bg-white text-brand-purple hover:bg-brand-purple hover:text-white font-bold rounded-xl shadow-xl">
-                        Ver Detalhes
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="p-6">
-                    <div className="flex items-center gap-2 text-brand-purple text-[10px] font-bold uppercase tracking-widest mb-2">
-                      <Crown className="h-3 w-3" />
-                      <span>Premium Choice</span>
-                    </div>
-                    <h3 className="text-xl font-extrabold text-gray-900 mb-2 group-hover:text-brand-purple transition-colors leading-tight">{resort.name}</h3>
-                    <div className="flex items-center text-gray-500 text-sm mb-4">
-                      <MapPin className="h-4 w-4 mr-1.5 text-brand-green flex-shrink-0" />
-                      <span className="truncate font-medium">{resort.location}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      <div>
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Preço por noite</p>
-                        <p className="text-xl text-brand-purple font-black">
-                          {resort.price}
-                        </p>
-                      </div>
-                      <div className="h-10 w-10 rounded-full bg-brand-green/10 flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all">
-                        <ArrowRight className="h-5 w-5" />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+          <div className="relative w-full flex overflow-x-hidden group z-10">
+            <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+            
+            <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-stretch py-4">
+              {[...Array(2)].map((_, loopIdx) => (
+                <div key={`loop-${loopIdx}`} className="flex items-stretch mx-3">
+                  {resorts.map((resort, idx) => (
+                    <motion.div
+                      key={`resort-${loopIdx}-${resort.id}`}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="mx-3 w-[280px] sm:w-[320px] flex-shrink-0"
+                    >
+                      <Link to={`/resort/${resort.id}`} className="group flex-col bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100 h-full flex">
+                        <div className="relative h-48 overflow-hidden flex-shrink-0">
+                          <img src={resort.image} alt={resort.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                          
+                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
+                            <Star className="h-3 w-3 text-amber-500 fill-current" />
+                            <span className="text-xs font-bold text-gray-900">{resort.rating}</span>
+                          </div>
+                          
+                          <div className="absolute bottom-3 left-3 right-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+                            <Button className="w-full bg-white text-brand-purple hover:bg-brand-purple hover:text-white font-bold rounded-lg shadow-lg text-sm h-9">
+                              Ver Detalhes
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 flex flex-col flex-grow">
+                          <div className="flex items-center gap-1.5 text-brand-purple text-[9px] font-bold uppercase tracking-widest mb-1.5">
+                            <Crown className="h-2.5 w-2.5" />
+                            <span>Premium Choice</span>
+                          </div>
+                          <h3 className="text-lg font-extrabold text-gray-900 mb-1.5 group-hover:text-brand-purple transition-colors leading-tight line-clamp-1">{resort.name}</h3>
+                          <div className="flex items-center text-gray-500 text-xs mb-3">
+                            <MapPin className="h-3 w-3 mr-1 text-brand-green flex-shrink-0" />
+                            <span className="truncate font-medium">{resort.location}</span>
+                          </div>
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-auto">
+                            <div>
+                              <p className="text-[9px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Preço por noite</p>
+                              <p className="text-base text-brand-purple font-black">
+                                {resort.price}
+                              </p>
+                            </div>
+                            <div className="h-8 w-8 rounded-full bg-brand-green/10 flex items-center justify-center group-hover:bg-brand-green group-hover:text-white transition-all">
+                              <ArrowRight className="h-4 w-4" />
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

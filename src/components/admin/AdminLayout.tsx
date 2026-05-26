@@ -12,7 +12,8 @@ import {
   Settings,
   CreditCard,
   BarChart,
-  FileText
+  FileText,
+  Database
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -44,6 +45,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: 'Estatísticas', path: '/admin/statistics', icon: BarChart },
     { name: 'Páginas Estáticas', path: '/admin/pages', icon: FileText },
     { name: 'SEO & Sitemap', path: '/admin/seo', icon: BarChart },
+    { name: 'Ferramentas', path: '/admin/tools', icon: Database },
     { name: 'Configurações', path: '/admin/settings', icon: Settings },
   ];
 
