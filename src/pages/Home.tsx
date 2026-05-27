@@ -321,6 +321,13 @@ export function Home() {
                     Pesquisar
                   </Button>
                 </div>
+                
+                <div className="mt-4 text-center">
+                  <Link to="/map" className="inline-flex items-center gap-2 text-brand-purple hover:text-brand-purple-hover font-bold transition-colors">
+                    <MapPin className="h-4 w-4" />
+                    Abrir Pesquisa no Mapa Interativo
+                  </Link>
+                </div>
               </div>
             )}
           </motion.div>
@@ -373,9 +380,6 @@ export function Home() {
         </div>
         
         <div className="relative w-full flex overflow-x-hidden group z-10">
-          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
-          
           <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-center py-4">
             {/* DUPLICATED Content for seamless scroll */}
             {[...Array(2)].map((_, loopIdx) => (
@@ -385,14 +389,14 @@ export function Home() {
                     key={`agency-loop-${loopIdx}-${agency.id}`} 
                     className="flex flex-col items-center gap-2 mx-4 sm:mx-6 cursor-pointer group/logo transition-transform duration-300 hover:-translate-y-1"
                   >
-                    <div className="p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center min-w-[200px] sm:min-w-[240px] h-24 sm:h-28 transition-all duration-300 group-hover/logo:shadow-xl group-hover/logo:border-gray-200">
+                    <div className="flex items-center justify-center min-w-[200px] sm:min-w-[240px] h-24 sm:h-28 transition-all duration-300">
                       {agency.websiteUrl ? (
                         <a href={agency.websiteUrl} target="_blank" rel="noopener noreferrer" className="w-full h-full flex items-center justify-center">
                           {agency.logoUrl ? (
                             <img 
                               src={agency.logoUrl} 
                               alt={agency.name} 
-                              className="max-h-[80%] max-w-[80%] object-contain filter grayscale opacity-70 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-105 transition-all duration-500" 
+                              className="max-h-[80%] max-w-[80%] object-contain filter group-hover/logo:scale-105 transition-all duration-500" 
                             />
                           ) : (
                             <div className="flex items-center gap-3">
@@ -407,7 +411,7 @@ export function Home() {
                             <img 
                               src={agency.logoUrl} 
                               alt={agency.name} 
-                              className="max-h-[80%] max-w-[80%] object-contain filter grayscale opacity-70 group-hover/logo:grayscale-0 group-hover/logo:opacity-100 group-hover/logo:scale-105 transition-all duration-500" 
+                              className="max-h-[80%] max-w-[80%] object-contain filter group-hover/logo:scale-105 transition-all duration-500" 
                             />
                           ) : (
                             <div className="flex items-center gap-3">
@@ -548,9 +552,6 @@ export function Home() {
           </motion.div>
 
           <div className="relative w-full flex overflow-x-hidden group z-10">
-            <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
-            <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
-            
             <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] items-stretch py-4">
               {[...Array(2)].map((_, loopIdx) => (
                 <div key={`loop-${loopIdx}`} className="flex items-stretch mx-3">

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Property } from '@/types';
-import { MapPin, Bed, Bath, Maximize, Heart, MessageCircle, ChevronLeft, ChevronRight, Star, BadgeCheck } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Heart, MessageCircle, ChevronLeft, ChevronRight, Star, BadgeCheck, SplitSquareHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCompare } from '@/context/CompareContext';
 
 export interface PropertyCardProps {
   property: Property;
@@ -14,6 +15,8 @@ export interface PropertyCardProps {
 export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className = '', isHighlighted = false }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const { addToCompare, removeFromCompare, isComparing } = useCompare();
+  const comparing = isComparing(property.id);
 
   const nextImage = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -25,6 +28,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
     e.preventDefault();
     e.stopPropagation();
     setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
+  };
+
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (comparing) {
+      removeFromCompare(property.id);
+    } else {
+      addToCompare(property);
+    }
   };
 
   return (
@@ -82,9 +95,21 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, className 
             </>
         )}
 
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
           <button className="p-1.5 bg-white/90 backdrop-blur-sm rounded-md hover:bg-white text-gray-600 hover:text-red-500 transition-colors shadow-sm">
             <Heart className="h-4 w-4" />
+          </button>
+          <button 
+            type="button"
+            onClick={handleCompareClick}
+            className={`p-1.5 backdrop-blur-sm rounded-md transition-colors shadow-sm ${
+              comparing 
+                ? 'bg-brand-green text-white' 
+                : 'bg-white/90 hover:bg-white text-gray-600 hover:text-brand-green'
+            }`}
+             title={comparing ? "Remover da comparação" : "Adicionar à comparação"}
+          >
+            <SplitSquareHorizontal className="h-4 w-4" />
           </button>
         </div>
         <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">

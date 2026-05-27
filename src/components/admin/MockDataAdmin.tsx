@@ -27,6 +27,11 @@ const mockProperties = [
     features: ['Piscina Borda Infinita', 'Smart Home', 'Ginásio', 'Cinema', 'Adega', 'Garagem p/ 5 Carros', 'Segurança 24h'],
     isApproved: true,
     isPromoted: true,
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    virtualTourUrl: 'https://my.matterport.com/show/?m=xyz123',
+    roiPercentage: 7.5,
+    condominiumFee: 25000,
+    coordinates: { lat: -25.9555, lng: 32.5888 }
   },
   {
     title: 'Cobertura Triplex de Luxo na Polana',
@@ -48,6 +53,8 @@ const mockProperties = [
     features: ['Vista Mar 360º', 'Jacuzzi Privado', 'Elevador Exclusivo', 'Área Gourmet', 'Cozinha de Chef'],
     isApproved: true,
     isPromoted: true,
+    condominiumFee: 15000,
+    coordinates: { lat: -25.9692, lng: 32.5932 }
   },
   {
     title: 'Eco-Villa Frente ao Mar em Ponta do Ouro',
@@ -69,6 +76,8 @@ const mockProperties = [
     features: ['Acesso Privado à Praia', '100% Energia Solar', 'Deck Panorâmico', 'Design Ecológico', 'Zonas Verdes Privadas'],
     isApproved: true,
     isPromoted: true,
+    roiPercentage: 11.2,
+    coordinates: { lat: -26.8395, lng: 32.8837 }
   },
   {
     title: 'Propriedade Equestre Premium Matola Rio',
@@ -89,6 +98,9 @@ const mockProperties = [
     features: ['Estábulos', 'Picadeiro Coberto', 'Arborização Abundante', 'Trilhos Privados', 'Casa de Hóspedes'],
     isApproved: true,
     isPromoted: true,
+    condominiumFee: 0,
+    roiPercentage: 5.4,
+    coordinates: { lat: -25.9525, lng: 32.4412 }
   }
 ];
 

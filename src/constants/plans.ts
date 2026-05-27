@@ -10,66 +10,68 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: 'free',
-    name: 'Grátis',
+    name: 'Básico (Grátis)',
     price: 0,
     limit: 5,
-    description: 'Comece a anunciar seus imóveis gratuitamente.',
+    description: 'Para quem está a começar no mercado imobiliário.',
     features: [
       'Até 5 anúncios de imóveis',
-      'Suporte básico',
-      'Visibilidade padrão'
+      '0 Imóveis em Destaque (Spotlight)',
+      'Suporte via email'
     ]
   },
   {
-    id: 'basic',
-    name: 'Plano 1',
-    price: 300,
+    id: 'pro-10',
+    name: 'Pro 10',
+    price: 800,
     limit: 10,
-    description: 'Para agentes individuais que precisam de mais espaço.',
+    description: 'Para agentes individuais que procuram mais resultados.',
     features: [
       'Até 10 anúncios de imóveis',
+      '2 Imóveis em Destaque (Spotlight)',
       'Suporte prioritário',
-      'Visibilidade aumentada'
+      'Análise de Estatísticas Básicas'
     ]
   },
   {
-    id: 'professional',
-    name: 'Plano 2',
-    price: 700,
-    limit: 20,
-    description: 'Ideal para agentes em crescimento.',
+    id: 'pro-25',
+    name: 'Pro 25',
+    price: 1500,
+    limit: 25,
+    description: 'Ideal para agentes estabelecidos e pequenas equipas.',
     features: [
-      'Até 20 anúncios de imóveis',
-      'Suporte prioritário',
-      'Selo de verificação',
-      'Estatísticas detalhadas'
+      'Até 25 anúncios de imóveis',
+      '5 Imóveis em Destaque (Spotlight)',
+      'Selo de Agente Verificado',
+      'Estatísticas Detalhadas de Retorno (ROI)'
     ]
   },
   {
-    id: 'business',
-    name: 'Plano 3',
-    price: 1200,
-    limit: 30,
-    description: 'Para agências que buscam resultados consistentes.',
+    id: 'agency',
+    name: 'Agência (100 Anúncios)',
+    price: 4500,
+    limit: 100,
+    description: 'Para agências médias com portfólio robusto.',
     features: [
-      'Até 30 anúncios de imóveis',
-      'Suporte 24/7',
-      'Destaque nos resultados de busca',
-      'Gestão de equipe básica'
+      'Até 100 anúncios de imóveis',
+      '20 Imóveis em Destaque (Spotlight)',
+      'Gestão Centralizada de Agentes',
+      'Rede de Imobiliárias',
+      'Tours 360 Matterport Suportados'
     ]
   },
   {
     id: 'unlimited',
-    name: 'Plano Premium / Ilimitado',
-    price: 2500,
+    name: 'Enterprise Premium',
+    price: 9500,
     limit: 999999, // Unlimited
-    description: 'A solução definitiva para grandes agências.',
+    description: 'Solução sem limites com posicionamento garantido.',
     features: [
-      'Anúncios ilimitados',
-      'Acesso à secção Imobiliárias Premium',
-      'Gerente de conta dedicado',
-      'Máxima visibilidade em toda a plataforma',
-      'Exportação de relatórios'
+      'Anúncios Ilimitados',
+      '50 Imóveis em Destaque (Spotlight)',
+      'Presença Exclusiva na secção Imobiliárias Premium',
+      'Apoio Jurídico e Documental',
+      'Gestor de Conta Dedicado'
     ]
   }
 ];

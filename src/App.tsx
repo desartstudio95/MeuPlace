@@ -52,6 +52,11 @@ import { SeoAudit } from '@/pages/admin/SeoAudit';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminTools } from '@/pages/admin/Tools';
 
+import { MapSearch } from '@/pages/MapSearch';
+import { Compare } from '@/pages/Compare';
+
+import { CompareProvider } from '@/context/CompareContext';
+
 export default function App() {
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
@@ -140,8 +145,9 @@ export default function App() {
     <HelmetProvider>
         <AuthProvider>
           <NotificationProvider>
+            <CompareProvider>
             <Router>
-            <ScrollToTop />
+              <ScrollToTop />
             <Routes>
             {/* Secret Admin Login Route */}
             <Route path="/admin-secret-access" element={<AdminLogin />} />
@@ -167,6 +173,8 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/properties" element={<Properties />} />
+                  <Route path="/map" element={<MapSearch />} />
+                  <Route path="/compare" element={<Compare />} />
                   <Route path="/properties/:id" element={<PropertyDetails />} />
                   <Route path="/resort/:id" element={<ResortDetails />} />
                   <Route path="/agent/:name" element={<AgentProfile />} />
@@ -202,6 +210,7 @@ export default function App() {
           <CookieConsent />
           <Toaster position="bottom-right" richColors />
         </Router>
+        </CompareProvider>
       </NotificationProvider>
     </AuthProvider>
     </HelmetProvider>

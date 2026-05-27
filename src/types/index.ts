@@ -92,6 +92,11 @@ export interface Property {
   features?: string[];
   detailedLocation?: string;
   requestedPackage?: string;
+  videoUrl?: string;
+  virtualTourUrl?: string;
+  roiPercentage?: number;
+  condominiumFee?: number;
+  propertyTax?: number;
 }
 
 export interface Favorite {

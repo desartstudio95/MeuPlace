@@ -91,7 +91,11 @@ export function AddProperty() {
     area: '',
     features: [] as string[],
     agentName: '',
-    agentPhone: ''
+    agentPhone: '',
+    videoUrl: '',
+    virtualTourUrl: '',
+    roiPercentage: '',
+    condominiumFee: ''
   });
 
   useEffect(() => {
@@ -219,7 +223,7 @@ export function AddProperty() {
         userProfile?.isApproved === true || 
         (userProfile?.agencyName && imageUrls.length >= 3 && formData.description.length > 50);
 
-      const newProperty = {
+        const newProperty = {
         title: formData.title,
         description: formData.description,
         price: Number(formData.price),
@@ -233,6 +237,10 @@ export function AddProperty() {
         area: Number(formData.area) || 0,
         images: imageUrls,
         features: formData.features,
+        videoUrl: formData.videoUrl || undefined,
+        virtualTourUrl: formData.virtualTourUrl || undefined,
+        roiPercentage: formData.roiPercentage ? Number(formData.roiPercentage) : undefined,
+        condominiumFee: formData.condominiumFee ? Number(formData.condominiumFee) : undefined,
         agentId: currentUser.uid,
         agent: {
           name: formData.agentName || userProfile?.displayName || currentUser.email?.split('@')[0] || 'Agente',
@@ -459,6 +467,25 @@ export function AddProperty() {
                   <Input name="area" value={formData.area} onChange={handleInputChange} type="number" min="0" />
                 </div>
               </div>
+
+                <div className="pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vídeo de Apresentação (YouTube/Vimeo URl)</label>
+                    <Input name="videoUrl" value={formData.videoUrl} onChange={handleInputChange} placeholder="https://youtube.com/..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tour Virtual 360º (Matterport URl)</label>
+                    <Input name="virtualTourUrl" value={formData.virtualTourUrl} onChange={handleInputChange} placeholder="https://my.matterport.com/show/..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rentabilidade Estimada (ROI % / ano)</label>
+                    <Input name="roiPercentage" type="number" step="0.1" value={formData.roiPercentage} onChange={handleInputChange} placeholder="Ex: 8.5" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Taxa de Condomínio ({formData.currency})</label>
+                    <Input name="condominiumFee" type="number" value={formData.condominiumFee} onChange={handleInputChange} placeholder="Ex: 15000" />
+                  </div>
+                </div>
 
               <div className="pt-4 border-t border-gray-100">
                 <label className="block text-sm font-medium text-gray-700 mb-3">Comodidades do Imóvel</label>

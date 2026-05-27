@@ -97,9 +97,9 @@ export function Plans() {
   const getIcon = (planId: string) => {
     switch (planId) {
       case 'free': return Shield;
-      case 'basic': return Zap;
-      case 'professional': return Star;
-      case 'business': return Building2;
+      case 'pro-10': return Zap;
+      case 'pro-25': return Star;
+      case 'agency': return Building2;
       case 'unlimited': return Crown;
       default: return Zap;
     }
@@ -108,9 +108,9 @@ export function Plans() {
   const getColor = (planId: string) => {
     switch (planId) {
       case 'free': return 'text-gray-500';
-      case 'basic': return 'text-blue-500';
-      case 'professional': return 'text-green-500';
-      case 'business': return 'text-purple-500';
+      case 'pro-10': return 'text-blue-500';
+      case 'pro-25': return 'text-green-500';
+      case 'agency': return 'text-purple-500';
       case 'unlimited': return 'text-amber-500';
       default: return 'text-brand-green';
     }

@@ -581,6 +581,71 @@ export function PropertyDetails() {
               </div>
             </div>
           </div>
+
+          {/* ROI and Financials */}
+          {(property.roiPercentage || property.condominiumFee !== undefined) && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Análise Financeira</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {property.roiPercentage && (
+                  <div className="bg-green-50 border border-green-100 p-6 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <h3 className="font-bold text-green-800">Rentabilidade (ROI)</h3>
+                    </div>
+                    <p className="text-3xl font-black text-green-600">{property.roiPercentage}% <span className="text-base font-normal text-green-700">/ ano</span></p>
+                    <p className="text-sm text-green-700 mt-2">Estimativa de retorno sobre o investimento.</p>
+                  </div>
+                )}
+                {property.condominiumFee !== undefined && (
+                  <div className="bg-gray-50 border border-gray-100 p-6 rounded-xl">
+                    <h3 className="font-bold text-gray-800 mb-2">Taxa de Condomínio</h3>
+                    <p className="text-2xl font-bold text-gray-600">
+                      {property.currency} {property.condominiumFee.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ mês</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Virtual Tour */}
+          {property.virtualTourUrl && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Tour Virtual 360º (Matterport)</h2>
+              <div className="w-full aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                <iframe
+                  src={property.virtualTourUrl}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="xr-spatial-tracking"
+                  title="360 Virtual Tour"
+                  className="w-full h-full"
+                ></iframe>
+              </div>
+            </div>
+          )}
+
+          {/* Video Presentation */}
+          {property.videoUrl && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Apresentação em Vídeo</h2>
+              <div className="w-full aspect-video rounded-xl overflow-hidden bg-black">
+                <iframe
+                  src={property.videoUrl}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title="Property Video"
+                  className="w-full h-full"
+                ></iframe>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar / Agent Contact */}
