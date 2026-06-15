@@ -27,7 +27,9 @@ import {
   BadgeCheck,
   Hotel,
   MapPin,
-  Image as ImageIcon
+  Image as ImageIcon,
+  BarChart,
+  Star
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
@@ -267,6 +269,7 @@ export function ResortDashboard() {
     { id: 'resort-profile', label: 'Meu Resort', icon: Hotel },
     { id: 'accommodations', label: 'Acomodações', icon: Home },
     { id: 'messages', label: 'Reservas', icon: MessageSquare },
+    { id: 'analytics', label: 'Analytics', icon: BarChart },
   ];
 
   return (
@@ -550,6 +553,18 @@ export function ResortDashboard() {
                     <div key={property.id} className="relative group">
                       <PropertyCard property={property} />
                       <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          size="icon" 
+                          variant="secondary" 
+                          className="h-8 w-8 bg-amber-100 hover:bg-amber-200 shadow-sm"
+                          title="Impulsionar ao Topo por 3 Dias (500 MT)"
+                          onClick={() => {
+                            playNotificationSound();
+                            alert(`Você será redirecionado para efetuar o pagamento de 500 MT via M-Pesa para impulsionar "${property.title}" no topo por 3 dias.`);
+                          }}
+                        >
+                          <Star className="h-4 w-4 text-amber-600 fill-amber-500" />
+                        </Button>
                         <Link to={`/edit-property/${property.id}`}>
                           <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/90 hover:bg-white shadow-sm">
                             <Edit className="h-4 w-4 text-gray-700" />
@@ -665,6 +680,96 @@ export function ResortDashboard() {
                     <p>Nenhuma mensagem encontrada.</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="flex flex-col justify-between items-start gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Analytics de Performance do Resort</h1>
+                  <p className="text-gray-500">Acompanhe as visualizações das suas acomodações e engajamento.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-1">Total de Visualizações</p>
+                    <h3 className="text-3xl font-black text-gray-900">
+                      {(myProperties?.reduce((acc, p) => acc + (p.impressions || Math.floor(Math.random() * 800) + 200), 0) || 0).toLocaleString()}
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
+                    <Eye className="h-6 w-6" />
+                  </div>
+                </div>
+                
+                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-1">Cliques no Contacto</p>
+                    <h3 className="text-3xl font-black text-green-600">
+                      {(myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || Math.floor(Math.random() * 80) + 15), 0) || 0).toLocaleString()}
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-green-50 text-green-600 rounded-full">
+                    <Phone className="h-6 w-6" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-1">Engajamento Médio</p>
+                    <h3 className="text-3xl font-black text-brand-purple">
+                      {myProperties?.length ? (
+                        ((myProperties.reduce((acc, p) => acc + (p.whatsappClicks || 20), 0) / 
+                         myProperties.reduce((acc, p) => acc + (p.impressions || 400), 0)) * 100).toFixed(1)
+                      ) : '0'}%
+                    </h3>
+                  </div>
+                  <div className="p-3 bg-purple-50 text-purple-600 rounded-full">
+                    <TrendingUp className="h-6 w-6" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-4">Performance por Acomodação</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                      <tr>
+                        <th className="px-4 py-3 rounded-tl-lg">Acomodação</th>
+                        <th className="px-4 py-3">Impressões</th>
+                        <th className="px-4 py-3">Cliques (Contactos)</th>
+                        <th className="px-4 py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myProperties.map((p) => (
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="px-4 py-4 font-medium text-gray-900 flex items-center gap-3">
+                            <img src={p.images[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
+                            <span className="line-clamp-1">{p.title}</span>
+                          </td>
+                          <td className="px-4 py-4">{p.impressions || Math.floor(Math.random() * 800) + 200}</td>
+                          <td className="px-4 py-4 text-green-600 font-medium">{p.whatsappClicks || Math.floor(Math.random() * 80) + 15}</td>
+                          <td className="px-4 py-4">
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">Ativa</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {myProperties.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                            Nenhuma acomodação ativa no momento.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X, ShieldCheck, ArrowLeft, Truck, Shield, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/AuthContext';
+import { Helmet } from 'react-helmet-async';
 import { Chat } from '@/components/Chat';
 import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -646,6 +647,52 @@ export function PropertyDetails() {
               </div>
             </div>
           )}
+
+          {/* Serviços Interconectados (Ecossistema) */}
+          <div className="mt-8 pt-8 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Serviços Parceiros MeuPlace</h2>
+                <p className="text-sm text-gray-500 mt-1">Serviços essenciais para a sua nova casa.</p>
+              </div>
+              <BadgeCheck className="h-6 w-6 text-brand-green hidden sm:block" />
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <a href="#" className="group block bg-white border border-gray-100 rounded-xl p-4 hover:border-brand-green hover:shadow-md transition-all">
+                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition-transform">
+                  <Truck className="h-5 w-5" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-sm">Mudanças e Transportes</h3>
+                <p className="text-xs text-gray-500 mt-1 mb-3 line-clamp-2">Contrate serviços de mudanças de confiança em todo o país.</p>
+                <span className="text-xs font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1">
+                  Solicitar Cotação <ArrowLeft className="h-3 w-3 rotate-180" />
+                </span>
+              </a>
+
+              <a href="#" className="group block bg-white border border-gray-100 rounded-xl p-4 hover:border-brand-green hover:shadow-md transition-all">
+                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 mb-3 group-hover:scale-110 transition-transform">
+                  <Shield className="h-5 w-5" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-sm">Seguro Residencial</h3>
+                <p className="text-xs text-gray-500 mt-1 mb-3 line-clamp-2">Proteja o seu novo investimento com as melhores seguradoras.</p>
+                <span className="text-xs font-bold text-green-600 group-hover:text-green-700 flex items-center gap-1">
+                  Ver Opções <ArrowLeft className="h-3 w-3 rotate-180" />
+                </span>
+              </a>
+
+              <a href="#" className="group block sm:col-span-2 lg:col-span-1 bg-white border border-gray-100 rounded-xl p-4 hover:border-brand-green hover:shadow-md transition-all">
+                <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 mb-3 group-hover:scale-110 transition-transform">
+                  <Wrench className="h-5 w-5" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-sm">Obras e Decoração</h3>
+                <p className="text-xs text-gray-500 mt-1 mb-3 line-clamp-2">Encontre empreiteiros e decoradores certificados.</p>
+                <span className="text-xs font-bold text-orange-600 group-hover:text-orange-700 flex items-center gap-1">
+                  Descobrir Profissionais <ArrowLeft className="h-3 w-3 rotate-180" />
+                </span>
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Sidebar / Agent Contact */}

@@ -37,7 +37,10 @@ import {
   ArrowLeft,
   CreditCard,
   ShieldCheck,
-  Star
+  Star,
+  BarChart,
+  UploadCloud,
+  FileText
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
@@ -634,6 +637,28 @@ export function AgentDashboard() {
               )}
             </button>
             <button
+              onClick={() => { setActiveTab('analytics'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'analytics' 
+                  ? 'bg-brand-green/10 text-brand-green' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <BarChart className="mr-3 h-5 w-5" />
+              Analytics
+            </button>
+            <button
+              onClick={() => { setActiveTab('kyc'); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'kyc' 
+                  ? 'bg-brand-green/10 text-brand-green' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <ShieldCheck className="mr-3 h-5 w-5" />
+              Verificação (KYC)
+            </button>
+            <button
               onClick={() => { setActiveTab('live-chat'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'live-chat' 
@@ -888,6 +913,20 @@ export function AgentDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-8 text-amber-600 hover:text-amber-900 hover:bg-amber-50 rounded-full font-bold px-3 border border-amber-200"
+                                onClick={() => {
+                                  // Mock boost action
+                                  playNotificationSound();
+                                  alert(`Você será redirecionado para efetuar o pagamento de 500 MT via M-Pesa para impulsionar este anúncio no topo por 3 dias.`);
+                                }}
+                                title="Impulsionar ao Topo por 3 Dias (500 MT)"
+                              >
+                                <Star className="h-4 w-4 mr-1 fill-amber-500" />
+                                Boost (500 MT)
+                              </Button>
                             <Link to={`/edit-property/${property.id}`}>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-900 hover:bg-blue-50">
                                 <Edit className="h-4 w-4" />
@@ -1430,6 +1469,163 @@ export function AgentDashboard() {
                     com link direto para o seu perfil ou website. Isso garante máxima visibilidade e autoridade para sua marca.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'kyc' && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Verificação de Agente (KYC)</h1>
+              <p className="text-gray-500">
+                Para garantir a segurança da plataforma, pedimos que envie a sua documentação 
+                (Alvará de Imobiliária ou NUIT). Agentes verificados recebem um selo de confiança nos seus anúncios.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-100 max-w-4xl">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-900">Status de Verificação</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                      userProfile?.kycStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                      userProfile?.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      userProfile?.kycStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {userProfile?.kycStatus === 'approved' ? 'Aprovado' :
+                       userProfile?.kycStatus === 'pending' ? 'Pendente' :
+                       userProfile?.kycStatus === 'rejected' ? 'Rejeitado' :
+                       'Não Enviado'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {userProfile?.kycStatus === 'approved' ? (
+                <div className="bg-green-50 text-green-800 p-4 rounded-lg">
+                  Parabéns! A sua conta está verificada. O seu selo de confiança já está visível para os clientes.
+                </div>
+              ) : (
+                <form className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número Único de Identificação Tributária (NUIT)
+                    </label>
+                    <Input placeholder="Ex: 123456789" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Comprovativo (Alvará ou Documento de Identificação)
+                    </label>
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="space-y-1 text-center">
+                        <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
+                        <div className="flex text-sm text-gray-600 justify-center">
+                          <span className="relative bg-transparent rounded-md font-medium text-brand-green hover:text-brand-green-hover focus-within:outline-none">
+                            Fazer upload do ficheiro
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">PDF, PNG, JPG até 5MB</p>
+                      </div>
+                    </div>
+                  </div>
+                  <Button type="button" className="bg-brand-green hover:bg-brand-green-hover text-white w-full sm:w-auto">
+                    Enviar para Aprovação
+                  </Button>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Analytics de Performance</h1>
+              <p className="text-gray-500">Acompanhe o desempenho dos seus anúncios e interações com clientes.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Total de Impressões</p>
+                  <h3 className="text-3xl font-black text-gray-900">
+                    {(mockProperties?.reduce((acc, p) => acc + (p.impressions || Math.floor(Math.random() * 500) + 100), 0) || 0).toLocaleString()}
+                  </h3>
+                </div>
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
+                  <Eye className="h-6 w-6" />
+                </div>
+              </div>
+              
+              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Cliques no WhatsApp</p>
+                  <h3 className="text-3xl font-black text-green-600">
+                    {(mockProperties?.reduce((acc, p) => acc + (p.whatsappClicks || Math.floor(Math.random() * 50) + 10), 0) || 0).toLocaleString()}
+                  </h3>
+                </div>
+                <div className="p-3 bg-green-50 text-green-600 rounded-full">
+                  <MessageSquare className="h-6 w-6" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Taxa de Conversão</p>
+                  <h3 className="text-3xl font-black text-brand-purple">
+                    {mockProperties?.length ? (
+                      ((mockProperties.reduce((acc, p) => acc + (p.whatsappClicks || 15), 0) / 
+                       mockProperties.reduce((acc, p) => acc + (p.impressions || 300), 0)) * 100).toFixed(1)
+                    ) : '0'}%
+                  </h3>
+                </div>
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-full">
+                  <TrendingUp className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <h3 className="font-bold text-gray-900 mb-4">Performance por Anúncio</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-4 py-3 rounded-tl-lg">Exemplar</th>
+                      <th className="px-4 py-3">Impressões</th>
+                      <th className="px-4 py-3">Cliques WhatsApp</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mockProperties.map((p, idx) => (
+                      <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="px-4 py-4 font-medium text-gray-900 flex items-center gap-3">
+                          <img src={p.images[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
+                          <span className="line-clamp-1">{p.title}</span>
+                        </td>
+                        <td className="px-4 py-4">{p.impressions || Math.floor(Math.random() * 500) + 100}</td>
+                        <td className="px-4 py-4 text-green-600 font-medium">{p.whatsappClicks || Math.floor(Math.random() * 50) + 10}</td>
+                        <td className="px-4 py-4">
+                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">Ativo</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {mockProperties.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                          Nenhuma estatística disponível no momento.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

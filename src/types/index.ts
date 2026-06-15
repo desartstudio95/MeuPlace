@@ -63,6 +63,11 @@ export interface User {
   planLimit?: number;
   planExpiration?: string;
   favorites?: any;
+  agencyName?: string;
+  isApproved?: boolean;
+  kycStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  nuit?: string;
+  alvaraUrl?: string;
 }
 
 export interface UserProfile extends User {}
@@ -97,6 +102,9 @@ export interface Property {
   roiPercentage?: number;
   condominiumFee?: number;
   propertyTax?: number;
+  impressions?: number;
+  whatsappClicks?: number;
+  boostedUntil?: any; // Firestore Timestamp
 }
 
 export interface Favorite {

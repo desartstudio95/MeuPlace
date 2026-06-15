@@ -77,3 +77,47 @@ export const PLANS: Plan[] = [
 ];
 
 export const DEFAULT_PLAN_LIMIT = 5;
+
+export const RESORT_PLANS: Plan[] = [
+  {
+    id: 'resort-basic',
+    name: 'Essencial',
+    price: 3500,
+    limit: 10,
+    description: 'Para pequenos resorts, guesthouses e lodges boutique.',
+    features: [
+      'Até 10 Quartos / Unidades listadas',
+      'Galeria de Fotos Premium',
+      'Recebimento de Contactos Diretos',
+      'Suporte Básico'
+    ]
+  },
+  {
+    id: 'resort-pro',
+    name: 'Resort Pro',
+    price: 8000,
+    limit: 50,
+    description: 'Para resorts de médio porte com múltiplas acomodações.',
+    features: [
+      'Até 50 Quartos / Unidades listadas',
+      'Apresentação em Vídeo',
+      'Estatísticas de Visualizações e Cliques',
+      'Suporte Prioritário',
+      'Destaque na secção de Resorts'
+    ]
+  },
+  {
+    id: 'resort-elite',
+    name: 'Elite / Cadeia Hoteleira',
+    price: 25000,
+    limit: 999999, // Unlimited
+    description: 'A solução definitiva para grandes resorts e hotéis de luxo.',
+    features: [
+      'Unidades e Quartos Ilimitados',
+      'Tours 360º Matterport',
+      'Integração com Motor de Reservas (Link direto)',
+      'Gestor de Conta Dedicado',
+      'Campanhas de Marketing Exclusivas'
+    ]
+  }
+];
