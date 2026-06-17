@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProperties } from '@/hooks/useProperties';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Trash2, Eye, Search, Ban } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, Eye, Search, Ban, ShieldCheck, Download, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import {
@@ -13,12 +13,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Property } from '@/types';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useNotifications } from '@/context/NotificationContext';
 
 export function AdminProperties() {
   const { properties, loading, approveProperty, rejectProperty, deleteProperty } = useProperties();
   const [searchTerm, setSearchTerm] = useState('');
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [propertyToView, setPropertyToView] = useState<Property | null>(null);
+  const { addNotification } = useNotifications();
 
   if (loading) {
     return <LoadingScreen />;
@@ -33,6 +37,19 @@ export function AdminProperties() {
     if (propertyToDelete) {
       await deleteProperty(propertyToDelete);
       setPropertyToDelete(null);
+    }
+  };
+
+  const handleVerificationStatus = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      await updateDoc(doc(db, 'properties', id), {
+        verificationStatus: status
+      });
+      addNotification('success', `Status de verificação atualizado para ${status}.`);
+      setPropertyToView(null);
+    } catch (error) {
+      console.error(error);
+      addNotification('error', 'Erro ao atualizar status de verificação.');
     }
   };
 
@@ -72,6 +89,9 @@ export function AdminProperties() {
                   Status
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Verificação (Docs)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Aprovação
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -104,6 +124,23 @@ export function AdminProperties() {
                         'bg-yellow-100 text-yellow-800'}`}>
                       {property.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {property.verificationStatus === 'approved' ? (
+                      <span className="flex items-center text-sm text-green-600 font-medium">
+                        <ShieldCheck className="h-4 w-4 mr-1" /> Verificado
+                      </span>
+                    ) : property.verificationStatus === 'pending' ? (
+                      <span className="flex items-center text-sm text-yellow-600 font-medium">
+                        <FileText className="h-4 w-4 mr-1" /> Docs Enviados
+                      </span>
+                    ) : property.verificationStatus === 'rejected' ? (
+                      <span className="flex items-center text-sm text-red-600 font-medium">
+                        <XCircle className="h-4 w-4 mr-1" /> Rejeitado
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">Não solicitado</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {property.isApproved ? (
@@ -238,6 +275,55 @@ export function AdminProperties() {
                   ))}
                 </div>
               </div>
+
+              {propertyToView.documentUrls && propertyToView.documentUrls.length > 0 && (
+                <div className="pt-4 border-t border-gray-100">
+                  <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-brand-green" /> 
+                    Documentação de Verificação
+                  </h3>
+                  <div className="flex flex-col gap-3">
+                    {propertyToView.documentUrls.map((url, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          Documento Anexado {idx + 1}
+                        </span>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-brand-green font-bold hover:underline">
+                          <Download className="h-4 w-4" /> Download
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+
+                  {propertyToView.verificationStatus === 'pending' && (
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        size="sm" 
+                        className="bg-brand-green hover:bg-brand-green/90 text-white"
+                        onClick={() => handleVerificationStatus(propertyToView.id, 'approved')}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Aprovar Verificação (Criar Selo)
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleVerificationStatus(propertyToView.id, 'rejected')}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Rejeitar Documentos
+                      </Button>
+                    </div>
+                  )}
+                  {propertyToView.verificationStatus === 'approved' && (
+                    <div className="mt-3 p-3 bg-green-50 text-green-800 text-sm font-medium rounded-lg flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5" />
+                      Imóvel Verificado Oficialmente. O selo está ativo.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

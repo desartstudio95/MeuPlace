@@ -504,8 +504,14 @@ export function PropertyDetails() {
           {/* Title and Price */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-gray-900">{property.title}</h1>
+                {property?.verificationStatus === 'approved' && (
+                  <div className="flex items-center gap-1 px-2.5 py-1 bg-green-50 text-brand-green border border-green-100 rounded-full" title="Propriedade Verificada pelo MeuPlace">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Verificado</span>
+                  </div>
+                )}
                 {(property.status === 'Vendido' || property.status === 'Arrendado') && (
                   <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm whitespace-nowrap">
                     {property.status}

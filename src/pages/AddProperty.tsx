@@ -71,6 +71,8 @@ export function AddProperty() {
   
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -218,6 +220,12 @@ export function AddProperty() {
         imageUrls.push('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80');
       }
 
+      const documentUrls = [];
+      if (documentFile) {
+        const docUrl = await propertyService.uploadDocument(documentFile, 'property_documents');
+        documentUrls.push(docUrl);
+      }
+
       const isAutoApproved = 
         userProfile?.role === 'admin' || 
         userProfile?.isApproved === true || 
@@ -241,6 +249,8 @@ export function AddProperty() {
         virtualTourUrl: formData.virtualTourUrl || undefined,
         roiPercentage: formData.roiPercentage ? Number(formData.roiPercentage) : undefined,
         condominiumFee: formData.condominiumFee ? Number(formData.condominiumFee) : undefined,
+        documentUrls: documentUrls.length > 0 ? documentUrls : undefined,
+        verificationStatus: documentUrls.length > 0 ? 'pending' as const : 'none' as const,
         agentId: currentUser.uid,
         agent: {
           name: formData.agentName || userProfile?.displayName || currentUser.email?.split('@')[0] || 'Agente',
@@ -567,6 +577,43 @@ export function AddProperty() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Documento de Propriedade (Para Verificação)
+                </label>
+                <div 
+                  className="border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer border-gray-300 hover:bg-gray-50"
+                  onClick={() => documentInputRef.current?.click()}
+                >
+                  {documentFile ? (
+                    <div className="flex flex-col items-center">
+                      <CheckCircle className="h-8 w-8 text-brand-green mb-2" />
+                      <span className="text-sm font-medium text-gray-900">{documentFile.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={(e) => { e.stopPropagation(); setDocumentFile(null); }}
+                        className="mt-2 text-xs text-red-600 hover:text-red-700 font-bold"
+                      >
+                        Remover Ficheiro
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm text-gray-600 font-medium">Faça upload da certidão permanente, propriedade ou outro oficial.</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG (Opcional, mas recomendado para confianca)</p>
+                    </>
+                  )}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    ref={documentInputRef} 
+                    onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
+                    accept=".pdf,.png,.jpg,.jpeg"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">

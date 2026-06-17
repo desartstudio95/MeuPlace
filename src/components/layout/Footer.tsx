@@ -8,8 +8,8 @@ export function Footer() {
   const [settings, setSettings] = useState({
     contactEmail: 'info@meuplace.co.mz',
     contactPhone: '+258 84 123 4567',
-    facebookUrl: 'https://facebook.com',
-    instagramUrl: 'https://instagram.com',
+    facebookUrl: 'https://www.facebook.com/share/1FziMtGiiS/',
+    instagramUrl: 'https://www.instagram.com/meu_place_mz?igsh=MWtkNGNnd280d241cw==',
     linkedinUrl: 'https://linkedin.com'
   });
 

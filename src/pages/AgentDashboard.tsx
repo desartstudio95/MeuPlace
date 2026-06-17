@@ -91,6 +91,12 @@ export function AgentDashboard() {
   });
   const [uploadingPremiumLogo, setUploadingPremiumLogo] = useState(false);
 
+  // KYC States
+  const [kycNuit, setKycNuit] = useState(userProfile?.nuit || '');
+  const [kycFile, setKycFile] = useState<File | null>(null);
+  const [isUploadingKyc, setIsUploadingKyc] = useState(false);
+  const kycFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (premiumAgency) {
       setPremiumFormData({
@@ -235,6 +241,35 @@ export function AgentDashboard() {
 
     return () => unsubscribe();
   }, [activeChatRoom]);
+
+  const handleKycSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !kycNuit || !kycFile) return;
+
+    setIsUploadingKyc(true);
+    try {
+      // 1. Upload logic
+      const { propertyService } = await import('@/services/propertyService');
+      const fileUrl = await propertyService.uploadDocument(kycFile, 'kyc_documents');
+
+      // 2. Update user profile
+      const userRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userRef, {
+        nuit: kycNuit,
+        alvaraUrl: fileUrl,
+        kycStatus: 'pending'
+      });
+
+      addNotification('success', 'Documentação enviada para verificação. E-mail de confirmação será enviado em breve.');
+      
+      // Also update local copy if needed, but Context might do it.
+    } catch (err) {
+      console.error(err);
+      addNotification('error', 'Falha ao enviar a documentação.');
+    } finally {
+      setIsUploadingKyc(false);
+    }
+  };
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1510,32 +1545,55 @@ export function AgentDashboard() {
                 <div className="bg-green-50 text-green-800 p-4 rounded-lg">
                   Parabéns! A sua conta está verificada. O seu selo de confiança já está visível para os clientes.
                 </div>
+              ) : userProfile?.kycStatus === 'pending' ? (
+                <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg">
+                  Os seus documentos estão em análise. A nossa equipa irá avaliá-los o mais rapidamente possível.
+                </div>
               ) : (
-                <form className="space-y-6">
+                <form className="space-y-6" onSubmit={handleKycSubmit}>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Número Único de Identificação Tributária (NUIT)
                     </label>
-                    <Input placeholder="Ex: 123456789" />
+                    <Input 
+                      placeholder="Ex: 123456789" 
+                      value={kycNuit}
+                      onChange={(e) => setKycNuit(e.target.value)}
+                      required
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Comprovativo (Alvará ou Documento de Identificação)
                     </label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div 
+                      className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => kycFileInputRef.current?.click()}
+                    >
                       <div className="space-y-1 text-center">
-                        <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
+                        <UploadCloud className={`mx-auto h-12 w-12 ${kycFile ? 'text-brand-green' : 'text-gray-400'}`} />
                         <div className="flex text-sm text-gray-600 justify-center">
                           <span className="relative bg-transparent rounded-md font-medium text-brand-green hover:text-brand-green-hover focus-within:outline-none">
-                            Fazer upload do ficheiro
+                            {kycFile ? kycFile.name : 'Fazer upload do ficheiro'}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500">PDF, PNG, JPG até 5MB</p>
                       </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        ref={kycFileInputRef} 
+                        onChange={(e) => setKycFile(e.target.files?.[0] || null)}
+                        accept=".pdf,.png,.jpg,.jpeg"
+                      />
                     </div>
                   </div>
-                  <Button type="button" className="bg-brand-green hover:bg-brand-green-hover text-white w-full sm:w-auto">
-                    Enviar para Aprovação
+                  <Button 
+                    type="submit" 
+                    disabled={isUploadingKyc || !kycFile || !kycNuit}
+                    className="bg-brand-green hover:bg-brand-green-hover text-white w-full sm:w-auto"
+                  >
+                    {isUploadingKyc ? 'Enviando...' : 'Enviar para Aprovação'}
                   </Button>
                 </form>
               )}

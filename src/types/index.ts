@@ -105,6 +105,8 @@ export interface Property {
   impressions?: number;
   whatsappClicks?: number;
   boostedUntil?: any; // Firestore Timestamp
+  documentUrls?: string[]; // Para verificação de propriedades
+  verificationStatus?: 'none' | 'pending' | 'approved' | 'rejected';
 }
 
 export interface Favorite {

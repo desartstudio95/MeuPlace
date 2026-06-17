@@ -125,5 +125,25 @@ export const propertyService = {
         }
       );
     });
+  },
+
+  async uploadDocument(file: File, folder: string = 'documents'): Promise<string> {
+    const storageRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+    const metadata = {
+      contentType: file.type,
+    };
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+    
+    return new Promise((resolve, reject) => {
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => reject(error),
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        }
+      );
+    });
   }
 };

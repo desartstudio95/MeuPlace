@@ -24,6 +24,13 @@
   animation: marquee 30s linear infinite;
 }
 
+.animate-marquee:hover,
+.animate-marquee:active,
+.group:hover .animate-marquee,
+.group:active .animate-marquee {
+  animation-play-state: paused !important;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
