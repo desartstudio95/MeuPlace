@@ -45,11 +45,11 @@ export function AdminProperties() {
       await updateDoc(doc(db, 'properties', id), {
         verificationStatus: status
       });
-      addNotification('success', `Status de verificação atualizado para ${status}.`);
+      addNotification({ type: 'success', title: 'Sucesso', message: `Status de verificação atualizado para ${status}.` });
       setPropertyToView(null);
     } catch (error) {
       console.error(error);
-      addNotification('error', 'Erro ao atualizar status de verificação.');
+      addNotification({ type: 'error', title: 'Erro', message: 'Erro ao atualizar status de verificação.' });
     }
   };
 

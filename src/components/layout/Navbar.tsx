@@ -99,8 +99,7 @@ export function Navbar() {
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green">
+                  <DropdownMenuTrigger className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green">
                       {userProfile?.photoURL ? (
                         <img src={userProfile.photoURL} alt={userProfile.displayName || 'Avatar'} className="h-8 w-8 rounded-full object-cover border border-gray-200" />
                       ) : (
@@ -117,7 +116,6 @@ export function Navbar() {
                         </span>
                       </div>
                       <ChevronDown className="h-4 w-4 text-gray-500 hidden lg:block" />
-                    </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 mt-2">
                     <DropdownMenuLabel className="font-normal border-b border-gray-100 pb-2 mb-1">
@@ -128,46 +126,36 @@ export function Navbar() {
                     </DropdownMenuLabel>
                     
                     {userProfile?.role === 'admin' && (
-                      <DropdownMenuItem asChild className="cursor-pointer">
-                        <Link to="/admin" className="flex items-center w-full">
+                      <DropdownMenuItem render={<Link to="/admin" className="flex items-center w-full cursor-pointer" />}>
                           <User className="mr-2 h-4 w-4 text-gray-500" />
                           <span>Área de Admin</span>
-                        </Link>
                       </DropdownMenuItem>
                     )}
                     
-                    <DropdownMenuItem asChild className="cursor-pointer">
-                      <Link to="/dashboard" className="flex items-center w-full">
+                    <DropdownMenuItem render={<Link to="/dashboard" className="flex items-center w-full cursor-pointer" />}>
                         <Building2 className="mr-2 h-4 w-4 text-gray-500" />
                         <span>Painel de Controlo</span>
-                      </Link>
                     </DropdownMenuItem>
                     
                     {userProfile?.role !== 'resort' && (
                       <>
-                        <DropdownMenuItem asChild className="cursor-pointer">
-                          <Link to="/my-files" className="flex items-center w-full">
+                        <DropdownMenuItem render={<Link to="/my-files" className="flex items-center w-full cursor-pointer" />}>
                             <FileText className="mr-2 h-4 w-4 text-gray-500" />
                             <span>Meus Arquivos</span>
-                          </Link>
                         </DropdownMenuItem>
                         
-                        <DropdownMenuItem asChild className="cursor-pointer">
-                          <Link to="/profile" className="flex items-center w-full">
+                        <DropdownMenuItem render={<Link to="/profile" className="flex items-center w-full cursor-pointer" />}>
                             <User className="mr-2 h-4 w-4 text-gray-500" />
                             <span>Editar Perfil</span>
-                          </Link>
                         </DropdownMenuItem>
                       </>
                     )}
                     
                     <DropdownMenuSeparator />
                     
-                    <DropdownMenuItem asChild className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
-                      <button onClick={handleLogout} className="flex items-center w-full">
+                    <DropdownMenuItem render={<button onClick={handleLogout} className="flex items-center w-full cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50" />}>
                         <LogOut className="mr-2 h-4 w-4" />
                         <span>Terminar Sessão</span>
-                      </button>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

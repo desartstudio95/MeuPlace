@@ -260,12 +260,20 @@ export function AgentDashboard() {
         kycStatus: 'pending'
       });
 
-      addNotification('success', 'Documentação enviada para verificação. E-mail de confirmação será enviado em breve.');
+      addNotification({
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Documentação enviada para verificação. E-mail de confirmação será enviado em breve.'
+      });
       
       // Also update local copy if needed, but Context might do it.
     } catch (err) {
       console.error(err);
-      addNotification('error', 'Falha ao enviar a documentação.');
+      addNotification({
+        type: 'error',
+        title: 'Erro',
+        message: 'Falha ao enviar a documentação.'
+      });
     } finally {
       setIsUploadingKyc(false);
     }
@@ -1613,7 +1621,7 @@ export function AgentDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-1">Total de Impressões</p>
                   <h3 className="text-3xl font-black text-gray-900">
-                    {(mockProperties?.reduce((acc, p) => acc + (p.impressions || Math.floor(Math.random() * 500) + 100), 0) || 0).toLocaleString()}
+                    {(myProperties?.reduce((acc, p) => acc + (p.impressions || Math.floor(Math.random() * 500) + 100), 0) || 0).toLocaleString()}
                   </h3>
                 </div>
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
@@ -1625,7 +1633,7 @@ export function AgentDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-1">Cliques no WhatsApp</p>
                   <h3 className="text-3xl font-black text-green-600">
-                    {(mockProperties?.reduce((acc, p) => acc + (p.whatsappClicks || Math.floor(Math.random() * 50) + 10), 0) || 0).toLocaleString()}
+                    {(myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || Math.floor(Math.random() * 50) + 10), 0) || 0).toLocaleString()}
                   </h3>
                 </div>
                 <div className="p-3 bg-green-50 text-green-600 rounded-full">
@@ -1637,9 +1645,9 @@ export function AgentDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-1">Taxa de Conversão</p>
                   <h3 className="text-3xl font-black text-brand-purple">
-                    {mockProperties?.length ? (
-                      ((mockProperties.reduce((acc, p) => acc + (p.whatsappClicks || 15), 0) / 
-                       mockProperties.reduce((acc, p) => acc + (p.impressions || 300), 0)) * 100).toFixed(1)
+                    {myProperties?.length ? (
+                      ((myProperties.reduce((acc, p) => acc + (p.whatsappClicks || 15), 0) / 
+                       myProperties.reduce((acc, p) => acc + (p.impressions || 300), 0)) * 100).toFixed(1)
                     ) : '0'}%
                   </h3>
                 </div>
@@ -1662,7 +1670,7 @@ export function AgentDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockProperties.map((p, idx) => (
+                    {myProperties.map((p, idx) => (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
                         <td className="px-4 py-4 font-medium text-gray-900 flex items-center gap-3">
                           <img src={p.images[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
@@ -1675,7 +1683,7 @@ export function AgentDashboard() {
                         </td>
                       </tr>
                     ))}
-                    {mockProperties.length === 0 && (
+                    {myProperties.length === 0 && (
                       <tr>
                         <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                           Nenhuma estatística disponível no momento.

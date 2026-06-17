@@ -6,11 +6,14 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+// @ts-ignore
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+// @ts-ignore
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
+// @ts-ignore
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Link } from 'react-router-dom';
-import { Bed, Bath, Square, Select } from 'lucide-react';
+import { Bed, Bath, Square } from 'lucide-react';
 
 // Fix Leaflet's default icon path issues with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;

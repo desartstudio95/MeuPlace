@@ -58,6 +58,9 @@ export interface UserProfile {
   rating?: number;
   reviews?: number;
   isResponsible?: boolean;
+  kycStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  nuit?: string;
+  alvaraUrl?: string;
   favorites?: string[];
 }
 

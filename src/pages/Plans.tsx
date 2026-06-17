@@ -25,7 +25,7 @@ export function Plans() {
   useEffect(() => {
     if (userProfile?.role === 'resort') {
       setActiveTab('resort');
-    } else if (userProfile?.role === 'agent' || userProfile?.role === 'agency') {
+    } else if (userProfile?.role === 'agent') {
       setActiveTab('agent');
     }
   }, [userProfile]);
@@ -179,47 +179,88 @@ export function Plans() {
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${displayedPlans.length <= 3 ? 'lg:grid-cols-3 max-w-5xl mx-auto' : 'lg:grid-cols-5'}`}>
           {displayedPlans.map((plan) => {
             const Icon = getIcon(plan.id);
-            const colorClass = getColor(plan.id);
             const isCurrentPlan = userProfile?.planId === plan.id || (!userProfile?.planId && plan.id === 'free' && activeTab === 'agent');
+
+            let cardBgClass = 'bg-white';
+            let textColorClass = 'text-gray-900';
+            let descColorClass = 'text-gray-500';
+            let listColorClass = 'text-gray-600';
+            let listStrongColorClass = 'text-gray-900';
+            let iconBgClass = 'bg-gray-50';
+            let iconColorClass = getColor(plan.id);
+            let btnClass = 'bg-brand-green hover:bg-brand-green-hover text-white shadow-md hover:shadow-lg';
+            let btnCurrentClass = 'bg-gray-100 text-gray-400 cursor-default';
+            let checkIconClass = 'text-green-500';
+            let borderColorClass = isCurrentPlan ? 'border-brand-green ring-4 ring-brand-green/10 scale-105 z-10' : 'border-gray-100 hover:border-gray-300';
+            let dividerClass = 'border-gray-50';
+            let badgeClass = 'bg-brand-green text-white';
+
+            if (plan.id === 'resort-pro') {
+              cardBgClass = 'bg-brand-green';
+              textColorClass = 'text-white';
+              descColorClass = 'text-green-50';
+              listColorClass = 'text-green-50';
+              listStrongColorClass = 'text-white';
+              iconBgClass = 'bg-white/20';
+              iconColorClass = 'text-white';
+              btnClass = 'bg-white text-brand-green hover:bg-gray-50';
+              btnCurrentClass = 'bg-green-700 text-green-200 cursor-default';
+              checkIconClass = 'text-white/80';
+              borderColorClass = isCurrentPlan ? 'border-white ring-4 ring-brand-green/30 scale-105 z-10' : 'border-transparent hover:border-white/30';
+              dividerClass = 'border-white/10';
+              badgeClass = 'bg-white text-brand-green';
+            } else if (plan.id === 'resort-elite') {
+              cardBgClass = 'bg-purple-600';
+              textColorClass = 'text-white';
+              descColorClass = 'text-purple-100';
+              listColorClass = 'text-purple-100';
+              listStrongColorClass = 'text-white';
+              iconBgClass = 'bg-white/20';
+              iconColorClass = 'text-white';
+              btnClass = 'bg-white text-purple-600 hover:bg-gray-50';
+              btnCurrentClass = 'bg-purple-800 text-purple-200 cursor-default';
+              checkIconClass = 'text-white/80';
+              borderColorClass = isCurrentPlan ? 'border-white ring-4 ring-purple-600/30 scale-105 z-10' : 'border-transparent hover:border-white/30';
+              dividerClass = 'border-white/10';
+              badgeClass = 'bg-white text-purple-600';
+            }
 
             return (
               <div 
                 key={plan.id}
-                className={`relative bg-white rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col ${
-                  isCurrentPlan ? 'border-brand-green ring-4 ring-brand-green/10 scale-105 z-10' : 'border-gray-100 hover:border-gray-300'
-                }`}
+                className={`relative rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col ${cardBgClass} ${borderColorClass}`}
               >
                 {isCurrentPlan && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-green text-white text-xs font-bold px-4 py-1 rounded-full shadow-sm">
+                  <div className={`absolute -top-4 left-1/2 -translate-x-1/2 text-xs font-bold px-4 py-1 rounded-full shadow-sm ${badgeClass}`}>
                     Plano Atual
                   </div>
                 )}
                 
-                <div className="p-6 border-b border-gray-50">
-                  <div className={`w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center mb-4 ${colorClass}`}>
+                <div className={`p-6 border-b ${dividerClass}`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${iconBgClass} ${iconColorClass}`}>
                     <Icon className="h-6 w-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">{plan.name}</h3>
+                  <h3 className={`text-xl font-bold mb-1 ${textColorClass}`}>{plan.name}</h3>
                   <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-3xl font-extrabold text-gray-900">
+                    <span className={`text-3xl font-extrabold ${textColorClass}`}>
                       {plan.price === 0 ? 'Grátis' : `${plan.price.toLocaleString()} MT`}
                     </span>
-                    {plan.price > 0 && <span className="text-gray-500 text-sm">/mês</span>}
+                    {plan.price > 0 && <span className={`text-sm ${descColorClass}`}>/mês</span>}
                   </div>
-                  <p className="text-sm text-gray-500 h-10 overflow-hidden line-clamp-2">
+                  <p className={`text-sm h-10 overflow-hidden line-clamp-2 ${descColorClass}`}>
                     {plan.description}
                   </p>
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col">
                   <ul className="space-y-3 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <Check className="h-4 w-4 text-green-500" />
+                    <li className={`flex items-center gap-2 text-sm font-semibold ${listStrongColorClass}`}>
+                      <Check className={`h-4 w-4 ${checkIconClass}`} />
                       {plan.limit === 999999 ? 'Ilimitados' : `Até ${plan.limit}`}
                     </li>
                     {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
-                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <li key={idx} className={`flex items-start gap-2 text-sm ${listColorClass}`}>
+                        <Check className={`h-4 w-4 mt-0.5 flex-shrink-0 ${checkIconClass}`} />
                         <span>{feature}</span>
                       </li>
                     ))}
@@ -229,9 +270,7 @@ export function Plans() {
                     onClick={() => handleSubscribe(plan)}
                     disabled={isCurrentPlan || isSubscribing === plan.id}
                     className={`w-full h-11 transition-all ${
-                      isCurrentPlan 
-                        ? 'bg-gray-100 text-gray-400 cursor-default' 
-                        : 'bg-brand-green hover:bg-brand-green-hover text-white shadow-md hover:shadow-lg'
+                      isCurrentPlan ? btnCurrentClass : btnClass
                     }`}
                   >
                     {isSubscribing === plan.id ? 'Processando...' : isCurrentPlan ? 'Ativo' : 'Escolher Plano'}
