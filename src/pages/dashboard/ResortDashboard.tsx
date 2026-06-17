@@ -135,7 +135,9 @@ export function ResortDashboard() {
     if (!currentUser) return;
     
     try {
-      const amenitiesArray = resortData.resortAmenities.split(',').map(a => a.trim()).filter(Boolean);
+      const amenitiesArray = typeof resortData.resortAmenities === 'string' 
+        ? resortData.resortAmenities.split(',').map(a => a.trim()).filter(Boolean) 
+        : (Array.isArray(resortData.resortAmenities) ? resortData.resortAmenities : []);
       
       // Update user profile
       await updateUserProfile({

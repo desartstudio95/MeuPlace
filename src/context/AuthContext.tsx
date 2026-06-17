@@ -49,7 +49,7 @@ export interface UserProfile {
   resortName?: string;
   resortDescription?: string;
   resortPhotos?: string[];
-  resortAmenities?: string[];
+  resortAmenities?: string[] | string;
   resortLocation?: string;
   isApproved?: boolean;
   planId?: string;
@@ -61,10 +61,6 @@ export interface UserProfile {
   kycStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   nuit?: string;
   alvaraUrl?: string;
-  resortName?: string;
-  resortDescription?: string;
-  resortLocation?: string;
-  resortAmenities?: string[] | string;
   favorites?: string[];
 }
 

@@ -69,9 +69,9 @@ export function About() {
               <img 
                 src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
                 alt="Our Office" 
-                className="relative rounded-3xl shadow-2xl w-full h-[500px] object-cover"
+                className="relative rounded-3xl shadow-2xl w-full h-[500px] object-cover z-0"
               />
-              <div className="absolute -bottom-6 -left-6 glass p-6 rounded-2xl shadow-xl hidden sm:block">
+              <div className="absolute -bottom-6 -left-6 bg-white/90 backdrop-blur-sm border border-gray-100 p-6 rounded-2xl shadow-xl hidden sm:block z-10">
                 <p className="text-3xl font-bold text-gray-900">100%</p>
                 <p className="text-sm text-gray-500 font-medium">Foco no Cliente</p>
               </div>
