@@ -1,11 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, PlusCircle, User, Search, LogOut, Building2, FileText } from 'lucide-react';
+import { Menu, X, PlusCircle, User, Search, LogOut, Building2, FileText, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,7 +58,7 @@ export function Navbar() {
                 className="h-14 w-auto object-contain" 
               />
             </Link>
-            <div className="hidden md:ml-6 md:flex md:space-x-8">
+            <div className="hidden md:ml-6 md:flex md:space-x-4 lg:space-x-8">
               <Link
                 to="/"
                 className="border-transparent text-gray-500 hover:border-brand-green hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -85,49 +93,84 @@ export function Navbar() {
               )}
             </div>
           </div>
-          <div className="hidden md:ml-6 md:flex md:items-center space-x-4">
+          <div className="hidden md:ml-6 md:flex md:items-center space-x-2 lg:space-x-4">
             <NotificationsPopover />
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-2">
-                <div className="flex items-center text-sm text-gray-700 hidden lg:flex mr-2">
-                  {userProfile?.photoURL ? (
-                    <img src={userProfile.photoURL} alt={userProfile.displayName || 'Avatar'} className="h-8 w-8 rounded-full object-cover mr-2 border border-gray-200" />
-                  ) : (
-                    <User className="h-8 w-8 rounded-full bg-gray-100 p-1.5 text-gray-500 mr-2" />
-                  )}
-                  <span>Olá, <span className="font-medium">{userProfile?.displayName || currentUser?.email?.split('@')[0]}</span></span>
-                </div>
-                {userProfile?.role === 'admin' && (
-                  <Link to="/admin">
-                    <Button variant="ghost" size="sm">
-                      <User className="h-4 w-4 mr-2" />
-                      Admin
-                    </Button>
-                  </Link>
-                )}
-                <Link to="/dashboard">
-                  <Button variant="ghost" size="sm">
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Dashboard
-                  </Button>
-                </Link>
-                <Link to="/my-files">
-                  <Button variant="ghost" size="sm">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Arquivos
-                  </Button>
-                </Link>
-                <Link to="/profile">
-                  <Button variant="ghost" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    Perfil
-                  </Button>
-                </Link>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-green">
+                      {userProfile?.photoURL ? (
+                        <img src={userProfile.photoURL} alt={userProfile.displayName || 'Avatar'} className="h-8 w-8 rounded-full object-cover border border-gray-200" />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200">
+                          <User className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div className="hidden lg:flex flex-col items-start px-1 text-sm text-gray-700 max-w-[120px]">
+                        <span className="font-medium text-gray-900 leading-none truncate w-full">
+                          {userProfile?.displayName || currentUser?.email?.split('@')[0]}
+                        </span>
+                        <span className="text-xs text-gray-500 capitalize leading-none mt-1">
+                          {userProfile?.role === 'user' ? 'Utilizador' : userProfile?.role}
+                        </span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-gray-500 hidden lg:block" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 mt-2">
+                    <DropdownMenuLabel className="font-normal border-b border-gray-100 pb-2 mb-1">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none text-gray-900">{userProfile?.displayName || 'Utilizador'}</p>
+                        <p className="text-xs leading-none text-gray-500">{currentUser?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    
+                    {userProfile?.role === 'admin' && (
+                      <DropdownMenuItem asChild className="cursor-pointer">
+                        <Link to="/admin" className="flex items-center w-full">
+                          <User className="mr-2 h-4 w-4 text-gray-500" />
+                          <span>Área de Admin</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    
+                    <DropdownMenuItem asChild className="cursor-pointer">
+                      <Link to="/dashboard" className="flex items-center w-full">
+                        <Building2 className="mr-2 h-4 w-4 text-gray-500" />
+                        <span>Painel de Controlo</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    
+                    {userProfile?.role !== 'resort' && (
+                      <>
+                        <DropdownMenuItem asChild className="cursor-pointer">
+                          <Link to="/my-files" className="flex items-center w-full">
+                            <FileText className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>Meus Arquivos</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuItem asChild className="cursor-pointer">
+                          <Link to="/profile" className="flex items-center w-full">
+                            <User className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>Editar Perfil</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    
+                    <DropdownMenuSeparator />
+                    
+                    <DropdownMenuItem asChild className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
+                      <button onClick={handleLogout} className="flex items-center w-full">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Terminar Sessão</span>
+                      </button>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ) : (
               <Link to="/login">
@@ -138,11 +181,12 @@ export function Navbar() {
               </Link>
             )}
             
-            {(!isAuthenticated || (userProfile?.role !== 'user')) && (
+            {(!isAuthenticated || (!['user', 'resort'].includes(userProfile?.role || ''))) && (
               <Link to="/add-property">
                 <Button className="bg-brand-green hover:bg-brand-green-hover text-white">
                   <PlusCircle className="h-4 w-4 mr-2" />
-                  Anunciar Imóvel
+                  <span className="hidden lg:inline">Anunciar Imóvel</span>
+                  <span className="lg:hidden">Anunciar</span>
                 </Button>
               </Link>
             )}
@@ -197,7 +241,7 @@ export function Navbar() {
                 Planos
               </Link>
             )}
-            {(!isAuthenticated || (userProfile?.role !== 'user')) && (
+            {(!isAuthenticated || (!['user', 'resort'].includes(userProfile?.role || ''))) && (
               <Link
                 to="/add-property"
                 className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
