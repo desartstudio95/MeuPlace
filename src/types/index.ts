@@ -68,6 +68,12 @@ export interface User {
   kycStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   nuit?: string;
   alvaraUrl?: string;
+  resortName?: string;
+  resortDescription?: string;
+  resortLocation?: string;
+  resortAmenities?: string[] | string;
+  phone?: string;
+  whatsapp?: string;
 }
 
 export interface UserProfile extends User {}

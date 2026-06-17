@@ -61,6 +61,10 @@ export interface UserProfile {
   kycStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   nuit?: string;
   alvaraUrl?: string;
+  resortName?: string;
+  resortDescription?: string;
+  resortLocation?: string;
+  resortAmenities?: string[] | string;
   favorites?: string[];
 }
 

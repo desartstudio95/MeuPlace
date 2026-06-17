@@ -57,7 +57,7 @@ export function ResortDashboard() {
     resortName: userProfile?.resortName || '',
     resortDescription: userProfile?.resortDescription || '',
     resortLocation: userProfile?.resortLocation || '',
-    resortAmenities: userProfile?.resortAmenities?.join(', ') || '',
+    resortAmenities: Array.isArray(userProfile?.resortAmenities) ? userProfile.resortAmenities.join(', ') : (userProfile?.resortAmenities || ''),
     phone: userProfile?.phone || '',
     whatsapp: userProfile?.whatsapp || '',
     avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',

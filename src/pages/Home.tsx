@@ -339,7 +339,6 @@ export function Home() {
             transition={{ delay: 1.5, duration: 1 }}
             className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50"
           >
-            <span className="text-[10px] uppercase tracking-[0.2em] font-bold">Explorar</span>
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
