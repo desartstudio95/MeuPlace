@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ===============================================================
-    // Helper Functions
+    // Helper Functions (Zero-Trust & RBAC)
     // ===============================================================
     
     function isAuthenticated() {
@@ -16,48 +16,174 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.email == "desartstudiopro@gmail.com" ||
-        request.auth.token.email == "ruiisacmugabe@gmail.com" ||
-        request.auth.uid == "uLmbTm46KCXcMeRG6tGOkF6JYSe2" ||
-        request.auth.uid == "7TlXuKjMWUQVh28kC9Dv7bOm2gP2" ||
-        request.auth.uid == "2k6QiD1a6bTG5xgN7HbeLyGvpu32" ||
+        request.auth.token.role == 'admin' ||
+        (request.auth.token.email_verified == true && 
+         (request.auth.token.email == "desartstudiopro@gmail.com" || 
+          request.auth.token.email == "ruiisacmugabe@gmail.com")) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
+    }
+
+    function isModerator() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'moderator' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator')
+      );
+    }
+
+    function isAgent() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'agent' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'agent')
+      );
+    }
+
+    // Lead & Viewing State Machine Transitions (Fase 4.6 Hardening)
+    function isValidLeadTransition(from, to) {
+      return (from == to) ||
+             (from == 'new' && (to == 'contacted' || to == 'archived')) ||
+             (from == 'contacted' && (to == 'qualified' || to == 'lost' || to == 'archived')) ||
+             (from == 'qualified' && (to == 'negotiating' || to == 'lost' || to == 'archived')) ||
+             (from == 'negotiating' && (to == 'won' || to == 'lost' || to == 'archived')) ||
+             (from == 'lost' && (to == 'contacted' || to == 'archived')) ||
+             (from == 'won' && to == 'archived') ||
+             (from == 'archived' && (to == 'new' || to == 'contacted' || to == 'qualified'));
+    }
+
+    function isValidViewingTransition(from, to) {
+      return (from == to) ||
+             (from == 'pending' && (to == 'confirmed' || to == 'rejected' || to == 'cancelled')) ||
+             (from == 'confirmed' && (to == 'completed' || to == 'cancelled' || to == 'no_show')) ||
+             (from == 'rejected' && (to == 'pending' || to == 'cancelled')) ||
+             (from == 'cancelled' && to == 'pending') ||
+             (from == 'no_show' && (to == 'pending' || to == 'cancelled'));
     }
 
     // ===============================================================
     // Collection Rules
     // ===============================================================
 
-    // Public Collections (Everyone can read, only Admins can write)
+    // Settings (Public read, Admin only write)
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
+    // Properties
+    // - Public can read only approved properties
+    // - Agents can read their own unapproved properties
+    // - Admins and Moderators can read all properties
     match /properties/{propertyId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.authorUid == request.auth.uid);
+      allow read: if resource.data.isApproved == true || 
+                     isAdmin() || 
+                     isModerator() ||
+                     (isAuthenticated() && resource.data.agentId == request.auth.uid);
+      
+      // Creating a property:
+      // Client cannot auto-approve, auto-promote, fake metrics or inject verification
+      allow create: if isAuthenticated() && 
+                       request.resource.data.agentId == request.auth.uid &&
+                       (isAdmin() || (
+                         request.resource.data.isApproved == false &&
+                         request.resource.data.isPromoted == false &&
+                         (request.resource.data.status == 'Pendente' || request.resource.data.status == 'pending') &&
+                         (!('verificationStatus' in request.resource.data) || request.resource.data.verificationStatus in ['none', 'pending']) &&
+                         (!('boostedUntil' in request.resource.data) || request.resource.data.boostedUntil == null) &&
+                         (!('views' in request.resource.data) || request.resource.data.views == 0) &&
+                         (!('impressions' in request.resource.data) || request.resource.data.impressions == 0) &&
+                         (!('whatsappClicks' in request.resource.data) || request.resource.data.whatsappClicks == 0)
+                       ));
+      
+      // Updating a property:
+      // Admins have full access. Moderators can update moderation status (isApproved, status, verificationStatus).
+      // Agent owner cannot modify sensitive fields (approval, promotion, metrics, ownership)
+      allow update: if isAdmin() || (
+        isModerator() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'price', 'agentId', 'ownerId', 'createdBy', 'userId', 'views', 'impressions', 'whatsappClicks'
+        ])
+      ) || (
+        isAuthenticated() && 
+        resource.data.agentId == request.auth.uid &&
+        request.resource.data.agentId == request.auth.uid &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'isApproved', 'isPromoted', 'boostedUntil', 'verificationStatus',
+          'agentId', 'ownerId', 'agencyId', 'createdBy', 'userId',
+          'views', 'impressions', 'whatsappClicks'
+        ])
+      );
+
+      // Deleting: only owner agent or admin
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
     }
 
+    // Users Collection (Strict Privilege Escalation Prevention)
+    match /users/{userId} {
+      allow read: if true;
+      
+      // On registration, user cannot grant themselves admin role or approved status (unless user role)
+      allow create: if isOwner(userId) && (
+        isAdmin() || (
+          request.resource.data.uid == userId &&
+          request.resource.data.role in ['user', 'agent', 'resort'] &&
+          request.resource.data.role != 'admin' &&
+          request.resource.data.planId == 'free' &&
+          request.resource.data.planLimit <= 5 &&
+          (request.resource.data.role == 'user' || request.resource.data.isApproved == false) &&
+          !('isAdmin' in request.resource.data) &&
+          !('isModerator' in request.resource.data) &&
+          !('permissions' in request.resource.data) &&
+          !('verificationStatus' in request.resource.data) &&
+          !('agencyRole' in request.resource.data)
+        )
+      );
+
+      // User cannot update role, plan, limits, approval, kycStatus or administrative flags
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role', 'isAdmin', 'isModerator', 'isApproved', 'planId', 'planLimit', 'planExpiration', 
+          'kycStatus', 'verificationStatus', 'permissions', 'agencyRole', 'isPromoted', 'boostedUntil',
+          'isResponsible', 'rating', 'reviews', 'uid', 'email'
+        ])
+      );
+
+      allow delete: if isAdmin() || isOwner(userId);
+
+      // User personal files subcollection
+      match /files/{fileId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Resorts
     match /resorts/{resortId} {
       allow read: if true;
       allow write: if isAdmin();
       
       match /reviews/{reviewId} {
         allow read: if true;
-        allow create: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
         allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       }
     }
 
+    // Premium Agencies (Only Admin or Verified Unlimited Agents)
     match /premium_agencies/{agencyId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isAdmin() || (
+        isAuthenticated() && 
+        request.resource.data.agentId == request.auth.uid &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.planId == 'unlimited'
+      );
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.agentId == request.auth.uid);
     }
 
+    // Featured Agents & Subscription Plans
     match /featured_agents/{agentId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -68,37 +194,347 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /subscription_plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Agent Reviews (Authenticated users only, rating must be 1..5)
     match /agent_reviews/{reviewId} {
       allow read: if true;
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.rating is number &&
+                       request.resource.data.rating >= 1 && 
+                       request.resource.data.rating <= 5;
       allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 
-    // Private Collections (Restricted access)
-    match /users/{userId} {
-      // Allow reading basic profile info if authenticated, but protect PII
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isOwner(userId);
-    }
-
+    // Messages (Contact form & Direct Messages)
     match /messages/{messageId} {
-      allow read: if isAuthenticated() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid || 
+        resource.data.receiverId == request.auth.uid || 
+        isAdmin()
+      );
+      // Valid creation: must have valid structure and text length limit
+      allow create: if (
+        (isAuthenticated() && request.resource.data.senderId == request.auth.uid) ||
+        (!isAuthenticated() && request.resource.data.senderEmail is string && 
+         request.resource.data.text is string && request.resource.data.text.size() <= 2000)
+      );
       allow update, delete: if isAdmin();
     }
 
+    // Leads & Inquiries (Strict Field-Level Authorization & Anti-Spoofing)
+    match /leads/{leadId} {
+      // Owner of property, assigned agent, customer who created it, or admin can read
+      allow read: if isAuthenticated() && (
+        resource.data.propertyOwnerId == request.auth.uid || 
+        resource.data.agentId == request.auth.uid || 
+        resource.data.customerId == request.auth.uid || 
+        isAdmin()
+      );
+      
+      // Creating a lead:
+      // Must start with status 'new' and have valid fields
+      allow create: if request.resource.data.propertyId is string &&
+                       request.resource.data.propertyOwnerId is string &&
+                       request.resource.data.customerName is string &&
+                       request.resource.data.customerPhone is string &&
+                       request.resource.data.message is string &&
+                       request.resource.data.message.size() <= 2000 &&
+                       request.resource.data.status == 'new' &&
+                       (!('customerId' in request.resource.data) || 
+                        !isAuthenticated() || 
+                        request.resource.data.customerId == request.auth.uid);
+      
+      // Updating a lead:
+      // - Admin has full control
+      // - Property Owner / Agent can update status, priority, agentId (assignment), lastContactAt, notes,
+      //   but CANNOT transfer ownership keys (propertyId, propertyOwnerId, customerId, createdAt)
+      //   and MUST adhere strictly to valid state transitions
+      // - Customer can only append message / update contact timestamp for deduplication
+      allow update: if isAdmin() || (
+        isAuthenticated() && 
+        (resource.data.propertyOwnerId == request.auth.uid || resource.data.agentId == request.auth.uid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'propertyId', 'propertyOwnerId', 'agencyId', 'customerId', 'createdAt'
+        ]) &&
+        isValidLeadTransition(resource.data.status, request.resource.data.status)
+      ) || (
+        isAuthenticated() && 
+        resource.data.customerId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'message', 'lastContactAt', 'updatedAt'
+        ])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Lead Activities & CRM Timeline (Fase 5.1: Append-only, imutável por clientes)
+    match /lead_activities/{activityId} {
+      // Leitura permitida para quem tem acesso ao lead (proprietário, agente responsável, autor ou admin)
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.actorId == request.auth.uid ||
+        (resource.data.leadId is string &&
+         exists(/databases/$(database)/documents/leads/$(resource.data.leadId)) &&
+         (get(/databases/$(database)/documents/leads/$(resource.data.leadId)).data.propertyOwnerId == request.auth.uid ||
+          get(/databases/$(database)/documents/leads/$(resource.data.leadId)).data.agentId == request.auth.uid))
+      );
+
+      // Criação append-only por usuário autenticado
+      allow create: if isAuthenticated() &&
+                       request.resource.data.leadId is string &&
+                       request.resource.data.propertyId is string &&
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() <= 200 &&
+                       request.resource.data.actorId == request.auth.uid;
+
+      // Imutabilidade estrita: atividades registradas nunca podem ser editadas
+      allow update: if false;
+
+      // Apenas administradores do sistema podem excluir registros de auditoria
+      allow delete: if isAdmin();
+    }
+
+    // Lead Tasks & CRM Follow-ups (Fase 5.1: Gestão de tarefas e follow-ups)
+    match /lead_tasks/{taskId} {
+      // Leitura permitida para responsável, criador, gestores do lead ou admin
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.assignedTo == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.leadId is string &&
+         exists(/databases/$(database)/documents/leads/$(resource.data.leadId)) &&
+         (get(/databases/$(database)/documents/leads/$(resource.data.leadId)).data.propertyOwnerId == request.auth.uid ||
+          get(/databases/$(database)/documents/leads/$(resource.data.leadId)).data.agentId == request.auth.uid))
+      );
+
+      // Criação por usuário autenticado atribuindo tarefa válida
+      allow create: if isAuthenticated() &&
+                       request.resource.data.leadId is string &&
+                       request.resource.data.propertyId is string &&
+                       request.resource.data.assignedTo is string &&
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() <= 200 &&
+                       request.resource.data.status in ['pending', 'completed', 'cancelled'] &&
+                       request.resource.data.priority in ['low', 'medium', 'high'] &&
+                       request.resource.data.createdBy == request.auth.uid;
+
+      // Atualização permitida ao responsável, criador ou gestor, protegendo campos estruturais imutáveis
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.assignedTo == request.auth.uid ||
+        resource.data.createdBy == request.auth.uid ||
+        (resource.data.leadId is string &&
+         exists(/databases/$(database)/documents/leads/$(resource.data.leadId)) &&
+         (get(/databases/$(database)/documents/leads/$(resource.data.leadId)).data.propertyOwnerId == request.auth.uid ||
+          get(/databases/$(database)/documents/leads/$(resource.data.leadId)).data.agentId == request.auth.uid))
+      ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'leadId', 'propertyId', 'createdBy', 'createdAt'
+      ]);
+
+      // Exclusão permitida ao criador ou admin
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.createdBy == request.auth.uid);
+    }
+
+    // Lead Events & Telemetry (No fake metrics, strictly append-only by clients)
+    match /lead_events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.propertyId is string &&
+                       request.resource.data.sessionId is string &&
+                       request.resource.data.eventType in [
+                         'property_view', 'whatsapp_click', 'phone_click', 
+                         'contact_form_started', 'lead_created', 'viewing_requested',
+                         'lead_status_changed', 'viewing_status_changed'
+                       ] &&
+                       (request.resource.data.eventType != 'lead_created' || 
+                        ('leadId' in request.resource.data && request.resource.data.leadId is string)) &&
+                       (request.resource.data.eventType != 'viewing_requested' || 
+                        ('viewingId' in request.resource.data && request.resource.data.viewingId is string)) &&
+                       (!('userId' in request.resource.data) || 
+                        !isAuthenticated() || 
+                        request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // Viewing Requests (Agendamentos de Visita)
+    match /viewings/{viewingId} {
+      allow read: if isAuthenticated() && (
+        resource.data.requesterId == request.auth.uid || 
+        resource.data.propertyOwnerId == request.auth.uid || 
+        resource.data.agentId == request.auth.uid || 
+        isAdmin()
+      );
+      
+      // Creating viewing:
+      // Requester MUST create with status == 'pending'. Cannot self-confirm.
+      // Optional leadId must be a valid string if present.
+      allow create: if request.resource.data.propertyId is string &&
+                       request.resource.data.propertyOwnerId is string &&
+                       request.resource.data.requesterName is string &&
+                       request.resource.data.requesterPhone is string &&
+                       request.resource.data.preferredDate is string &&
+                       request.resource.data.preferredTime is string &&
+                       request.resource.data.status == 'pending' &&
+                       (!('leadId' in request.resource.data) || request.resource.data.leadId is string) &&
+                       (!('requesterId' in request.resource.data) ||
+                        !isAuthenticated() || 
+                        request.resource.data.requesterId == request.auth.uid ||
+                        request.resource.data.requesterId.matches('^guest_.*'));
+      
+      // Updating viewing:
+      // Owner/Agent can transition status ('confirmed', 'rejected', 'completed', 'no_show')
+      // but cannot mutate ownership keys or leadId, and MUST adhere strictly to valid state transitions
+      // Requester can only cancel ('cancelled')
+      allow update: if isAdmin() || (
+        isAuthenticated() && 
+        (resource.data.propertyOwnerId == request.auth.uid || resource.data.agentId == request.auth.uid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'propertyId', 'propertyOwnerId', 'agentId', 'agencyId', 'requesterId', 'leadId', 'createdAt'
+        ]) &&
+        isValidViewingTransition(resource.data.status, request.resource.data.status)
+      ) || (
+        isAuthenticated() && 
+        resource.data.requesterId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'notes']) &&
+        request.resource.data.status == 'cancelled'
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Property Reports (Denúncias contra fraudes e anúncios impróprios)
+    match /property_reports/{reportId} {
+      allow read: if isAdmin() || isModerator();
+      
+      // Any authenticated user or anonymous with email can report; status must be 'open'
+      allow create: if request.resource.data.propertyId is string &&
+                       request.resource.data.reason in [
+                         'inexistent', 'wrong_price', 'wrong_location', 
+                         'inappropriate', 'duplicate', 'fraud', 'other'
+                       ] &&
+                       request.resource.data.description is string &&
+                       request.resource.data.description.size() <= 2000 &&
+                       request.resource.data.status == 'open' &&
+                       (!('reporterId' in request.resource.data) ||
+                        !isAuthenticated() || 
+                        request.resource.data.reporterId == request.auth.uid ||
+                        request.resource.data.reporterId.matches('^anon_.*'));
+      
+      allow update: if isAdmin() || isModerator();
+      allow delete: if isAdmin();
+    }
+
+    // User Notifications (Fase 4.6 & 5.1 Hardening: Canonic Notification Types)
     match /user_notifications/{notificationId} {
       allow read, update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAdmin();
+      allow create: if isAdmin() || (
+        request.resource.data.userId is string && 
+        request.resource.data.title is string && 
+        request.resource.data.message is string &&
+        request.resource.data.type in [
+          'lead_received', 'lead_assigned', 'viewing_requested', 'viewing_status_changed', 
+          'lead_status_changed', 'task_due', 'property_approved', 'property_rejected', 
+          'saved_search_alert', 'price_drop', 'system', 'chat_message', 
+          'info', 'success', 'warning', 'error', 'message'
+        ]
+      );
     }
 
+    // Chat Rooms
     match /chatRooms/{roomId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.agentId || request.auth.uid == resource.data.userId || isAdmin());
-      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.agentId || 
+        request.auth.uid == resource.data.userId || 
+        isAdmin() || 
+        (resource.data.participants != null && request.auth.uid in resource.data.participants)
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || 
+        request.resource.data.agentId == request.auth.uid ||
+        (request.resource.data.participants != null && request.auth.uid in request.resource.data.participants)
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          (request.auth.uid == resource.data.agentId || 
+           request.auth.uid == resource.data.userId || 
+           (resource.data.participants != null && request.auth.uid in resource.data.participants)) &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.agentId == resource.data.agentId
+        )
+      );
+      allow delete: if isAdmin();
     }
 
+    // Chat Messages Subcollection (Strict room participant check)
     match /chats/{roomId}/messages/{messageId} {
-      allow read, write: if isAuthenticated() || isAdmin();
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/chatRooms/$(roomId)) && (
+          get(/databases/$(database)/documents/chatRooms/$(roomId)).data.userId == request.auth.uid ||
+          get(/databases/$(database)/documents/chatRooms/$(roomId)).data.agentId == request.auth.uid ||
+          (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participants != null &&
+           request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participants)
+        ))
+      );
+      allow create: if isAuthenticated() && 
+                       request.resource.data.senderId == request.auth.uid &&
+                       request.resource.data.text is string &&
+                       request.resource.data.text.size() <= 5000 &&
+                       (isAdmin() || 
+                        (exists(/databases/$(database)/documents/chatRooms/$(roomId)) && (
+                          get(/databases/$(database)/documents/chatRooms/$(roomId)).data.userId == request.auth.uid ||
+                          get(/databases/$(database)/documents/chatRooms/$(roomId)).data.agentId == request.auth.uid ||
+                          (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participants != null &&
+                           request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.participants)
+                        )));
+      allow update, delete: if isAdmin();
+    }
+
+    // Orders and Payments (Client creates 'pending', Admin/Server confirms 'paid')
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Audit Logs (Writeable ONLY by Admin/Backend Admin SDK, readable by Admin)
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // System limits and stats
+    match /system_stats/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Mail collection (RESTRICTED: Cloud Functions / Admin SDK only)
+    match /mail/{mailId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Feedbacks
+    match /feedbacks/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if true;
     }
 
     // Default Deny
@@ -107,3 +543,4 @@ service cloud.firestore {
     }
   }
 }
+

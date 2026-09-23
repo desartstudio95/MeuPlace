@@ -20,7 +20,7 @@ export function AdminStatistics() {
     recentActivity: [] as any[]
   });
 
-  const COLORS = ['#cb6ce6', '#72e331', '#3B82F6', '#FFBB28', '#FF8042'];
+  const COLORS = ['#cb6ce6', '#c1ff72', '#3B82F6', '#FFBB28', '#FF8042'];
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -163,7 +163,7 @@ export function AdminStatistics() {
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
-                <Line type="monotone" dataKey="properties" stroke="#72e331" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="properties" stroke="#c1ff72" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

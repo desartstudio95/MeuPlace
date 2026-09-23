@@ -9,10 +9,12 @@ service firebase.storage {
     
     function isAdmin() {
       return isAuthenticated() && (
-        (request.auth.token.email == "desartstudiopro@gmail.com" && request.auth.token.email_verified == true) ||
-        (request.auth.uid == "7TlXuKjMWUQVh28kC9Dv7bOm2gP2") ||
-        (firestore.exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         firestore.get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        request.auth.token.role == 'admin' ||
+        (request.auth.token.email_verified == true && 
+         (request.auth.token.email == "desartstudiopro@gmail.com" || 
+          request.auth.token.email == "ruiisacmugabe@gmail.com")) ||
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) && 
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
     
@@ -24,17 +26,48 @@ service firebase.storage {
       return request.resource.size <= 10 * 1024 * 1024; // 10MB
     }
 
-    // Imagens das propriedades
+    // Imagens legadas de propriedades na raiz (desativado para clientes - gravação restrita a admin)
     match /properties/{fileName} {
-      allow read: if true; // Qualquer pessoa pode ver as imagens
-      allow create, update: if isAuthenticated() && isLessThan10MB();
-      allow delete: if isAuthenticated(); // Idealmente, verificar se é dono ou admin
+      allow read: if true;
+      allow write, delete: if isAdmin();
     }
 
-    // Logotipos de agências
+    // Imagens de propriedades particionadas por usuário (novo padrão seguro)
+    match /properties/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan10MB();
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Documentos comprobatórios de propriedades
+    match /property_documents/{userId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && (isImage() || request.resource.contentType == 'application/pdf') && isLessThan10MB();
+      allow delete: if isAdmin();
+    }
+
+    // Documentos KYC (Confidenciais: Alvará, NUIT, BI - Restrito a Imagem ou PDF até 10MB)
+    match /kyc_documents/{userId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId && (isImage() || request.resource.contentType == 'application/pdf') && isLessThan10MB();
+      allow delete: if isAdmin();
+    }
+
+    match /documents/{userId}/{fileName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId && (isImage() || request.resource.contentType == 'application/pdf') && isLessThan10MB();
+      allow delete: if isAdmin();
+    }
+
+    // Logotipos de agências (Particionado ou restrito a Admin)
     match /agency_logos/{fileName} {
       allow read: if true;
-      allow write: if isAdmin() && isImage() && isLessThan10MB();
+      allow write, delete: if isAdmin();
+    }
+    match /agency_logos/{userId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan10MB();
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
     
     // Avatares de agentes em destaque
@@ -43,13 +76,13 @@ service firebase.storage {
       allow write: if isAdmin() && isImage() && isLessThan10MB();
     }
     
-    // Configurações do site (logotipos, etc)
+    // Configurações do site (logotipos institucionais)
     match /settings/{fileName} {
       allow read: if true;
       allow write: if isAdmin() && isImage() && isLessThan10MB();
     }
     
-    // Avatares de utilizadores (vários caminhos possíveis)
+    // Avatares de utilizadores
     match /avatars/{userId}/{fileName} {
       allow read: if true;
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isLessThan10MB();
@@ -68,5 +101,11 @@ service firebase.storage {
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isLessThan10MB();
       allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
+
+    // Default deny for everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
   }
 }
+

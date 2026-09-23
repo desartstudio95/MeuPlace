@@ -82,21 +82,21 @@ export function Chat({ propertyId, agentId, agentName, onClose }: ChatProps) {
     setNewMessage('');
 
     try {
-      // 1. Add the message to the messages subcollection
-      await addDoc(collection(db, 'chats', roomId, 'messages'), messageData);
-      
-      // 2. Update or create the chat room metadata so the agent can find it
+      // 1. Update or create the chat room metadata first so rules can verify participants
       await setDoc(doc(db, 'chatRooms', roomId), {
         id: roomId,
         propertyId,
         agentId,
         userId: currentUserId,
         userName: currentUserName,
+        participants: [currentUserId, agentId],
         lastMessage: newMessage,
         lastTimestamp: new Date().toISOString(),
         updatedAt: serverTimestamp()
       }, { merge: true });
-      
+
+      // 2. Add the message to the messages subcollection
+      await addDoc(collection(db, 'chats', roomId, 'messages'), messageData);
     } catch (error) {
       console.error('Error sending message:', error);
     }

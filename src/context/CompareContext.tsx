@@ -33,15 +33,17 @@ export function CompareProvider({ children }: { children: ReactNode }) {
   }, [propertiesToCompare]);
 
   const addToCompare = (property: Property) => {
-    if (propertiesToCompare.length >= 4) {
-      toast.error('Pode comparar no máximo 4 imóveis de cada vez.');
+    if (propertiesToCompare.some(p => p.id === property.id)) {
+      return;
+    }
+
+    if (propertiesToCompare.length >= 3) {
+      toast.error('Pode comparar até 3 imóveis.');
       return;
     }
     
-    if (!propertiesToCompare.some(p => p.id === property.id)) {
-      setPropertiesToCompare(prev => [...prev, property]);
-      toast.success('Imóvel adicionado à comparação.');
-    }
+    setPropertiesToCompare(prev => [...prev, property]);
+    toast.success('Imóvel adicionado à comparação.');
   };
 
   const removeFromCompare = (propertyId: string) => {

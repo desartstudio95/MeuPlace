@@ -1,14 +1,16 @@
-import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, getDoc, where, getCountFromServer } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, getDocs, getDoc, where, getCountFromServer, limit } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db, storage, auth } from '@/lib/firebase';
 import { Property } from '@/types';
 import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 
 export const propertyService = {
-  async getProperties() {
+  async getProperties(approvedOnly: boolean = true, maxLimit: number = 50) {
     const path = 'properties';
     try {
-      const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+      const q = approvedOnly
+        ? query(collection(db, path), where('isApproved', '==', true), limit(maxLimit))
+        : query(collection(db, path), limit(maxLimit));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
     } catch (error) {
@@ -108,7 +110,16 @@ export const propertyService = {
   },
 
   async uploadImage(file: File): Promise<string> {
-    const storageRef = ref(storage, `properties/${Date.now()}_${file.name}`);
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Apenas arquivos de imagem são permitidos.');
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('O arquivo excede o limite máximo permitido de 10MB.');
+    }
+
+    const userId = auth.currentUser?.uid || 'anonymous';
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageRef = ref(storage, `properties/${userId}/${Date.now()}_${sanitizedName}`);
     const metadata = {
       contentType: file.type,
     };
@@ -128,7 +139,13 @@ export const propertyService = {
   },
 
   async uploadDocument(file: File, folder: string = 'documents'): Promise<string> {
-    const storageRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('O documento excede o limite máximo permitido de 10MB.');
+    }
+
+    const userId = auth.currentUser?.uid || 'anonymous';
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageRef = ref(storage, `${folder}/${userId}/${Date.now()}_${sanitizedName}`);
     const metadata = {
       contentType: file.type,
     };

@@ -86,7 +86,7 @@ export function PropertyMap({ properties, height = "500px", zoom = 5, onMarkerCl
                 <Popup>
                   <div className="min-w-[200px]">
                     <img 
-                      src={property.images[0]} 
+                      src={property.images?.[0] || 'https://placehold.co/100'} 
                       alt={property.title} 
                       className="w-full h-32 object-cover rounded-md mb-2"
                     />

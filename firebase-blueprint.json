@@ -187,15 +187,107 @@
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "message": { "type": "string" },
-        "type": { "type": "string", "enum": ["info", "success", "warning", "error"] },
+        "type": { "type": "string" },
         "read": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "link": { "type": "string" }
       },
       "required": ["userId", "title", "message", "read", "createdAt"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "A CRM lead / commercial opportunity",
+      "type": "object",
+      "properties": {
+        "propertyId": { "type": "string" },
+        "propertyTitle": { "type": "string" },
+        "propertyOwnerId": { "type": "string" },
+        "agentId": { "type": "string" },
+        "agencyId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "message": { "type": "string" },
+        "source": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "contacted", "qualified", "negotiating", "won", "lost", "archived"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["propertyId", "propertyOwnerId", "customerName", "customerPhone", "message", "status", "createdAt"]
+    },
+    "Viewing": {
+      "title": "Viewing",
+      "description": "A property visit request / appointment",
+      "type": "object",
+      "properties": {
+        "propertyId": { "type": "string" },
+        "leadId": { "type": "string" },
+        "requesterId": { "type": "string" },
+        "requesterName": { "type": "string" },
+        "requesterPhone": { "type": "string" },
+        "propertyOwnerId": { "type": "string" },
+        "preferredDate": { "type": "string" },
+        "preferredTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "rejected", "cancelled", "completed", "no_show"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["propertyId", "propertyOwnerId", "requesterName", "requesterPhone", "preferredDate", "preferredTime", "status", "createdAt"]
+    },
+    "LeadActivity": {
+      "title": "LeadActivity",
+      "description": "Append-only CRM timeline activity record for a lead",
+      "type": "object",
+      "properties": {
+        "leadId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "type": { "type": "string" },
+        "actorId": { "type": "string" },
+        "actorRole": { "type": "string", "enum": ["agent", "owner", "buyer", "admin", "system"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["leadId", "propertyId", "type", "actorId", "actorRole", "title", "createdAt"]
+    },
+    "LeadTask": {
+      "title": "LeadTask",
+      "description": "CRM follow-up task or reminder associated with a lead",
+      "type": "object",
+      "properties": {
+        "leadId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "dueAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["leadId", "propertyId", "assignedTo", "createdBy", "title", "status", "priority", "dueAt", "createdAt"]
     }
   },
   "firestore": {
+    "leads/{leadId}": {
+      "schema": { "$ref": "#/entities/Lead" },
+      "description": "Stores CRM leads and commercial opportunities."
+    },
+    "viewings/{viewingId}": {
+      "schema": { "$ref": "#/entities/Viewing" },
+      "description": "Stores property viewing appointments."
+    },
+    "lead_activities/{activityId}": {
+      "schema": { "$ref": "#/entities/LeadActivity" },
+      "description": "Append-only CRM timeline activities."
+    },
+    "lead_tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/LeadTask" },
+      "description": "CRM follow-up tasks and reminders."
+    },
     "users/{userId}": {
       "schema": { "$ref": "#/entities/User" },
       "description": "Stores user profiles and roles."

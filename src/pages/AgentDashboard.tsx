@@ -40,7 +40,10 @@ import {
   Star,
   BarChart,
   UploadCloud,
-  FileText
+  FileText,
+  Rocket,
+  Flame,
+  Users
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/sound';
@@ -506,7 +509,7 @@ export function AgentDashboard() {
     }
   };
 
-  const handleStatusChange = async (id: string, newStatus: 'Disponível' | 'Vendido' | 'Arrendado') => {
+  const handleStatusChange = async (id: string, newStatus: 'Disponível' | 'Vendido' | 'Arrendado' | 'Inativo') => {
     try {
       const propertyRef = doc(db, 'properties', id);
       await updateDoc(propertyRef, { status: newStatus });
@@ -664,6 +667,16 @@ export function AgentDashboard() {
               Meus {propertyLabel}
             </button>
             <button
+              onClick={() => { navigate('/crm/leads'); setIsMobileMenuOpen(false); }}
+              className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-emerald-50 hover:text-brand-green group"
+            >
+              <Users className="mr-3 h-5 w-5 text-brand-green group-hover:text-emerald-700" />
+              <span className="font-semibold text-brand-green">Leads & CRM</span>
+              <span className="ml-auto bg-brand-green/10 text-brand-green text-[10px] font-bold px-1.5 py-0.5 rounded">
+                Novo
+              </span>
+            </button>
+            <button
               onClick={() => { setActiveTab('messages'); setIsMobileMenuOpen(false); }}
               className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 activeTab === 'messages' 
@@ -797,6 +810,35 @@ export function AgentDashboard() {
               <p className="text-gray-500">Bem-vindo de volta, {profileData.name}.</p>
             </div>
 
+            {/* Pre-launch promo notice */}
+            {userProfile?.role === 'agent' && userProfile?.planId !== 'launch-promo' && (
+              <div className="bg-gradient-to-r from-[#6b1c82] via-[#8e25ad] to-[#5f1774] rounded-2xl p-5 sm:p-6 text-white border border-brand-green/40 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-brand-green text-gray-950 flex items-center justify-center flex-shrink-0 font-bold">
+                    <Rocket className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-green text-gray-950 font-black text-[10px] uppercase tracking-wider mb-1">
+                      <Flame className="w-3 h-3 fill-current" />
+                      Promoção de Pré-Lançamento Ativa
+                    </div>
+                    <h3 className="text-base sm:text-lg font-bold text-white">
+                      Anuncie até 15 imóveis por apenas 500 MT / mês
+                    </h3>
+                    <p className="text-xs text-purple-100">
+                      Aproveite o preço exclusivo de estreia com 2 destaques de capa na página inicial e receba contactos no WhatsApp.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => navigate('/plans')} 
+                  className="bg-brand-green hover:bg-brand-green-hover text-gray-950 font-black px-5 py-2 whitespace-nowrap flex-shrink-0 shadow-md w-full sm:w-auto"
+                >
+                  Ativar por 500 MT →
+                </Button>
+              </div>
+            )}
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {stats.map((stat, idx) => {
@@ -837,11 +879,11 @@ export function AgentDashboard() {
                       <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
                         <div className="flex items-center justify-center gap-1">
                           <Eye className="h-3 w-3" />
-                          <span className="font-medium">{Math.floor(Math.random() * 500) + 50}</span> views
+                          <span className="font-medium">{property.views || 0}</span> views
                         </div>
                         <div className="flex items-center justify-center gap-1">
                           <MessageSquare className="h-3 w-3" />
-                          <span className="font-medium">{Math.floor(Math.random() * 20) + 1}</span> msgs
+                          <span className="font-medium">{property.messagesCount || 0}</span> msgs
                         </div>
                       </div>
                     </div>
@@ -869,11 +911,11 @@ export function AgentDashboard() {
                         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-md">
                           <div className="flex items-center justify-center gap-1">
                             <Eye className="h-3 w-3" />
-                            <span className="font-medium">{Math.floor(Math.random() * 1000) + 200}</span> views
+                            <span className="font-medium">{property.views || 0}</span> views
                           </div>
                           <div className="flex items-center justify-center gap-1">
                             <MessageSquare className="h-3 w-3" />
-                            <span className="font-medium">{Math.floor(Math.random() * 50) + 5}</span> msgs
+                            <span className="font-medium">{property.messagesCount || 0}</span> msgs
                           </div>
                         </div>
                       </div>
@@ -919,7 +961,7 @@ export function AgentDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="h-10 w-10 flex-shrink-0">
-                              <img className="h-10 w-10 rounded-md object-cover" src={property.images[0]} alt="" />
+                              <img className="h-10 w-10 rounded-md object-cover" src={property.images?.[0] || 'https://placehold.co/100'} alt="" />
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]">{property.title}</div>
@@ -935,6 +977,8 @@ export function AgentDashboard() {
                             className={`px-2 py-1 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-brand-green ${
                               property.status === 'Vendido' || property.status === 'Arrendado'
                                 ? 'bg-gray-100 text-gray-800'
+                                : property.status === 'Inativo'
+                                ? 'bg-red-100 text-red-800'
                                 : 'bg-green-100 text-green-800'
                             }`}
                             value={property.status || 'Disponível'}
@@ -943,6 +987,7 @@ export function AgentDashboard() {
                             <option value="Disponível">Disponível</option>
                             <option value="Vendido">Vendido</option>
                             <option value="Arrendado">Arrendado</option>
+                            <option value="Inativo">Inativo</option>
                           </select>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -955,21 +1000,18 @@ export function AgentDashboard() {
                           {new Date(property.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 text-amber-600 hover:text-amber-900 hover:bg-amber-50 rounded-full font-bold px-3 border border-amber-200"
-                                onClick={() => {
-                                  // Mock boost action
-                                  playNotificationSound();
-                                  alert(`Você será redirecionado para efetuar o pagamento de 500 MT via M-Pesa para impulsionar este anúncio no topo por 3 dias.`);
-                                }}
-                                title="Impulsionar ao Topo por 3 Dias (500 MT)"
-                              >
-                                <Star className="h-4 w-4 mr-1 fill-amber-500" />
-                                Boost (500 MT)
-                              </Button>
+                            <div className="flex justify-end gap-2">
+                              <Link to={`/promote-property/${property.id}`}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 text-amber-600 hover:text-amber-900 hover:bg-amber-50 rounded-full font-bold px-3 border border-amber-200"
+                                  title="Promover Imóvel"
+                                >
+                                  <Star className="h-4 w-4 mr-1 fill-amber-500" />
+                                  Promover
+                                </Button>
+                              </Link>
                             <Link to={`/edit-property/${property.id}`}>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-900 hover:bg-blue-50">
                                 <Edit className="h-4 w-4" />
@@ -1621,7 +1663,7 @@ export function AgentDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-1">Total de Impressões</p>
                   <h3 className="text-3xl font-black text-gray-900">
-                    {(myProperties?.reduce((acc, p) => acc + (p.impressions || Math.floor(Math.random() * 500) + 100), 0) || 0).toLocaleString()}
+                    {(myProperties?.reduce((acc, p) => acc + (p.impressions || p.views || 0), 0) || 0).toLocaleString()}
                   </h3>
                 </div>
                 <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
@@ -1633,7 +1675,7 @@ export function AgentDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-1">Cliques no WhatsApp</p>
                   <h3 className="text-3xl font-black text-green-600">
-                    {(myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || Math.floor(Math.random() * 50) + 10), 0) || 0).toLocaleString()}
+                    {(myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || 0), 0) || 0).toLocaleString()}
                   </h3>
                 </div>
                 <div className="p-3 bg-green-50 text-green-600 rounded-full">
@@ -1645,10 +1687,12 @@ export function AgentDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-500 mb-1">Taxa de Conversão</p>
                   <h3 className="text-3xl font-black text-brand-purple">
-                    {myProperties?.length ? (
-                      ((myProperties.reduce((acc, p) => acc + (p.whatsappClicks || 15), 0) / 
-                       myProperties.reduce((acc, p) => acc + (p.impressions || 300), 0)) * 100).toFixed(1)
-                    ) : '0'}%
+                    {(() => {
+                      const totalImpressions = myProperties?.reduce((acc, p) => acc + (p.impressions || p.views || 0), 0) || 0;
+                      const totalClicks = myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || 0), 0) || 0;
+                      if (totalImpressions === 0) return '0.0';
+                      return ((totalClicks / totalImpressions) * 100).toFixed(1);
+                    })()}%
                   </h3>
                 </div>
                 <div className="p-3 bg-purple-50 text-purple-600 rounded-full">
@@ -1673,11 +1717,11 @@ export function AgentDashboard() {
                     {myProperties.map((p, idx) => (
                       <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
                         <td className="px-4 py-4 font-medium text-gray-900 flex items-center gap-3">
-                          <img src={p.images[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
+                          <img src={p.images?.[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
                           <span className="line-clamp-1">{p.title}</span>
                         </td>
-                        <td className="px-4 py-4">{p.impressions || Math.floor(Math.random() * 500) + 100}</td>
-                        <td className="px-4 py-4 text-green-600 font-medium">{p.whatsappClicks || Math.floor(Math.random() * 50) + 10}</td>
+                        <td className="px-4 py-4">{p.impressions || 0}</td>
+                        <td className="px-4 py-4 text-green-600 font-medium">{p.whatsappClicks || 0}</td>
                         <td className="px-4 py-4">
                           <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">Ativo</span>
                         </td>

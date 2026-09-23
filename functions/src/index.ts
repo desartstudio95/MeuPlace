@@ -5,8 +5,20 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+// App Check verification (Protects against non-app calls and bot abuse)
+const checkAppCheck = (context: functions.https.CallableContext) => {
+  if (process.env.ENFORCE_APP_CHECK === "true" && !context.app) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "The function must be called from an App Check verified app."
+    );
+  }
+};
+
 // Middleware to check if user is admin
 const checkAdmin = async (context: functions.https.CallableContext) => {
+  checkAppCheck(context);
+
   if (!context.auth) {
     throw new functions.https.HttpsError(
       "unauthenticated",

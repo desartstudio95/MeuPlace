@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
+import { PreLaunchBanner } from './PreLaunchBanner';
 import { motion } from 'motion/react';
 import { useCompare } from '@/context/CompareContext';
 import { Link } from 'react-router-dom';
@@ -15,6 +16,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden w-full relative">
+      <PreLaunchBanner />
       <Navbar />
       <motion.main 
         initial={{ opacity: 0 }}

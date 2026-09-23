@@ -3,53 +3,92 @@ import { createServer as createViteServer } from "vite";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import path from "path";
+import crypto from "crypto";
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
   const httpServer = createServer(app);
+
+  app.use(express.json({ limit: '2mb' }));
+
+  // Security Headers Middleware
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    // Restrict origin if needed
+    const origin = req.headers.origin;
+    if (!origin || origin.includes('localhost') || origin.includes('run.app') || origin.includes('meuplace')) {
+      res.setHeader("Access-Control-Allow-Origin", origin || "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    next();
+  });
   
-  // Setup Socket.IO
+  // Setup Socket.IO with origin check and sanitized payloads
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: (origin, callback) => {
+        // Accept localhost, preview containers, and production domain
+        if (!origin || origin.includes('localhost') || origin.includes('run.app') || origin.includes('meuplace')) {
+          callback(null, true);
+        } else {
+          callback(new Error('Origem não permitida pelo CORS'));
+        }
+      },
       methods: ["GET", "POST"]
     }
   });
 
-  // Store active chats in memory (for demo purposes)
+  // Active chat rooms in memory (isolated per room)
   const messages: any[] = [];
 
   io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
-
-    // Send previous messages when a user joins a room
+    // Room joining with validation
     socket.on("join_room", (roomId) => {
+      if (typeof roomId !== 'string' || roomId.length > 100) return;
       socket.join(roomId);
-      const roomMessages = messages.filter(m => m.roomId === roomId);
+      const roomMessages = messages.filter(m => m.roomId === roomId).slice(-50);
       socket.emit("previous_messages", roomMessages);
     });
 
     socket.on("send_message", (data) => {
+      if (!data || typeof data.roomId !== 'string' || typeof data.text !== 'string') return;
+      const sanitizedText = data.text.trim().substring(0, 2000);
+      if (!sanitizedText) return;
+
       const messageData = {
-        ...data,
-        id: Math.random().toString(36).substring(7),
+        roomId: data.roomId,
+        text: sanitizedText,
+        senderId: String(data.senderId || 'anon').substring(0, 100),
+        senderName: String(data.senderName || 'Usuário').substring(0, 100),
+        id: crypto.randomUUID(),
         timestamp: new Date().toISOString()
       };
-      messages.push(messageData);
       
-      // Broadcast to everyone in the room
+      messages.push(messageData);
+      // Keep in-memory buffer manageable
+      if (messages.length > 1000) {
+        messages.splice(0, 200);
+      }
+      
+      // Broadcast strictly to everyone in that specific room
       io.to(data.roomId).emit("receive_message", messageData);
     });
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+      // Clean disconnect
     });
   });
 
   // API routes FIRST
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   app.get("/sitemap.xml", async (req, res) => {
@@ -111,15 +150,14 @@ async function startServer() {
     <priority>0.3</priority>
   </url>`;
 
-      // Add dynamic property URLs
+      // Add dynamic property URLs - ONLY properties that are approved!
       properties.forEach((doc: any) => {
-        // Extract ID from document name: projects/meuplace-2fa32/databases/(default)/documents/properties/ID
         const nameParts = doc.name.split('/');
         const id = nameParts[nameParts.length - 1];
         
-        // Only include approved properties if that field exists
+        // Strict security: do not index unapproved properties
         const isApproved = doc.fields?.isApproved?.booleanValue;
-        if (isApproved === false) return;
+        if (isApproved !== true) return;
 
         xml += `
   <url>

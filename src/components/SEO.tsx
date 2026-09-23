@@ -7,9 +7,10 @@ interface SEOProps {
   type?: string;
   image?: string;
   url?: string;
+  schema?: Record<string, any>;
 }
 
-export function SEO({ title, description, name = "MeuPlace", type = "website", image, url }: SEOProps) {
+export function SEO({ title, description, name = "MeuPlace", type = "website", image, url, schema }: SEOProps) {
   const siteTitle = `${title} | MeuPlace`;
   const baseUrl = "https://www.meuplace.com";
   const canonicalUrl = url ? `${baseUrl}${url}` : baseUrl;
@@ -34,6 +35,13 @@ export function SEO({ title, description, name = "MeuPlace", type = "website", i
       <meta name="twitter:title" content={siteTitle} />
       <meta name="twitter:description" content={description} />
       {image && <meta name="twitter:image" content={image} />}
+
+      {/* Structured Data (JSON-LD) */}
+      {schema && (
+        <script type="application/ld+json">
+          {JSON.stringify(schema)}
+        </script>
+      )}
     </Helmet>
   );
 }

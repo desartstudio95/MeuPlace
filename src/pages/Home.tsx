@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User, Key, Heart, MousePointer2, Sparkles, Hotel, Users, ArrowRight, Facebook, Instagram } from 'lucide-react';
+import { Search, MapPin, Home as HomeIcon, DollarSign, Bed, Maximize, ChevronUp, ChevronDown, Building2, ShieldCheck, Crown, Star, Award, User, Key, Heart, MousePointer2, Sparkles, Hotel, Users, ArrowRight, Facebook, Instagram, Rocket, Flame, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -40,7 +40,12 @@ export function Home() {
   useEffect(() => {
     const fetchFeaturedProperties = async () => {
       try {
-        const q = query(collection(db, 'properties'), where('isPromoted', '==', true), limit(6));
+        const q = query(
+          collection(db, 'properties'),
+          where('isApproved', '==', true),
+          where('isPromoted', '==', true),
+          limit(6)
+        );
         const querySnapshot = await getDocs(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
@@ -199,9 +204,18 @@ export function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium mb-8">
-              <Crown className="h-4 w-4 text-amber-400" />
-              <span>O Maior Shopping de Imóveis em Moçambique</span>
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium">
+                <Crown className="h-4 w-4 text-amber-400" />
+                <span>O Maior Shopping de Imóveis em Moçambique</span>
+              </div>
+              <Link 
+                to="/plans"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-green text-gray-950 text-xs sm:text-sm font-extrabold shadow-lg hover:bg-brand-green-hover transition-all hover:scale-105"
+              >
+                <span className="flex h-2 w-2 rounded-full bg-gray-950 animate-ping" />
+                <span>🚀 Pré-Lançamento: Agentes anunciam por 500 MT/mês →</span>
+              </Link>
             </div>
             
             <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green drop-shadow-[0_0_15px_rgba(114,227,49,0.5)]">Moçambique</span>') }}>
@@ -525,7 +539,7 @@ export function Home() {
       {/* Resorts & Hotels Section */}
       <section className="py-16 bg-white relative overflow-hidden">
         {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#72e331 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+        <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#c1ff72 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
         
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div 
@@ -757,6 +771,93 @@ export function Home() {
         </div>
       </section>
       
+      {/* Pre-Launch Special Promotion Section for Agents */}
+      <section className="py-20 bg-gradient-to-b from-[#4a0f5d] via-[#5c1374] to-[#3f0c50] text-white relative overflow-hidden border-y border-brand-purple-hover/40">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(193,255,114,0.18),rgba(203,108,230,0.15))] pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-green text-gray-950 font-black text-xs uppercase tracking-wider mb-4 shadow-sm">
+              <Flame className="w-4 h-4 fill-current" />
+              <span>Promoção de Pré-Lançamento</span>
+            </div>
+            
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white mb-4">
+              É Agente Imobiliário? Anuncie Seus Imóveis por Apenas{' '}
+              <span className="text-brand-green underline decoration-brand-green/50 decoration-4">
+                500 MT / mês
+              </span>
+            </h2>
+            
+            <p className="text-purple-100 text-base sm:text-lg">
+              Faça parte da fase de estreia da maior plataforma imobiliária de Moçambique. Posicione sua carteira de imóveis com valor promocional reduzido de 1.500 MT para apenas 500 MT por mês.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="bg-gradient-to-br from-[#6b1684] via-[#7d1fa0] to-[#59116e] border border-brand-purple/40 rounded-2xl p-6 shadow-xl hover:border-brand-green/50 transition-all">
+              <div className="w-12 h-12 rounded-xl bg-brand-green text-gray-950 flex items-center justify-center font-bold text-lg mb-4 shadow-sm">
+                500 MT
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Preço Promocional Especial</h3>
+              <p className="text-sm text-purple-100 leading-relaxed">
+                Desconto de mais de 65% em relação à tarifa regular. Condição garantida para todos os agentes que se cadastrarem durante o período de pré-lançamento.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#791b96] via-[#8e25ad] to-[#65157d] border-2 border-brand-green rounded-2xl p-6 relative shadow-2xl shadow-brand-purple/30 hover:scale-[1.02] transition-all">
+              <div className="absolute -top-3 right-4 bg-brand-green text-gray-950 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full shadow-sm">
+                Destaque
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-brand-green text-gray-950 flex items-center justify-center font-bold text-xl mb-4 shadow-sm">
+                <Rocket className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">15 Imóveis + 2 Destaques de Capa</h3>
+              <p className="text-sm text-purple-100 leading-relaxed">
+                Publique até 15 imóveis ativos e coloque seus 2 melhores empreendimentos em destaque na página inicial e no topo das pesquisas de compra e arrendamento.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#6b1684] via-[#7d1fa0] to-[#59116e] border border-brand-purple/40 rounded-2xl p-6 shadow-xl hover:border-brand-green/50 transition-all">
+              <div className="w-12 h-12 rounded-xl bg-brand-green text-gray-950 flex items-center justify-center font-bold text-xl mb-4 shadow-sm">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Contactos Directos no WhatsApp</h3>
+              <p className="text-sm text-purple-100 leading-relaxed">
+                Receba potenciais compradores e inquilinos diretamente no seu WhatsApp e telefone sem intermediários, acelerando o fecho de negócios em Moçambique.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-[#5a116f] via-[#741c8f] to-[#4c0c5e] border border-brand-green/40 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl">
+            <div>
+              <div className="text-sm font-bold text-brand-green uppercase tracking-wider mb-1">
+                Vagas Promocionais Limitadas
+              </div>
+              <div className="text-xl sm:text-2xl font-bold text-white">
+                Garanta sua vaga como Agente Fundador do MeuPlace
+              </div>
+              <div className="text-xs sm:text-sm text-purple-200 mt-1">
+                Ativação rápida, sem burocracia e com suporte prioritário da nossa equipa.
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <Link to="/register?role=agent" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto bg-brand-green hover:bg-brand-green-hover text-gray-950 font-black px-8 shadow-lg shadow-brand-green/20">
+                  Garantir Vaga por 500 MT
+                </Button>
+              </Link>
+              <Link to="/plans" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto border-white/30 text-white hover:bg-white/10 font-bold">
+                  Ver Detalhes do Plano
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Call to Action */}
       <section className="py-20 bg-gray-900 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-brand-green/20 to-brand-purple/20"></div>

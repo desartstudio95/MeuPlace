@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, where } from 'firebase/firestore';
+import { collection, query, getDocs, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Property, LOCATIONS, CATEGORIES } from '@/types';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -14,6 +14,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Link } from 'react-router-dom';
 import { Bed, Bath, Square } from 'lucide-react';
+import { SEO } from '@/components/SEO';
 
 // Fix Leaflet's default icon path issues with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -44,10 +45,19 @@ export function MapSearch() {
   const fetchProperties = async () => {
     try {
       setLoading(true);
-      let q = query(collection(db, 'properties'));
+      let q = query(
+        collection(db, 'properties'),
+        where('isApproved', '==', true),
+        limit(100)
+      );
       
       if (activeCategory) {
-        q = query(collection(db, 'properties'), where('category', '==', activeCategory));
+        q = query(
+          collection(db, 'properties'),
+          where('isApproved', '==', true),
+          where('category', '==', activeCategory),
+          limit(100)
+        );
       }
 
       const querySnapshot = await getDocs(q);
@@ -72,6 +82,10 @@ export function MapSearch() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
+      <SEO 
+        title="Pesquisa no Mapa" 
+        description="Explore imóveis em Moçambique através de nosso mapa interativo. Filtre por categoria para encontrar o seu lugar perfeito."
+      />
       {/* Map Controls */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex gap-4 overflow-x-auto">
         <select 

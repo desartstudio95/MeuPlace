@@ -52,10 +52,16 @@ import { SeoAudit } from '@/pages/admin/SeoAudit';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminTools } from '@/pages/admin/Tools';
 
+// CRM V1 Pages
+import { CrmLeadsInbox } from '@/pages/crm/CrmLeadsInbox';
+import { CrmLeadDetail } from '@/pages/crm/CrmLeadDetail';
+
 import { MapSearch } from '@/pages/MapSearch';
 import { Compare } from '@/pages/Compare';
+import { PromoteProperty } from '@/pages/PromoteProperty';
 
 import { CompareProvider } from '@/context/CompareContext';
+import { FavoriteProvider } from '@/context/FavoriteContext';
 
 export default function App() {
   const [isMaintenance, setIsMaintenance] = useState(false);
@@ -145,8 +151,9 @@ export default function App() {
     <HelmetProvider>
         <AuthProvider>
           <NotificationProvider>
-            <CompareProvider>
-            <Router>
+            <FavoriteProvider>
+              <CompareProvider>
+                <Router>
               <ScrollToTop />
             <Routes>
             {/* Secret Admin Login Route */}
@@ -194,12 +201,19 @@ export default function App() {
                     <Route path="/plans" element={<Plans />} />
                   </Route>
                   
+                  {/* CRM V1 Routes (Protected: Owner, Agent, Agency, Moderator, Admin, Resort) */}
+                  <Route element={<ProtectedRoute requireRole={['admin', 'agent', 'agency', 'owner', 'resort', 'moderator']} />}>
+                    <Route path="/crm/leads" element={<CrmLeadsInbox />} />
+                    <Route path="/crm/leads/:leadId" element={<CrmLeadDetail />} />
+                  </Route>
+
                   {/* Protected Routes */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/add-property" element={<AddProperty />} />
                     <Route path="/add-accommodation" element={<AddAccommodation />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/edit-property/:id" element={<EditProperty />} />
+                    <Route path="/promote-property/:id" element={<PromoteProperty />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/my-files" element={<MyFiles />} />
                   </Route>
@@ -210,9 +224,10 @@ export default function App() {
           <CookieConsent />
           <Toaster position="bottom-right" richColors />
         </Router>
-        </CompareProvider>
-      </NotificationProvider>
-    </AuthProvider>
+              </CompareProvider>
+            </FavoriteProvider>
+          </NotificationProvider>
+        </AuthProvider>
     </HelmetProvider>
   );
 }

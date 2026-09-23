@@ -41,7 +41,7 @@ import { resizeImage } from '@/utils/imageUtils';
 import { useNotifications } from '@/context/NotificationContext';
 
 export function ResortDashboard() {
-  const { currentUser, userProfile, logout, updateUserProfile } = useAuth();
+  const { currentUser, userProfile, logout, updateUserProfile, deleteUserAccount } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'dashboard');
@@ -60,6 +60,9 @@ export function ResortDashboard() {
     resortAmenities: Array.isArray(userProfile?.resortAmenities) ? userProfile.resortAmenities.join(', ') : (userProfile?.resortAmenities || ''),
     phone: userProfile?.phone || '',
     whatsapp: userProfile?.whatsapp || '',
+    website: userProfile?.website || '',
+    facebook: userProfile?.facebook || '',
+    instagram: userProfile?.instagram || '',
     avatar: userProfile?.photoURL || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
   });
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -147,6 +150,9 @@ export function ResortDashboard() {
         resortAmenities: amenitiesArray,
         phone: resortData.phone,
         whatsapp: resortData.whatsapp,
+        website: resortData.website,
+        facebook: resortData.facebook,
+        instagram: resortData.instagram,
         photoURL: resortData.avatar,
       });
       
@@ -163,6 +169,11 @@ export function ResortDashboard() {
           phone: resortData.phone,
           email: currentUser.email
         },
+        social: {
+          website: resortData.website,
+          facebook: resortData.facebook,
+          instagram: resortData.instagram
+        },
         updatedAt: new Date().toISOString()
       }).catch(async (err) => {
         // If it doesn't exist, create it
@@ -177,6 +188,11 @@ export function ResortDashboard() {
             contact: {
               phone: resortData.phone,
               email: currentUser.email
+            },
+            social: {
+              website: resortData.website,
+              facebook: resortData.facebook,
+              instagram: resortData.instagram
             },
             rating: 5.0, // Default rating for new resorts
             price: 'Sob Consulta',
@@ -239,6 +255,20 @@ export function ResortDashboard() {
     }
   };
 
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const propertyRef = doc(db, 'properties', id);
+      await updateDoc(propertyRef, { status: newStatus });
+      setMyProperties(myProperties.map(p => 
+        p.id === id ? { ...p, status: newStatus as any } : p
+      ));
+      addNotification({ title: 'Sucesso', message: 'Status atualizado com sucesso.', type: 'success' });
+    } catch (error) {
+      console.error("Error updating property status:", error);
+      addNotification({ title: 'Erro', message: 'Erro ao atualizar status.', type: 'error' });
+    }
+  };
+
   const toggleMessageRead = async (id: string) => {
     try {
       const messageToUpdate = messages.find(msg => msg.id === id);
@@ -254,6 +284,22 @@ export function ResortDashboard() {
       ));
     } catch (error) {
       console.error("Error updating message status:", error);
+    }
+  };
+
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Tem certeza que deseja excluir sua conta? Esta ação é irreversível.")) {
+      try {
+        setIsDeletingAccount(true);
+        await deleteUserAccount();
+        navigate('/');
+      } catch (error) {
+        console.error("Failed to delete account:", error);
+        addNotification({ title: 'Erro', message: 'Erro ao excluir conta.', type: 'error' });
+        setIsDeletingAccount(false);
+      }
     }
   };
 
@@ -406,11 +452,11 @@ export function ResortDashboard() {
                 <div className="p-6 border-b border-gray-200">
                   <h2 className="text-lg font-bold text-gray-900 mb-4">Foto Principal</h2>
                   <div className="flex items-center gap-6">
-                    <div className="relative">
+                    <div className="relative w-48 sm:w-64">
                       <img 
                         src={resortData.avatar} 
                         alt="Resort" 
-                        className="h-32 w-32 rounded-xl object-cover border-4 border-white shadow-md"
+                        className="aspect-video w-full rounded-xl object-cover border-4 border-white shadow-md"
                       />
                       <button 
                         onClick={() => fileInputRef.current?.click()}
@@ -492,6 +538,41 @@ export function ResortDashboard() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Website</label>
+                      <div className="relative">
+                        <Input 
+                          value={resortData.website}
+                          onChange={(e) => setResortData({...resortData, website: e.target.value})}
+                          placeholder="https://www.seuresort.com"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Facebook</label>
+                      <div className="relative">
+                        <Input 
+                          value={resortData.facebook}
+                          onChange={(e) => setResortData({...resortData, facebook: e.target.value})}
+                          placeholder="Link do Facebook"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Instagram</label>
+                      <div className="relative">
+                        <Input 
+                          value={resortData.instagram}
+                          onChange={(e) => setResortData({...resortData, instagram: e.target.value})}
+                          placeholder="Link do Instagram"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Comodidades (separadas por vírgula)</label>
                     <Input 
@@ -512,14 +593,23 @@ export function ResortDashboard() {
                   </div>
 
                   <div className="pt-4 flex items-center justify-between border-t border-gray-200">
-                    {showSuccessMessage ? (
-                      <div className="flex items-center text-brand-green font-medium">
-                        <CheckCircle className="h-5 w-5 mr-2" />
-                        Perfil atualizado com sucesso!
-                      </div>
-                    ) : (
-                      <div></div>
-                    )}
+                    <div className="flex items-center gap-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleDeleteAccount}
+                        disabled={isDeletingAccount}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        {isDeletingAccount ? 'A apagar...' : 'Apagar Conta'}
+                      </Button>
+                      {showSuccessMessage && (
+                        <div className="flex items-center text-brand-green font-medium">
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                          Perfil atualizado com sucesso!
+                        </div>
+                      )}
+                    </div>
                     <Button type="submit" className="bg-brand-green hover:bg-brand-green-hover text-white">
                       Salvar Alterações
                     </Button>
@@ -555,18 +645,16 @@ export function ResortDashboard() {
                     <div key={property.id} className="relative group">
                       <PropertyCard property={property} />
                       <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          size="icon" 
-                          variant="secondary" 
-                          className="h-8 w-8 bg-amber-100 hover:bg-amber-200 shadow-sm"
-                          title="Impulsionar ao Topo por 3 Dias (500 MT)"
-                          onClick={() => {
-                            playNotificationSound();
-                            alert(`Você será redirecionado para efetuar o pagamento de 500 MT via M-Pesa para impulsionar "${property.title}" no topo por 3 dias.`);
-                          }}
-                        >
-                          <Star className="h-4 w-4 text-amber-600 fill-amber-500" />
-                        </Button>
+                        <Link to={`/promote-property/${property.id}`}>
+                          <Button 
+                            size="icon" 
+                            variant="secondary" 
+                            className="h-8 w-8 bg-amber-100 hover:bg-amber-200 shadow-sm"
+                            title="Promover Acomodação"
+                          >
+                            <Star className="h-4 w-4 text-amber-600 fill-amber-500" />
+                          </Button>
+                        </Link>
                         <Link to={`/edit-property/${property.id}`}>
                           <Button size="icon" variant="secondary" className="h-8 w-8 bg-white/90 hover:bg-white shadow-sm">
                             <Edit className="h-4 w-4 text-gray-700" />
@@ -700,7 +788,7 @@ export function ResortDashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Total de Visualizações</p>
                     <h3 className="text-3xl font-black text-gray-900">
-                      {(myProperties?.reduce((acc, p) => acc + (p.impressions || Math.floor(Math.random() * 800) + 200), 0) || 0).toLocaleString()}
+                      {(myProperties?.reduce((acc, p) => acc + (p.impressions || p.views || 0), 0) || 0).toLocaleString()}
                     </h3>
                   </div>
                   <div className="p-3 bg-blue-50 text-blue-600 rounded-full">
@@ -712,7 +800,7 @@ export function ResortDashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Cliques no Contacto</p>
                     <h3 className="text-3xl font-black text-green-600">
-                      {(myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || Math.floor(Math.random() * 80) + 15), 0) || 0).toLocaleString()}
+                      {(myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || 0), 0) || 0).toLocaleString()}
                     </h3>
                   </div>
                   <div className="p-3 bg-green-50 text-green-600 rounded-full">
@@ -724,10 +812,12 @@ export function ResortDashboard() {
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Engajamento Médio</p>
                     <h3 className="text-3xl font-black text-brand-purple">
-                      {myProperties?.length ? (
-                        ((myProperties.reduce((acc, p) => acc + (p.whatsappClicks || 20), 0) / 
-                         myProperties.reduce((acc, p) => acc + (p.impressions || 400), 0)) * 100).toFixed(1)
-                      ) : '0'}%
+                      {(() => {
+                        const totalViews = myProperties?.reduce((acc, p) => acc + (p.impressions || p.views || 0), 0) || 0;
+                        const totalClicks = myProperties?.reduce((acc, p) => acc + (p.whatsappClicks || 0), 0) || 0;
+                        if (totalViews === 0) return '0.0';
+                        return ((totalClicks / totalViews) * 100).toFixed(1);
+                      })()}%
                     </h3>
                   </div>
                   <div className="p-3 bg-purple-50 text-purple-600 rounded-full">
@@ -752,13 +842,28 @@ export function ResortDashboard() {
                       {myProperties.map((p) => (
                         <tr key={p.id} className="border-b last:border-0 hover:bg-gray-50">
                           <td className="px-4 py-4 font-medium text-gray-900 flex items-center gap-3">
-                            <img src={p.images[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
+                            <img src={p.images?.[0] || 'https://placehold.co/100'} alt="" className="w-10 h-10 rounded object-cover" />
                             <span className="line-clamp-1">{p.title}</span>
                           </td>
-                          <td className="px-4 py-4">{p.impressions || Math.floor(Math.random() * 800) + 200}</td>
-                          <td className="px-4 py-4 text-green-600 font-medium">{p.whatsappClicks || Math.floor(Math.random() * 80) + 15}</td>
+                          <td className="px-4 py-4">{p.impressions || 0}</td>
+                          <td className="px-4 py-4 text-green-600 font-medium">{p.whatsappClicks || 0}</td>
                           <td className="px-4 py-4">
-                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">Ativa</span>
+                            <select
+                              className={`px-2 py-1 text-xs font-bold rounded border-0 cursor-pointer focus:ring-2 focus:ring-brand-green ${
+                                p.status === 'Vendido' || p.status === 'Arrendado'
+                                  ? 'bg-gray-100 text-gray-800'
+                                  : p.status === 'Inativo'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                              value={p.status || 'Disponível'}
+                              onChange={(e) => handleStatusChange(p.id, e.target.value)}
+                            >
+                              <option value="Disponível">Ativa (Disponível)</option>
+                              <option value="Vendido">Vendido</option>
+                              <option value="Arrendado">Arrendado</option>
+                              <option value="Inativo">Inativo</option>
+                            </select>
                           </td>
                         </tr>
                       ))}

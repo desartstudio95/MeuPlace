@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Heart, MessageSquare, User, Settings, LogOut, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Property } from '@/types';
 
@@ -16,24 +16,49 @@ export function UserDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, you would fetch the user's favorite properties from Firestore
-    // For now, we'll just simulate loading
     const fetchFavorites = async () => {
+      if (!currentUser) {
+        setFavorites([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
-        // Simulated fetch
-        setTimeout(() => {
+        const favoriteIds: string[] = Array.isArray(userProfile?.favorites) ? userProfile.favorites : [];
+        if (favoriteIds.length === 0) {
           setFavorites([]);
           setLoading(false);
-        }, 1000);
+          return;
+        }
+
+        // Fetch each property document by ID (limited to first 25 for safe performance)
+        const targetIds = favoriteIds.slice(0, 25);
+        const docPromises = targetIds.map(id => getDoc(doc(db, 'properties', id)));
+        const docSnapshots = await Promise.all(docPromises);
+        
+        const realProperties: Property[] = [];
+        docSnapshots.forEach(snap => {
+          if (snap.exists()) {
+            const data = snap.data();
+            // Show approved properties (or owner's properties)
+            if (data.isApproved || data.agentId === currentUser.uid) {
+              realProperties.push({ id: snap.id, ...data } as Property);
+            }
+          }
+        });
+
+        setFavorites(realProperties);
       } catch (error) {
         console.error("Error fetching favorites:", error);
+        setFavorites([]);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchFavorites();
-  }, [currentUser]);
+  }, [currentUser, userProfile?.favorites]);
 
   const handleLogout = async () => {
     try {

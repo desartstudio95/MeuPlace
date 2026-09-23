@@ -74,8 +74,19 @@ export function EditProperty() {
       setIsLoading(true);
       const docRef = doc(db, 'properties', id);
       
-      // Remove id from formData before updating
-      const { id: _, ...updateData } = formData;
+      // Filter out sensitive fields that cannot be directly modified by agent
+      const { 
+        id: _, 
+        isApproved: _ia,
+        isPromoted: _ip,
+        boostedUntil: _bu,
+        verificationStatus: _vs,
+        agentId: _aid,
+        views: _v,
+        impressions: _imp,
+        whatsappClicks: _wc,
+        ...updateData 
+      } = formData as any;
       
       await updateDoc(docRef, updateData);
       playNotificationSound();

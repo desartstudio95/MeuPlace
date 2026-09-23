@@ -15,17 +15,40 @@ export function AddAccommodation() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Check approval status
+  // Check approval status and property limit
   useEffect(() => {
-    if (userProfile && !userProfile.isApproved) {
-      addNotification({
-        title: 'Acesso Restrito',
-        message: 'Seu cadastro está pendente de aprovação. Você não pode adicionar acomodações no momento.',
-        type: 'error'
-      });
-      navigate('/');
-    }
-  }, [userProfile, navigate, addNotification]);
+    const checkUserStatus = async () => {
+      if (!userProfile || !currentUser) return;
+
+      if (!userProfile.isApproved) {
+        addNotification({
+          title: 'Acesso Restrito',
+          message: 'Seu cadastro está pendente de aprovação. Você não pode adicionar acomodações no momento.',
+          type: 'error'
+        });
+        navigate('/');
+        return;
+      }
+
+      try {
+        const count = await propertyService.getAgentPropertyCount(currentUser.uid);
+        const limit = userProfile.planLimit || 10;
+        
+        if (count >= limit && userProfile.role !== 'admin') {
+          addNotification({
+            title: 'Limite Atingido',
+            message: `Você atingiu o limite de ${limit} anúncios. Faça o upgrade para continuar anunciando.`,
+            type: 'warning'
+          });
+          navigate('/plans');
+        }
+      } catch (error) {
+        console.error("Error checking property limit:", error);
+      }
+    };
+
+    checkUserStatus();
+  }, [userProfile, currentUser, navigate, addNotification]);
   
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);

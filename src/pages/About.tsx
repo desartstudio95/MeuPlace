@@ -67,7 +67,7 @@ export function About() {
             >
               <div className="absolute -inset-4 bg-gradient-to-r from-brand-green to-brand-purple rounded-3xl blur-2xl opacity-10" />
               <img 
-                src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" 
+                src="https://i.ibb.co/pvJcc010/9aea591a-4bf6-49be-bc05-e5d6e92044c7.png" 
                 alt="Our Office" 
                 className="relative rounded-3xl shadow-2xl w-full h-[500px] object-cover z-0"
               />

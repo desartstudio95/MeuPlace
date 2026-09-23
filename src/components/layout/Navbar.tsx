@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, PlusCircle, User, Search, LogOut, Building2, FileText, ChevronDown } from 'lucide-react';
+import { Menu, X, PlusCircle, User, Search, LogOut, Building2, FileText, ChevronDown, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -136,6 +136,13 @@ export function Navbar() {
                         <Building2 className="mr-2 h-4 w-4 text-gray-500" />
                         <span>Painel de Controlo</span>
                     </DropdownMenuItem>
+
+                    {userProfile && ['admin', 'agent', 'agency', 'owner', 'resort', 'moderator'].includes(userProfile.role) && (
+                      <DropdownMenuItem render={<Link to="/crm/leads" className="flex items-center w-full cursor-pointer" />}>
+                          <Users className="mr-2 h-4 w-4 text-brand-green" />
+                          <span className="font-medium text-brand-green">Leads & CRM</span>
+                      </DropdownMenuItem>
+                    )}
                     
                     {userProfile?.role !== 'resort' && (
                       <>
@@ -262,6 +269,15 @@ export function Navbar() {
                 >
                   Meu Dashboard
                 </Link>
+                {userProfile && ['admin', 'agent', 'agency', 'owner', 'resort', 'moderator'].includes(userProfile.role) && (
+                  <Link
+                    to="/crm/leads"
+                    className="block px-4 py-2 text-base font-medium text-brand-green hover:bg-emerald-50"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Leads & CRM
+                  </Link>
+                )}
                 <div className="px-4">
                   <Button variant="ghost" size="sm" className="w-full justify-start text-red-600" onClick={handleLogout}>
                     <LogOut className="h-4 w-4 mr-2" />

@@ -5,6 +5,7 @@ import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 import { getAnalytics } from 'firebase/analytics';
 import { getMessaging, onMessage, getToken, isSupported } from 'firebase/messaging';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, ReCaptchaV3Provider, AppCheck } from 'firebase/app-check';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -21,6 +22,44 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+
+// Firebase App Check Initialization (Defense-in-depth against scraping and unauthorized API usage)
+let appCheckInstance: AppCheck | null = null;
+export const getAppCheckInstance = (): AppCheck | null => {
+  if (typeof window === 'undefined') return null;
+  if (appCheckInstance) return appCheckInstance;
+
+  try {
+    const recaptchaSiteKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY;
+    const isDev = (import.meta as any).env?.DEV;
+
+    // In local development, enable Firebase App Check debug token
+    if (isDev && typeof window !== 'undefined') {
+      (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = (import.meta as any).env?.VITE_APP_CHECK_DEBUG_TOKEN || true;
+    }
+
+    if (recaptchaSiteKey) {
+      appCheckInstance = initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+        isTokenAutoRefreshEnabled: true
+      });
+      console.info('[AppCheck] Initialized successfully with ReCaptchaV3Provider.');
+    } else {
+      if (isDev) {
+        console.info('[AppCheck] VITE_RECAPTCHA_SITE_KEY not provided. App Check running in development monitoring mode.');
+      }
+    }
+  } catch (err) {
+    console.warn('[AppCheck] Optional App Check initialization deferred:', err);
+  }
+
+  return appCheckInstance;
+};
+
+// Lazily initialize on client
+if (typeof window !== 'undefined') {
+  getAppCheckInstance();
+}
 
 // Initialize messaging lazily to handle unsupported browsers
 let messagingInstance: any = null;

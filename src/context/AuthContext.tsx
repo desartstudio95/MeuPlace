@@ -62,6 +62,7 @@ export interface UserProfile {
   nuit?: string;
   alvaraUrl?: string;
   favorites?: string[];
+  website?: string;
 }
 
 interface AuthContextType {
@@ -93,44 +94,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userRef = doc(db, 'users', user.uid);
             const userSnap = await getDoc(userRef);
             
+            // Check Custom Claims and Bootstrap Admin authorization
+            const tokenResult = await user.getIdTokenResult(true);
+            const isCustomClaimAdmin = tokenResult.claims.role === 'admin';
+            const isBootstrapAdmin = user.emailVerified && (
+              user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ||
+              user.email?.toLowerCase() === 'ruiisacmugabe@gmail.com'
+            );
+            const isAdminUser = isCustomClaimAdmin || isBootstrapAdmin;
+            
             if (userSnap.exists()) {
               const data = userSnap.data() as UserProfile;
-              // Force admin role for this specific email
-              if (user.email?.toLowerCase() === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
+              if (isAdminUser) {
                 data.role = 'admin';
                 data.isApproved = true;
-                
-                const updatePayload: any = { role: 'admin', isApproved: true };
-                if (!data.createdAt) {
-                  data.createdAt = new Date().toISOString();
-                  updatePayload.createdAt = data.createdAt;
-                }
-                if (!data.uid) {
-                  data.uid = user.uid;
-                  updatePayload.uid = user.uid;
-                }
-                if (!data.email) {
-                  data.email = user.email;
-                  updatePayload.email = user.email;
-                }
-                
-                try {
-                  await updateDoc(userRef, updatePayload);
-                } catch (updateError) {
-                  handleFirestoreError(updateError, OperationType.UPDATE, `users/${user.uid}`);
-                }
               }
               setUserProfile(data);
             } else {
-              const role: UserRole = user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : 'user';
+              const initialRole: UserRole = isAdminUser ? 'admin' : 'user';
               
               const newProfile: UserProfile = {
                 uid: user.uid,
                 email: user.email || '',
                 displayName: user.displayName || '',
                 photoURL: user.photoURL || '',
-                role,
-                isApproved: role === 'admin' || role === 'user',
+                role: isAdminUser ? 'admin' : 'user',
+                isApproved: true,
                 planId: 'free',
                 planLimit: 5,
                 createdAt: new Date().toISOString()
@@ -170,18 +159,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
+      const tokenResult = await user.getIdTokenResult();
+      const isCustomClaimAdmin = tokenResult.claims.role === 'admin';
+      const isBootstrapAdmin = user.emailVerified && (
+        user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ||
+        user.email?.toLowerCase() === 'ruiisacmugabe@gmail.com'
+      );
+      const isAdminUser = isCustomClaimAdmin || isBootstrapAdmin;
+      
       // Ensure user is in Firestore
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-        const finalRole: UserRole = user.email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : role;
+        const safeRole: UserRole = isAdminUser ? 'admin' : (role === 'admin' ? 'user' : role);
         const newProfile: UserProfile = {
           uid: user.uid,
           email: user.email || '',
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
-          role: finalRole,
-          isApproved: finalRole === 'admin' || finalRole === 'user',
+          role: safeRole,
+          isApproved: safeRole === 'user' || safeRole === 'admin',
           planId: 'free',
           planLimit: 5,
           createdAt: new Date().toISOString()
@@ -194,29 +191,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserProfile(newProfile);
       } else {
         const data = userSnap.data() as UserProfile;
-        if (user.email?.toLowerCase() === 'desartstudiopro@gmail.com' && data.role !== 'admin') {
+        if (isAdminUser) {
           data.role = 'admin';
           data.isApproved = true;
-          
-          const updatePayload: any = { role: 'admin', isApproved: true };
-          if (!data.createdAt) {
-            data.createdAt = new Date().toISOString();
-            updatePayload.createdAt = data.createdAt;
-          }
-          if (!data.uid) {
-            data.uid = user.uid;
-            updatePayload.uid = user.uid;
-          }
-          if (!data.email) {
-            data.email = user.email;
-            updatePayload.email = user.email;
-          }
-          
-          try {
-            await updateDoc(userRef, updatePayload);
-          } catch (updateError) {
-            handleFirestoreError(updateError, OperationType.UPDATE, `users/${user.uid}`);
-          }
         }
         setUserProfile(data);
       }
@@ -251,7 +228,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             uploadedPhotoURL = await resizeImage(file, 200, 200);
           } catch (uploadError) {
             console.error("Error processing profile picture during registration:", uploadError);
-            // Continue registration even if photo processing fails
           }
         }
 
@@ -260,20 +236,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: uploadedPhotoURL
         });
         
-        // Add user to Firestore immediately upon registration
+        // Add user to Firestore immediately upon registration (safe role only)
+        const safeRole: UserRole = (role === 'agent' || role === 'resort') ? role : 'user';
         const userRef = doc(db, 'users', userCredential.user.uid);
-        const finalRole: UserRole = email?.toLowerCase() === 'desartstudiopro@gmail.com' ? 'admin' : role;
+        
+        // Filter out any unauthorized fields from extraData
+        const {
+          role: _r,
+          isApproved: _ia,
+          planId: _p,
+          planLimit: _pl,
+          planExpiration: _pe,
+          kycStatus: _k,
+          isResponsible: _ir,
+          rating: _ra,
+          reviews: _re,
+          uid: _u,
+          email: _e,
+          ...safeExtraData
+        } = (extraData || {}) as any;
+
         const newProfile: UserProfile = {
           uid: userCredential.user.uid,
           email: email,
           displayName: name,
           photoURL: uploadedPhotoURL,
-          role: finalRole,
-          isApproved: finalRole === 'admin' || finalRole === 'user',
+          role: safeRole,
+          isApproved: safeRole === 'user',
           planId: 'free',
           planLimit: 5,
           createdAt: new Date().toISOString(),
-          ...extraData
+          ...safeExtraData
         };
         try {
           await setDoc(userRef, newProfile);
@@ -302,10 +295,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         
         // Only update photoURL in Firebase Auth if it's not a base64 string
-        // Firebase Auth has a strict length limit for photoURL
         if (data.photoURL !== undefined) {
           if (data.photoURL && data.photoURL.startsWith('data:image/')) {
-            // Skip updating Firebase Auth photoURL, we'll just store it in Firestore
+            // Skip updating Firebase Auth photoURL
           } else {
             updateData.photoURL = data.photoURL;
           }
@@ -316,12 +308,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // Update Firestore document
-      const userRef = doc(db, 'users', currentUser.uid);
-      try {
-        await updateDoc(userRef, data);
-      } catch (updateError) {
-        handleFirestoreError(updateError, OperationType.UPDATE, `users/${currentUser.uid}`);
+      // Filter out protected fields to prevent rule rejections and escalation
+      const {
+        role: _r,
+        isApproved: _ia,
+        planId: _p,
+        planLimit: _pl,
+        planExpiration: _pe,
+        kycStatus: _k,
+        isResponsible: _ir,
+        rating: _ra,
+        reviews: _re,
+        uid: _u,
+        email: _e,
+        ...safeData
+      } = data as any;
+
+      // Update Firestore document with safe data
+      if (Object.keys(safeData).length > 0) {
+        const userRef = doc(db, 'users', currentUser.uid);
+        try {
+          await updateDoc(userRef, safeData);
+        } catch (updateError) {
+          handleFirestoreError(updateError, OperationType.UPDATE, `users/${currentUser.uid}`);
+        }
       }
       
       // Update agent data in all properties owned by this user

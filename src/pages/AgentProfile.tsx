@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Agent, Property } from '@/types';
-import { collection, query, getDocs, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, addDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { SEO } from '@/components/SEO';
 
 export function AgentProfile() {
   const { name } = useParams();
@@ -60,8 +61,13 @@ export function AgentProfile() {
           };
         }
 
-        // Fetch properties from Firebase where agent.name matches
-        const q = query(collection(db, 'properties'), where('agent.name', '==', decodedName));
+        // Fetch approved properties from Firebase where agent.name matches
+        const q = query(
+          collection(db, 'properties'),
+          where('isApproved', '==', true),
+          where('agent.name', '==', decodedName),
+          limit(50)
+        );
         const querySnapshot = await getDocs(q);
         
         const fetchedProperties: Property[] = [];
@@ -69,14 +75,12 @@ export function AgentProfile() {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
         });
 
-        const allProperties = fetchedProperties.filter(p => p.isApproved !== false);
-        
-        setAgentProperties(allProperties);
+        setAgentProperties(fetchedProperties);
 
         if (foundAgent) {
           setAgent(foundAgent);
-        } else if (allProperties.length > 0 && allProperties[0].agent) {
-          setAgent(allProperties[0].agent);
+        } else if (fetchedProperties.length > 0 && fetchedProperties[0].agent) {
+          setAgent(fetchedProperties[0].agent);
         }
       } catch (error) {
         console.error("Error fetching agent properties:", error);
@@ -154,6 +158,11 @@ export function AgentProfile() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <SEO 
+        title={`Perfil de ${agent.name}`} 
+        description={agent.bio || `${agent.name} é um profissional verificado no MeuPlace, pronto para o ajudar a encontrar o seu imóvel ideal.`} 
+        image={agent.avatar || 'https://www.meuplace.com/og-image.jpg'}
+      />
       <button 
         onClick={handleBack}
         className="flex items-center text-gray-500 hover:text-brand-green transition-colors mb-6 group"

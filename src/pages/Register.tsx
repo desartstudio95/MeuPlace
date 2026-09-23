@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { User, Upload, Eye, EyeOff, Building2, Phone, FileCheck, MapPin, Info } from 'lucide-react';
+import { User, Upload, Eye, EyeOff, Building2, Phone, FileCheck, MapPin, Info, Sparkles, Flame } from 'lucide-react';
 import { useAuth, UserRole } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 
 export function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialRoleParam = searchParams.get('role');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repeatPassword, setRepeatPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('user');
+  const [role, setRole] = useState<UserRole>(
+    initialRoleParam === 'agent' || initialRoleParam === 'resort' ? initialRoleParam : 'user'
+  );
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
@@ -181,6 +185,21 @@ export function Register() {
                 </select>
               </div>
             </div>
+
+            {role === 'agent' && (
+              <div className="bg-gradient-to-r from-[#6b1c82] via-[#8e25ad] to-[#5f1774] p-4 rounded-xl border border-brand-purple-hover shadow-md text-white space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-brand-green text-gray-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                    <Flame className="w-3 h-3 fill-current" />
+                    Pré-Lançamento
+                  </span>
+                  <span className="text-xs font-bold text-white">Promoção de Estreia: 500 MT / mês</span>
+                </div>
+                <p className="text-xs text-purple-100 leading-relaxed">
+                  Cadastre-se hoje como agente e aproveite o plano de pré-lançamento para anunciar até 15 imóveis com 2 destaques especiais de capa por apenas <strong className="text-brand-green font-bold">500 MT / mês</strong> (em vez de 1.500 MT).
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Foto de Perfil</label>

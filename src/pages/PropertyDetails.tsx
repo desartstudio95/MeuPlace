@@ -1,13 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Bed, Bath, Maximize, Phone, MessageCircle, Calendar, Share2, Heart, ChevronLeft, ChevronRight, Copy, Facebook, Mail, TrendingUp, Send, CheckCircle, MessageSquare, BadgeCheck, ZoomIn, X, ShieldCheck, ArrowLeft, Truck, Shield, Wrench } from 'lucide-react';
+import { 
+  MapPin, 
+  Bed, 
+  Bath, 
+  Maximize, 
+  Phone, 
+  MessageCircle, 
+  Calendar, 
+  Share2, 
+  Heart, 
+  ChevronLeft, 
+  ChevronRight, 
+  Copy, 
+  Facebook, 
+  Mail, 
+  Send, 
+  CheckCircle, 
+  BadgeCheck, 
+  ZoomIn, 
+  X, 
+  ShieldCheck, 
+  ArrowLeft, 
+  Shield, 
+  AlertTriangle,
+  Scale,
+  Sparkles,
+  Building2,
+  Clock,
+  Car,
+  Check,
+  Flag,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Property } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Property, PropertyReportReason } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { Helmet } from 'react-helmet-async';
-import { Chat } from '@/components/Chat';
-import { doc, getDoc, addDoc, collection, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
   Dialog,
@@ -15,188 +46,186 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { playNotificationSound } from '@/utils/sound';
-
-import { resizeImage } from '@/utils/imageUtils';
-import { useNotifications } from '@/context/NotificationContext';
+import { useFavorites } from '@/context/FavoriteContext';
+import { useCompare } from '@/context/CompareContext';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { SEO } from '@/components/SEO';
+import { formatPropertyPrice, formatTransactionType } from '@/utils/propertyFormatters';
+import { leadService } from '@/services/leadService';
+import { viewingService } from '@/services/viewingService';
+import { reportService } from '@/services/reportService';
+import { trackLeadEvent } from '@/services/leadEventService';
+import { toast } from 'sonner';
 
 export function PropertyDetails() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
-  const { addNotification } = useNotifications();
-  const isAuthenticated = !!currentUser;
   
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Gallery state
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageErrorIndices, setImageErrorIndices] = useState<Set<number>>(new Set());
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+
+  // Description truncation state
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  // Contact and phone reveal
+  const [showPhone, setShowPhone] = useState(false);
+
+  // Modals state
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+  const [isViewingDialogOpen, setIsViewingDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  // Submitting states
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [isSubmittingViewing, setIsSubmittingViewing] = useState(false);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  // Forms state
+  const [leadForm, setLeadForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    message: '',
+    contactPreference: 'whatsapp' as 'whatsapp' | 'phone' | 'email',
+    honeypot: ''
+  });
+
+  const [viewingForm, setViewingForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    preferredDate: '',
+    preferredTime: '10:00 - 12:00',
+    alternativeDate: '',
+    alternativeTime: '14:00 - 16:00',
+    notes: '',
+    honeypot: ''
+  });
+
+  const [reportForm, setReportForm] = useState({
+    reason: 'wrong_price' as PropertyReportReason,
+    description: '',
+    reporterEmail: '',
+    honeypot: ''
+  });
+
+  // Favorite & Compare contexts
+  const { isFavorite: checkFavorite, toggleFavorite: doToggleFavorite } = useFavorites();
+  const { isComparing, addToCompare, removeFromCompare } = useCompare();
+
+  const isFav = property ? checkFavorite(property.id) : false;
+  const isComp = property ? isComparing(property.id) : false;
+
+  // Carregamento e Autorização
   useEffect(() => {
-    const fetchProperty = async () => {
-      if (!id) return;
-      
+    let isMounted = true;
+
+    async function loadProperty() {
+      if (!id) {
+        setError('Identificador de imóvel não fornecido.');
+        setLoading(false);
+        return;
+      }
+
       try {
+        setLoading(true);
+        setError(null);
         const docRef = doc(db, 'properties', id);
         const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          const fetchedProperty = { id: docSnap.id, ...docSnap.data() } as Property;
-          
-          // Check if property is approved or if user is owner/admin
-          if (!fetchedProperty.isApproved && 
-              userProfile?.role !== 'admin' && 
-              fetchedProperty.agentId !== currentUser?.uid) {
-            setError('Este imóvel ainda não foi aprovado.');
+
+        if (!docSnap.exists()) {
+          if (isMounted) {
+            setError('Imóvel não encontrado ou removido.');
             setProperty(null);
-          } else {
-            setProperty(fetchedProperty);
-            
-            // Increment views if not the owner viewing their own property
-            if (currentUser?.uid !== fetchedProperty.agentId) {
-              try {
-                await updateDoc(docRef, {
-                  views: increment(1)
-                });
-              } catch (err) {
-                console.error("Error incrementing views:", err);
-              }
-            }
           }
-        } else {
-          setError('Imóvel não encontrado.');
+          return;
+        }
+
+        const data = { id: docSnap.id, ...docSnap.data() } as Property;
+
+        // Regra de aprovação pública:
+        // Apenas imóveis com isApproved === true são visíveis publicamente,
+        // a não ser que seja o criador/agente do imóvel ou administrador do sistema.
+        const isOwner = currentUser && (data.agentId === currentUser.uid || (data as any).ownerId === currentUser.uid);
+        const isAdmin = userProfile?.role === 'admin';
+
+        if (data.isApproved === false && !isOwner && !isAdmin) {
+          if (isMounted) {
+            setError('Este imóvel está sob moderação e ainda não foi aprovado.');
+            setProperty(null);
+          }
+          return;
+        }
+
+        if (isMounted) {
+          setProperty(data);
+          // Pré-preencher formulário de mensagem
+          setLeadForm(prev => ({
+            ...prev,
+            name: userProfile?.displayName || currentUser?.displayName || prev.name,
+            phone: userProfile?.phone || prev.phone,
+            email: userProfile?.email || currentUser?.email || prev.email,
+            message: `Olá, tenho interesse no imóvel "${data.title}" e gostaria de mais informações.`
+          }));
+
+          setViewingForm(prev => ({
+            ...prev,
+            name: userProfile?.displayName || currentUser?.displayName || prev.name,
+            phone: userProfile?.phone || prev.phone,
+            email: userProfile?.email || currentUser?.email || prev.email,
+          }));
+
+          // Rastreamento Seguro de Visualização Real (com cooldown e deduplicação de sessão)
+          trackLeadEvent(data.id, 'property_view');
+        }
+      } catch (err: any) {
+        console.error('[PropertyDetails] Erro ao carregar imóvel:', err);
+        if (isMounted) {
+          setError('Ocorreu um erro ao carregar os detalhes do imóvel.');
           setProperty(null);
         }
-      } catch (error) {
-        console.error("Error fetching property:", error);
-        setError('Erro ao carregar imóvel.');
-        setProperty(null);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
+    }
+
+    loadProperty();
+
+    return () => {
+      isMounted = false;
     };
+  }, [id, currentUser, userProfile]);
 
-    fetchProperty();
-  }, [id, userProfile, currentUser]);
-
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  
-  const [showPhone, setShowPhone] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
-  // Message Dialog State
-  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-  const [messageForm, setMessageForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: ''
-  });
-
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  useEffect(() => {
-    if (property && userProfile) {
-      const favorites = userProfile.favorites || [];
-      if (favorites.includes(property.id)) {
-        setIsFavorite(true);
-      } else {
-        setIsFavorite(false);
-      }
+  // Imagens válidas com fallback
+  const validImages = useMemo(() => {
+    if (!property?.images || property.images.length === 0) {
+      return ['/images/placeholder-property.jpg'];
     }
-  }, [property, userProfile]);
+    return property.images;
+  }, [property?.images]);
 
-  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-  const [feedbackForm, setFeedbackForm] = useState({
-    name: '',
-    email: '',
-    feedback: ''
-  });
-  const [showFeedbackSuccess, setShowFeedbackSuccess] = useState(false);
-
-  const handleSendFeedback = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!property) return;
-    
-    try {
-      const newFeedback = {
-        agentId: property.agentId || property.agent?.name || 'Desconhecido',
-        propertyId: property.id,
-        ...feedbackForm,
-        date: new Date().toISOString(),
-        status: 'pending_review' // Admin needs to review to award stars
-      };
-
-      await addDoc(collection(db, 'feedbacks'), newFeedback);
-
-      console.log('Feedback sent to admin:', newFeedback);
-
-      setIsFeedbackDialogOpen(false);
-      setShowFeedbackSuccess(true);
-      playNotificationSound();
-      setFeedbackForm({ name: '', email: '', feedback: '' });
-      setTimeout(() => setShowFeedbackSuccess(false), 3000);
-    } catch (error) {
-      console.error("Error sending feedback:", error);
-    }
-  };
-
-  const toggleFavorite = async () => {
-    if (!property || !currentUser) {
-      // Se não estiver logado, pode redirecionar para login ou mostrar mensagem
-      alert('Faça login para adicionar aos favoritos');
-      return;
-    }
-
-    try {
-      const userRef = doc(db, 'users', currentUser.uid);
-      if (isFavorite) {
-        await updateDoc(userRef, {
-          favorites: arrayRemove(property.id)
-        });
-        setIsFavorite(false);
-      } else {
-        await updateDoc(userRef, {
-          favorites: arrayUnion(property.id)
-        });
-        setIsFavorite(true);
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
-  };
-
-  useEffect(() => {
-    setImageLoading(true);
-  }, [currentImageIndex]);
-
-  useEffect(() => {
-    if (property) {
-      setMessageForm(prev => ({
-        ...prev,
-        message: `Olá, estou interessado no imóvel: ${property.title}`
-      }));
-    }
-  }, [property]);
-
-  // Keyboard navigation for image carousel
+  // Teclado para navegar na galeria
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!property || !property.images) return;
+      if (validImages.length <= 1) return;
       if (e.key === 'ArrowLeft') {
-        setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
+        setCurrentImageIndex(prev => (prev - 1 + validImages.length) % validImages.length);
       } else if (e.key === 'ArrowRight') {
-        setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+        setCurrentImageIndex(prev => (prev + 1) % validImages.length);
       } else if (e.key === 'Escape' && isZoomModalOpen) {
         setIsZoomModalOpen(false);
       }
@@ -204,769 +233,1219 @@ export function PropertyDetails() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [property?.images?.length, isZoomModalOpen]);
+  }, [validImages.length, isZoomModalOpen]);
+
+  // Navegação da galeria
+  const nextImage = useCallback(() => {
+    setCurrentImageIndex(prev => (prev + 1) % validImages.length);
+  }, [validImages.length]);
+
+  const prevImage = useCallback(() => {
+    setCurrentImageIndex(prev => (prev - 1 + validImages.length) % validImages.length);
+  }, [validImages.length]);
+
+  const handleImageError = (index: number) => {
+    setImageErrorIndices(prev => new Set(prev).add(index));
+  };
+
+  // WhatsApp click handler
+  const handleWhatsAppClick = () => {
+    if (!property) return;
+    const rawNumber = property.agent?.whatsapp || property.agent?.phone || '';
+    const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
+
+    trackLeadEvent(property.id, 'whatsapp_click');
+
+    const message = `Olá! Vi o imóvel "${property.title}" (Ref: ${property.id}) no MeuPlace e gostaria de obter mais informações.`;
+    const targetPhone = cleanNumber.startsWith('258') ? cleanNumber : (cleanNumber ? `258${cleanNumber}` : '');
+
+    if (targetPhone) {
+      window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error('Número de WhatsApp do anunciante não disponível.');
+    }
+  };
+
+  // Phone reveal handler
+  const handlePhoneClick = () => {
+    if (!property) return;
+    if (!showPhone) {
+      trackLeadEvent(property.id, 'phone_click');
+    }
+    setShowPhone(prev => !prev);
+  };
+
+  // Envio de Lead (Formulário de Contacto)
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!property) return;
+
+    try {
+      setIsSubmittingLead(true);
+      const result = await leadService.createLead({
+        propertyId: property.id,
+        customerName: leadForm.name,
+        customerPhone: leadForm.phone,
+        customerEmail: leadForm.email || undefined,
+        message: leadForm.message,
+        contactPreference: leadForm.contactPreference,
+        source: 'contact_form',
+        honeypot: leadForm.honeypot
+      }, property);
+
+      setIsMessageDialogOpen(false);
+      toast.success(result.message);
+
+      // Limpa mensagem mantendo dados de contacto
+      setLeadForm(prev => ({
+        ...prev,
+        honeypot: '',
+        message: `Olá, tenho interesse no imóvel "${property.title}" e gostaria de mais informações.`
+      }));
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao enviar mensagem ao anunciante.');
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
+  // Solicitação de Visita
+  const handleViewingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!property) return;
+
+    try {
+      setIsSubmittingViewing(true);
+      const result = await viewingService.requestViewing({
+        propertyId: property.id,
+        requesterName: viewingForm.name,
+        requesterPhone: viewingForm.phone,
+        requesterEmail: viewingForm.email || undefined,
+        preferredDate: viewingForm.preferredDate,
+        preferredTime: viewingForm.preferredTime,
+        alternativeDate: viewingForm.alternativeDate || undefined,
+        alternativeTime: viewingForm.alternativeTime || undefined,
+        notes: viewingForm.notes || undefined,
+        honeypot: viewingForm.honeypot
+      }, property);
+
+      setIsViewingDialogOpen(false);
+      toast.success(result.message);
+    } catch (err: any) {
+      toast.error(err.message || 'Não foi possível solicitar a visita.');
+    } finally {
+      setIsSubmittingViewing(false);
+    }
+  };
+
+  // Envio de Denúncia
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!property) return;
+
+    try {
+      setIsSubmittingReport(true);
+      const result = await reportService.submitReport({
+        propertyId: property.id,
+        reason: reportForm.reason,
+        description: reportForm.description,
+        reporterEmail: reportForm.reporterEmail || undefined,
+        honeypot: reportForm.honeypot
+      });
+
+      setIsReportDialogOpen(false);
+      toast.success(result.message);
+      setReportForm({
+        reason: 'wrong_price',
+        description: '',
+        reporterEmail: '',
+        honeypot: ''
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao registrar denúncia.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
+  // Compartilhamento
+  const handleShare = async () => {
+    if (!property) return;
+    const shareUrl = window.location.href;
+    const shareTitle = `${property.title} | MeuPlace`;
+    const shareText = `Confira este imóvel em ${property.location}: ${formatPropertyPrice(property.price, property.currency, property.type)}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // Usuário cancelou ou fallback necessário
+      }
+    }
+    setIsShareModalOpen(true);
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setIsCopied(true);
+      toast.success('Link copiado para a área de transferência!');
+      setTimeout(() => setIsCopied(false), 3000);
+    } catch {
+      toast.error('Erro ao copiar link.');
+    }
+  };
+
+  // Formatação de características
+  const featuresList = useMemo(() => {
+    if (!property) return [];
+    const list: string[] = [];
+    if (Array.isArray(property.features)) {
+      list.push(...property.features);
+    }
+    return Array.from(new Set(list));
+  }, [property]);
+
+  // Construção de endereço legível
+  const locationString = useMemo(() => {
+    if (!property) return '';
+    const parts = [
+      property.detailedLocation,
+      property.location,
+    ].filter(Boolean);
+    return parts.join(', ') || 'Moçambique';
+  }, [property]);
+
+  // JSON-LD Schema para SEO
+  const schemaJson = useMemo(() => {
+    if (!property) return undefined;
+    return {
+      "@context": "https://schema.org",
+      "@type": "RealEstateListing",
+      "name": property.title,
+      "description": property.description?.substring(0, 160),
+      "url": `https://www.meuplace.com/property/${property.id}`,
+      "datePosted": property.createdAt?.toDate ? property.createdAt.toDate().toISOString() : undefined,
+      "offers": {
+        "@type": "Offer",
+        "price": property.price,
+        "priceCurrency": property.currency || "MZN",
+        "availability": "https://schema.org/InStock"
+      }
+    };
+  }, [property]);
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  if (error) {
+  if (error || !property) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-          <ShieldCheck className="w-8 h-8 text-red-600" />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 py-16">
+        <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4 border border-amber-200">
+          <ShieldCheck className="w-8 h-8 text-amber-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h2>
-        <p className="text-gray-600 max-w-md mb-6">{error}</p>
-        <Button onClick={() => navigate('/properties')} className="bg-brand-green hover:bg-brand-green/90">
-          Voltar para Imóveis
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Imóvel Indisponível</h1>
+        <p className="text-gray-600 max-w-md mb-6">{error || 'Imóvel não encontrado.'}</p>
+        <Button 
+          onClick={() => navigate('/properties')} 
+          className="bg-brand-green hover:bg-brand-green/90 text-white font-medium"
+        >
+          Explorar Outros Imóveis
         </Button>
       </div>
     );
   }
 
-  if (!property) {
-    return <div className="text-center py-20">Imóvel não encontrado.</div>;
-  }
-
-  const handleWhatsApp = () => {
-    const message = `Olá, estou interessado no imóvel: ${property.title}`;
-    window.open(`https://wa.me/${property.agent?.whatsapp || ''}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
-  const handlePhoneClick = () => {
-    setShowPhone(!showPhone);
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!property || !property.agentId) return;
-
-    try {
-      await addDoc(collection(db, 'messages'), {
-        senderName: messageForm.name,
-        senderEmail: messageForm.email,
-        senderPhone: messageForm.phone,
-        message: messageForm.message,
-        propertyId: property.id,
-        propertyTitle: property.title,
-        receiverId: property.agentId,
-        createdAt: new Date().toISOString(),
-        read: false
-      });
-
-      setIsMessageDialogOpen(false);
-      setShowSuccessMessage(true);
-      playNotificationSound();
-      setTimeout(() => setShowSuccessMessage(false), 3000);
-      
-      // Reset form
-      setMessageForm({
-        name: '',
-        email: '',
-        phone: '',
-        message: ''
-      });
-    } catch (error) {
-      console.error("Error sending message:", error);
-    }
-  };
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
-  };
-
-  const handleShare = async () => {
-    const shareData = {
-      title: property.title,
-      text: `Encontrei este imóvel incrível: ${property.title} em ${property.location}. Preço: ${property.currency} ${property.price.toLocaleString()}. Confira!`,
-      url: window.location.href,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.error('Error sharing:', err);
-      }
-    }
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  const shareUrl = window.location.href;
-  const encodedUrl = encodeURIComponent(shareUrl);
-  const shareText = `Encontrei este imóvel incrível: ${property.title} em ${property.location}. Preço: ${property.currency} ${property.price.toLocaleString()}. Confira!`;
-  const encodedTitle = encodeURIComponent(shareText);
-
-  const handleChatOpen = () => {
-    if (!isAuthenticated) {
-      addNotification({
-        title: 'Acesso Restrito',
-        message: 'Você precisa estar logado para usar o chat ao vivo.',
-        type: 'error'
-      });
-      navigate('/login');
-      return;
-    }
-    setIsChatOpen(true);
-  };
+  const transactionLabel = formatTransactionType(property.type);
+  const formattedPrice = formatPropertyPrice(property.price, property.currency, property.type);
+  const isVerifiedProperty = property.verificationStatus === 'approved';
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+    <div className="min-h-screen bg-gray-50 pb-28 sm:pb-16">
+      {/* SEO Dinâmico e Estruturado */}
       <SEO 
-        title={property.title} 
-        description={property.description} 
-        image={property.images[0]}
+        title={property.title}
+        description={property.description ? property.description.substring(0, 155) : 'Confira os detalhes deste imóvel no MeuPlace.'}
+        image={validImages[0]}
+        url={`/property/${property.id}`}
+        type="article"
+        schema={schemaJson}
       />
-      {/* Success Toast */}
-      {showSuccessMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-top-5 duration-300">
-          <CheckCircle className="h-5 w-5" />
-          <div>
-            <h4 className="font-bold text-sm">Mensagem Enviada!</h4>
-            <p className="text-xs opacity-90">Sua mensagem foi enviada para {property.agent?.name || 'o agente'}.</p>
-          </div>
-        </div>
-      )}
 
-      {/* Feedback Success Toast */}
-      {showFeedbackSuccess && (
-        <div className="fixed top-20 right-4 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-top-5 duration-300">
-          <CheckCircle className="h-5 w-5" />
-          <div>
-            <h4 className="font-bold text-sm">Feedback Enviado!</h4>
-            <p className="text-xs opacity-90">Sua avaliação será analisada pela nossa equipe.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Back Button */}
-      <div className="mb-6">
-        <button 
-          onClick={() => {
-            navigate(-1);
-            setTimeout(() => window.scrollTo(0, 0), 100);
-          }} 
-          className="flex items-center gap-2 text-gray-600 hover:text-brand-green transition-colors font-medium"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Voltar
-        </button>
-      </div>
-
-      {/* Breadcrumbs could go here */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Image Carousel */}
-          <div className="space-y-4">
-            <div className="relative h-80 md:h-[450px] rounded-2xl overflow-hidden shadow-lg group bg-gray-100 cursor-pointer" onClick={() => setIsZoomModalOpen(true)}>
-              {imageLoading && (
-                <Skeleton className="absolute inset-0 w-full h-full" />
-              )}
-              <img 
-                src={property.images[currentImageIndex]} 
-                alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
-                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
-                onLoad={() => setImageLoading(false)}
-              />
-              
-              {/* Navigation Arrows */}
-              {property.images.length > 1 && (
-                <>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:outline-none"
-                    aria-label="Imagem anterior"
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full backdrop-blur-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:outline-none"
-                    aria-label="Próxima imagem"
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </button>
-                </>
-              )}
-
-              <div className="absolute top-4 right-4 flex gap-2">
-                <Button 
-                  size="icon" 
-                  variant="secondary" 
-                  className="rounded-full bg-white/80 hover:bg-white"
-                  onClick={(e) => { e.stopPropagation(); setIsZoomModalOpen(true); }}
-                >
-                  <ZoomIn className="h-5 w-5 text-gray-700" />
-                </Button>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="icon" variant="secondary" className="rounded-full bg-white/80 hover:bg-white" onClick={(e) => e.stopPropagation()}>
-                      <Share2 className="h-5 w-5 text-gray-700" />
-                    </Button>
-                  </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Compartilhar Imóvel</DialogTitle>
-                    <DialogDescription>
-                      Compartilhe este imóvel com seus amigos e familiares.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex items-center space-x-2 py-4">
-                    <div className="grid flex-1 gap-2">
-                      <Input
-                        id="link"
-                        defaultValue={shareUrl}
-                        readOnly
-                        className="w-full truncate pr-2"
-                      />
-                    </div>
-                    <Button 
-                      type="button" 
-                      size="sm" 
-                      className={`px-3 shrink-0 transition-all duration-300 ${isCopied ? 'bg-green-100 text-green-700 hover:bg-green-200 border-green-200' : ''}`} 
-                      onClick={copyToClipboard}
-                      variant={isCopied ? "outline" : "default"}
-                    >
-                      <span className="sr-only">Copiar</span>
-                      {isCopied ? (
-                        <span className="flex items-center gap-1 font-medium">
-                          <CheckCircle className="h-4 w-4" /> Copiado
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <Copy className="h-4 w-4" /> Copiar
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="flex flex-col sm:flex-row justify-center gap-4 pt-2">
-                    <Button variant="outline" className="flex-1 gap-2 w-full" onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank')}>
-                      <Facebook className="h-4 w-4 text-blue-600" />
-                      Facebook
-                    </Button>
-                    <Button variant="outline" className="flex-1 gap-2 w-full" onClick={() => window.open(`https://wa.me/?text=${encodedTitle}%20${encodedUrl}`, '_blank')}>
-                      <MessageCircle className="h-4 w-4 text-green-600" />
-                      WhatsApp
-                    </Button>
-                    <Button variant="outline" className="flex-1 gap-2 w-full" onClick={() => window.open(`mailto:?subject=${encodeURIComponent(`Imóvel: ${property.title}`)}&body=${encodedTitle}%0A%0A${encodedUrl}`, '_blank')}>
-                      <Mail className="h-4 w-4 text-gray-600" />
-                      Email
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Button 
-                size="icon" 
-                variant="secondary" 
-                className={`rounded-full bg-white/80 hover:bg-white ${isFavorite ? 'text-red-500' : 'text-gray-700'}`}
-                onClick={toggleFavorite}
-              >
-                <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
-              </Button>
-            </div>
-            <div className="absolute bottom-4 left-4">
-              <span className="px-3 py-1 bg-brand-green text-white text-sm font-bold uppercase tracking-wider rounded-full shadow-sm">
-                {property.type}
-              </span>
-            </div>
-          </div>
-
-          {/* Thumbnail Strip */}
-          {property.images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2 snap-x scrollbar-hide">
-              {property.images.map((img, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentImageIndex(idx)}
-                  className={`relative h-20 w-28 md:h-24 md:w-36 shrink-0 rounded-lg overflow-hidden snap-start transition-all focus:outline-none ${
-                    idx === currentImageIndex ? 'ring-2 ring-brand-green ring-offset-2' : 'opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                </button>
-              ))}
-            </div>
-          )}
-          </div>
-
-          {/* Title and Price */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-2xl font-bold text-gray-900">{property.title}</h1>
-                {property?.verificationStatus === 'approved' && (
-                  <div className="flex items-center gap-1 px-2.5 py-1 bg-green-50 text-brand-green border border-green-100 rounded-full" title="Propriedade Verificada pelo MeuPlace">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Verificado</span>
-                  </div>
-                )}
-                {(property.status === 'Vendido' || property.status === 'Arrendado') && (
-                  <span className="px-3 py-1 bg-red-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm whitespace-nowrap">
-                    {property.status}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center text-gray-500 mt-2">
-                <MapPin className="h-5 w-5 mr-1 text-brand-green" />
-                <span>{property.location}</span>
-              </div>
-            </div>
-            <div className="text-left sm:text-right">
-              <p className="text-2xl font-bold text-brand-green">
-                {property.currency} {property.price.toLocaleString()}
-                {property.type === 'Arrendamento' && <span className="text-base text-gray-500 font-normal">/mês</span>}
-              </p>
-            </div>
-          </div>
-
-          {/* Key Features */}
-          <div className="grid grid-cols-3 gap-4 border-y border-gray-100 py-6">
-            <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
-              <Bed className="h-6 w-6 text-brand-purple mb-2" />
-              <span className="font-bold text-lg">{property.bedrooms}</span>
-              <span className="text-xs text-gray-500 uppercase">Quartos</span>
-            </div>
-            <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
-              <Bath className="h-6 w-6 text-brand-purple mb-2" />
-              <span className="font-bold text-lg">{property.bathrooms}</span>
-              <span className="text-xs text-gray-500 uppercase">Banheiros</span>
-            </div>
-            <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
-              <Maximize className="h-6 w-6 text-brand-purple mb-2" />
-              <span className="font-bold text-lg">{property.area}</span>
-              <span className="text-xs text-gray-500 uppercase">m²</span>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Descrição</h2>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-              {property.description}
-            </p>
-          </div>
-
-          {/* Amenities */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Comodidades</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {property.features.map((feature, index) => (
-                <div key={index} className="flex items-center text-gray-600">
-                  <div className="h-2 w-2 bg-brand-green rounded-full mr-2" />
-                  {feature}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Location */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Localização</h2>
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-              <div className="flex items-start gap-3">
-                <MapPin className="h-6 w-6 text-brand-green shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-gray-900">{property.location}</p>
-                  {property.detailedLocation && (
-                    <p className="text-gray-600 mt-2 whitespace-pre-line">
-                      {property.detailedLocation}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ROI and Financials */}
-          {(property.roiPercentage || property.condominiumFee !== undefined) && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Análise Financeira</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {property.roiPercentage && (
-                  <div className="bg-green-50 border border-green-100 p-6 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-5 w-5 text-green-600" />
-                      <h3 className="font-bold text-green-800">Rentabilidade (ROI)</h3>
-                    </div>
-                    <p className="text-3xl font-black text-green-600">{property.roiPercentage}% <span className="text-base font-normal text-green-700">/ ano</span></p>
-                    <p className="text-sm text-green-700 mt-2">Estimativa de retorno sobre o investimento.</p>
-                  </div>
-                )}
-                {property.condominiumFee !== undefined && (
-                  <div className="bg-gray-50 border border-gray-100 p-6 rounded-xl">
-                    <h3 className="font-bold text-gray-800 mb-2">Taxa de Condomínio</h3>
-                    <p className="text-2xl font-bold text-gray-600">
-                      {property.currency} {property.condominiumFee.toLocaleString()} <span className="text-sm font-normal text-gray-500">/ mês</span>
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Virtual Tour */}
-          {property.virtualTourUrl && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Tour Virtual 360º (Matterport)</h2>
-              <div className="w-full aspect-video rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
-                <iframe
-                  src={property.virtualTourUrl}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="xr-spatial-tracking"
-                  title="360 Virtual Tour"
-                  className="w-full h-full"
-                ></iframe>
-              </div>
-            </div>
-          )}
-
-          {/* Video Presentation */}
-          {property.videoUrl && (
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Apresentação em Vídeo</h2>
-              <div className="w-full aspect-video rounded-xl overflow-hidden bg-black">
-                <iframe
-                  src={property.videoUrl}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="Property Video"
-                  className="w-full h-full"
-                ></iframe>
-              </div>
-            </div>
-          )}
-
-          {/* Serviços Interconectados (Ecossistema) */}
-          <div className="mt-8 pt-8 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight">Serviços Parceiros MeuPlace</h2>
-                <p className="text-sm text-gray-500 mt-1">Serviços essenciais para a sua nova casa.</p>
-              </div>
-              <BadgeCheck className="h-6 w-6 text-brand-green hidden sm:block" />
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <a href="#" className="group block bg-white border border-gray-100 rounded-xl p-4 hover:border-brand-green hover:shadow-md transition-all">
-                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition-transform">
-                  <Truck className="h-5 w-5" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-sm">Mudanças e Transportes</h3>
-                <p className="text-xs text-gray-500 mt-1 mb-3 line-clamp-2">Contrate serviços de mudanças de confiança em todo o país.</p>
-                <span className="text-xs font-bold text-blue-600 group-hover:text-blue-700 flex items-center gap-1">
-                  Solicitar Cotação <ArrowLeft className="h-3 w-3 rotate-180" />
-                </span>
-              </a>
-
-              <a href="#" className="group block bg-white border border-gray-100 rounded-xl p-4 hover:border-brand-green hover:shadow-md transition-all">
-                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 mb-3 group-hover:scale-110 transition-transform">
-                  <Shield className="h-5 w-5" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-sm">Seguro Residencial</h3>
-                <p className="text-xs text-gray-500 mt-1 mb-3 line-clamp-2">Proteja o seu novo investimento com as melhores seguradoras.</p>
-                <span className="text-xs font-bold text-green-600 group-hover:text-green-700 flex items-center gap-1">
-                  Ver Opções <ArrowLeft className="h-3 w-3 rotate-180" />
-                </span>
-              </a>
-
-              <a href="#" className="group block sm:col-span-2 lg:col-span-1 bg-white border border-gray-100 rounded-xl p-4 hover:border-brand-green hover:shadow-md transition-all">
-                <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 mb-3 group-hover:scale-110 transition-transform">
-                  <Wrench className="h-5 w-5" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-sm">Obras e Decoração</h3>
-                <p className="text-xs text-gray-500 mt-1 mb-3 line-clamp-2">Encontre empreiteiros e decoradores certificados.</p>
-                <span className="text-xs font-bold text-orange-600 group-hover:text-orange-700 flex items-center gap-1">
-                  Descobrir Profissionais <ArrowLeft className="h-3 w-3 rotate-180" />
-                </span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar / Agent Contact */}
-        <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 sticky top-24">
-            <div className="flex items-center gap-4 mb-6">
-              <Link to={`/agent/${encodeURIComponent(property.agent?.name || 'Agente')}`} className="shrink-0 group">
-                <img 
-                  src={property.agent?.avatar || `https://ui-avatars.com/api/?name=${property.agent?.name || 'Agente'}`} 
-                  alt={property.agent?.name || 'Agente'} 
-                  className="w-16 h-16 rounded-full object-cover border-2 border-brand-green/20 group-hover:border-brand-green transition-colors"
-                  loading="lazy"
-                />
-              </Link>
-              <div>
-                <p className="text-sm text-gray-500">Agente Responsável</p>
-                <Link to={`/agent/${encodeURIComponent(property.agent?.name || 'Agente')}`} className="hover:text-brand-green transition-colors flex items-center gap-1.5">
-                  <h3 className="text-base font-bold text-gray-900">{property.agent?.name || 'Agente'}</h3>
-                  {property.agent?.isVerified && (
-                    <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                  )}
-                </Link>
-                {property.agent?.agency && (
-                  <p className="text-xs font-medium text-brand-green bg-brand-green/10 inline-block px-2 py-0.5 rounded-full mt-1 mb-1">
-                    {property.agent.agency}
-                  </p>
-                )}
-                <div className="flex items-center text-yellow-500 text-sm">
-                  ★★★★★ <span className="text-gray-400 ml-1">(4.9)</span>
-                </div>
-                <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
-                  <DialogTrigger asChild>
-                    <button className="text-xs text-brand-green hover:underline mt-1 font-medium">
-                      Avaliar Agente
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Avaliar {property.agent?.name || 'Agente'}</DialogTitle>
-                      <DialogDescription>
-                        Compartilhe sua experiência com este agente. Seu feedback será enviado para análise da nossa equipe administrativa.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleSendFeedback} className="space-y-4 py-2">
-                      <div className="space-y-2">
-                        <label htmlFor="feedback-name" className="text-sm font-medium">Seu Nome</label>
-                        <Input 
-                          id="feedback-name" 
-                          placeholder="Seu nome completo" 
-                          required 
-                          value={feedbackForm.name}
-                          onChange={(e) => setFeedbackForm({...feedbackForm, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="feedback-email" className="text-sm font-medium">Seu Email</label>
-                        <Input 
-                          id="feedback-email" 
-                          type="email"
-                          placeholder="seu@email.com" 
-                          required 
-                          value={feedbackForm.email}
-                          onChange={(e) => setFeedbackForm({...feedbackForm, email: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="feedback-text" className="text-sm font-medium">Sua Avaliação</label>
-                        <Textarea 
-                          id="feedback-text" 
-                          placeholder="Conte-nos como foi sua experiência..." 
-                          rows={4} 
-                          required 
-                          value={feedbackForm.feedback}
-                          onChange={(e) => setFeedbackForm({...feedbackForm, feedback: e.target.value})}
-                        />
-                        <p className="text-xs text-gray-500">
-                          Nota: As estrelas são atribuídas apenas pelos administradores com base nas avaliações recebidas.
-                        </p>
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white">
-                          Enviar Avaliação
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Button className="w-full bg-brand-green hover:bg-brand-green-hover h-12 text-lg" onClick={handleWhatsApp}>
-                <MessageCircle className="h-5 w-5 mr-2" />
-                WhatsApp
-              </Button>
-              
-              <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-lg" 
-                onClick={handleChatOpen}
-              >
-                <MessageSquare className="h-5 w-5 mr-2" />
-                Chat ao Vivo
-              </Button>
-              
-              <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full h-12 text-lg border-gray-300 text-gray-700 hover:bg-gray-50">
-                    <Send className="h-5 w-5 mr-2" />
-                    Enviar Mensagem
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Contatar Agente</DialogTitle>
-                    <DialogDescription>
-                      Envie uma mensagem direta para {property.agent?.name || 'o agente'} sobre este imóvel.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleSendMessage} className="space-y-4 py-2">
-                    <div className="space-y-2">
-                      <label htmlFor="name" className="text-sm font-medium">Nome</label>
-                      <Input 
-                        id="name" 
-                        placeholder="Seu nome" 
-                        required 
-                        value={messageForm.name}
-                        onChange={(e) => setMessageForm({...messageForm, name: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label htmlFor="email" className="text-sm font-medium">Email</label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          placeholder="seu@email.com" 
-                          required 
-                          value={messageForm.email}
-                          onChange={(e) => setMessageForm({...messageForm, email: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label htmlFor="phone" className="text-sm font-medium">Telefone</label>
-                        <Input 
-                          id="phone" 
-                          type="tel" 
-                          placeholder="+258..." 
-                          required 
-                          value={messageForm.phone}
-                          onChange={(e) => setMessageForm({...messageForm, phone: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="message" className="text-sm font-medium">Mensagem</label>
-                      <Textarea 
-                        id="message" 
-                        placeholder="Escreva sua mensagem..." 
-                        rows={4} 
-                        required 
-                        value={messageForm.message}
-                        onChange={(e) => setMessageForm({...messageForm, message: e.target.value})}
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white">
-                        Enviar Mensagem
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
-              <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-900" onClick={handlePhoneClick}>
-                <Phone className="h-4 w-4 mr-2" />
-                {showPhone ? (property.agent?.whatsapp || 'Indisponível') : "Ver Telefone"}
-              </Button>
-            </div>
-
-            {isAuthenticated && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <Link to="/add-property?step=4">
-                  <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white h-12 text-lg">
-                    <TrendingUp className="h-5 w-5 mr-2" />
-                    Promover Imóvel
-                  </Button>
-                </Link>
-                <p className="text-xs text-gray-400 text-center mt-2">Visível apenas para o proprietário</p>
-              </div>
-            )}
-
-            <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-              <p className="text-xs text-gray-400 mb-2">Publicado em</p>
-              <div className="flex items-center justify-center text-gray-500 text-sm">
-                <Calendar className="h-4 w-4 mr-2" />
-                {new Date(property.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Zoom Modal */}
-      {isZoomModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
-          <button 
-            onClick={() => setIsZoomModalOpen(false)}
-            className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-50"
+      {/* Navegação Topo */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <Link 
+            to="/properties" 
+            className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-brand-green transition-colors"
           >
-            <X className="h-8 w-8" />
-          </button>
-          
-          <div className="relative w-full max-w-6xl h-full flex items-center justify-center">
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Voltar para a pesquisa
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {/* Comparar */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (isComp) {
+                  removeFromCompare(property.id);
+                } else {
+                  addToCompare(property);
+                }
+              }}
+              className={`h-9 text-xs font-medium ${isComp ? 'bg-amber-50 text-amber-700 border-amber-300' : 'text-gray-700'}`}
+              title={isComp ? 'Remover da comparação' : 'Adicionar para comparar'}
+            >
+              <Scale className="w-3.5 h-3.5 mr-1.5" />
+              {isComp ? 'Comparando' : 'Comparar'}
+            </Button>
+
+            {/* Favorito */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => doToggleFavorite(property.id)}
+              className={`h-9 text-xs font-medium ${isFav ? 'bg-red-50 text-red-600 border-red-200' : 'text-gray-700'}`}
+              title={isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
+            >
+              <Heart className={`w-3.5 h-3.5 mr-1.5 ${isFav ? 'fill-current text-red-500' : ''}`} />
+              {isFav ? 'Salvo' : 'Salvar'}
+            </Button>
+
+            {/* Compartilhar */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              className="h-9 text-xs font-medium text-gray-700"
+              title="Compartilhar imóvel"
+            >
+              <Share2 className="w-3.5 h-3.5 mr-1.5" />
+              Partilhar
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        {/* GALERIA DE IMAGENS PROFISSIONAL (FASE 1) */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8" aria-label="Galeria de Fotos">
+          <div className="relative aspect-[16/10] sm:aspect-[21/9] max-h-[560px] w-full bg-gray-900 group">
+            {/* Imagem Principal com Fallback */}
             <img 
-              src={property.images[currentImageIndex]} 
-              alt={`${property.title} - Imagem ${currentImageIndex + 1}`} 
-              className="max-w-full max-h-full object-contain"
-              loading="lazy"
+              src={imageErrorIndices.has(currentImageIndex) ? '/images/placeholder-property.jpg' : validImages[currentImageIndex]} 
+              alt={`Foto ${currentImageIndex + 1} de ${validImages.length} do imóvel ${property.title}`}
+              loading="eager"
+              onError={() => handleImageError(currentImageIndex)}
+              className="w-full h-full object-cover select-none cursor-pointer transition-opacity duration-300"
+              onClick={() => setIsZoomModalOpen(true)}
             />
-            
-            {property.images.length > 1 && (
+
+            {/* Overlay gradiente inferior para leitura de badges */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+
+            {/* Badges de Destaque no Topo da Imagem */}
+            <div className="absolute top-4 left-4 flex flex-wrap gap-2 pointer-events-none z-10">
+              <span className={`px-3 py-1 text-xs font-semibold rounded-full shadow-sm text-white ${
+                transactionLabel === 'Venda' ? 'bg-emerald-600' : 'bg-blue-600'
+              }`}>
+                {transactionLabel}
+              </span>
+              {property.category && (
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-900/80 text-white backdrop-blur-md">
+                  {property.category}
+                </span>
+              )}
+              {isVerifiedProperty && (
+                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-700/90 text-white backdrop-blur-md flex items-center gap-1 shadow-sm">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Imóvel Verificado
+                </span>
+              )}
+            </div>
+
+            {/* Contador de Fotos */}
+            <div className="absolute top-4 right-4 bg-black/65 text-white text-xs font-medium px-3 py-1 rounded-full backdrop-blur-md z-10">
+              {currentImageIndex + 1} / {validImages.length} fotos
+            </div>
+
+            {/* Botão de Zoom */}
+            <button
+              onClick={() => setIsZoomModalOpen(true)}
+              className="absolute bottom-4 right-4 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full backdrop-blur-md transition-all shadow-lg focus:outline-none"
+              title="Abrir em ecrã inteiro"
+              aria-label="Ampliar galeria"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+
+            {/* Setas de Navegação */}
+            {validImages.length > 1 && (
               <>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all focus:outline-none"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md transition-all opacity-80 hover:opacity-100 focus:outline-none"
                   aria-label="Imagem anterior"
                 >
-                  <ChevronLeft className="h-8 w-8" />
+                  <ChevronLeft className="w-6 h-6" />
                 </button>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full backdrop-blur-sm transition-all focus:outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-md transition-all opacity-80 hover:opacity-100 focus:outline-none"
                   aria-label="Próxima imagem"
                 >
-                  <ChevronRight className="h-8 w-8" />
+                  <ChevronRight className="w-6 h-6" />
                 </button>
               </>
             )}
           </div>
-          
-          {/* Zoom Modal Thumbnails */}
-          {property.images.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-full px-4 pb-2 snap-x scrollbar-hide">
-              {property.images.map((img, idx) => (
+
+          {/* Tira de Miniaturas (Thumbnail Strip) */}
+          {validImages.length > 1 && (
+            <div className="p-3 bg-gray-100/70 border-t border-gray-200 overflow-x-auto flex gap-2 scrollbar-none">
+              {validImages.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentImageIndex(idx)}
-                  className={`relative h-16 w-24 md:h-20 md:w-32 shrink-0 rounded-md overflow-hidden snap-start transition-all focus:outline-none ${
-                    idx === currentImageIndex ? 'ring-2 ring-white' : 'opacity-50 hover:opacity-100'
+                  className={`relative flex-shrink-0 w-20 h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
+                    idx === currentImageIndex 
+                      ? 'border-brand-green ring-2 ring-brand-green/20 scale-105' 
+                      : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
+                  aria-label={`Ver foto ${idx + 1}`}
                 >
-                  <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                  <img 
+                    src={imageErrorIndices.has(idx) ? '/images/placeholder-property.jpg' : img} 
+                    alt="" 
+                    className="w-full h-full object-cover" 
+                    onError={() => handleImageError(idx)}
+                  />
                 </button>
               ))}
             </div>
           )}
-        </div>
-      )}
+        </section>
 
-      {/* Real-time Chat Component */}
-      {isChatOpen && (
-        <Chat 
-          propertyId={property.id} 
-          agentId={property.agentId}
-          agentName={property.agent?.name || 'Agente'} 
-          onClose={() => setIsChatOpen(false)} 
-        />
+        {/* CORPO PRINCIPAL: 2 COLUNAS (CONTEÚDO + SIDEBAR DE CONTACTO) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
+          {/* COLUNA ESQUERDA (DETALHES DO IMÓVEL) */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Bloco 1: Título, Localização e Preço */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-gray-100 pb-6 mb-6">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-2">
+                    {property.title}
+                  </h1>
+                  <div className="flex items-center text-gray-600 text-sm">
+                    <MapPin className="w-4 h-4 mr-1.5 text-brand-green flex-shrink-0" />
+                    <span>{locationString}</span>
+                  </div>
+                </div>
+
+                {/* Preço em destaque */}
+                <div className="sm:text-right bg-emerald-50/70 sm:bg-transparent p-4 sm:p-0 rounded-xl border border-emerald-100 sm:border-0">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-0.5">
+                    Valor de {transactionLabel}
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-extrabold text-brand-green">
+                    {formattedPrice}
+                  </div>
+                  {property.condominiumFee ? (
+                    <span className="text-xs text-gray-500 block mt-1">
+                      Condomínio: {property.currency || 'MZN'} {property.condominiumFee.toLocaleString('pt-MZ')}/mês
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* FASE 2: Selo de Verificação Documental */}
+              {isVerifiedProperty && (
+                <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-700 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-emerald-900">
+                      Imóvel com Verificação Aprovada
+                    </h3>
+                    <p className="text-xs text-emerald-700 mt-0.5">
+                      A documentação deste imóvel e a autorização de divulgação foram submetidas e validadas pela moderação do MeuPlace.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Grid de Atributos Físicos (Quartos, Banheiros, Área, Vagas) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {property.bedrooms !== undefined && property.bedrooms !== null && (
+                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100/60 flex items-center justify-center text-emerald-800">
+                      <Bed className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 block">Quartos</span>
+                      <span className="text-base font-bold text-gray-900">{property.bedrooms}</span>
+                    </div>
+                  </div>
+                )}
+
+                {property.bathrooms !== undefined && property.bathrooms !== null && (
+                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100/60 flex items-center justify-center text-blue-800">
+                      <Bath className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 block">Banheiros</span>
+                      <span className="text-base font-bold text-gray-900">{property.bathrooms}</span>
+                    </div>
+                  </div>
+                )}
+
+                {property.area !== undefined && property.area !== null && property.area > 0 && (
+                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-100/60 flex items-center justify-center text-amber-800">
+                      <Maximize className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 block">Área Útil</span>
+                      <span className="text-base font-bold text-gray-900">{property.area} m²</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-100/60 flex items-center justify-center text-purple-800">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Tipo</span>
+                    <span className="text-base font-bold text-gray-900">{property.category || 'Residencial'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bloco 2: Descrição com expansão inteligente ("Ver mais") */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Sobre este imóvel</h2>
+              
+              <div className="text-gray-700 leading-relaxed text-sm whitespace-pre-line relative">
+                {property.description ? (
+                  <>
+                    <p>
+                      {isDescriptionExpanded || property.description.length <= 350
+                        ? property.description
+                        : `${property.description.substring(0, 350)}...`}
+                    </p>
+
+                    {property.description.length > 350 && (
+                      <button
+                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                        className="mt-3 inline-flex items-center text-sm font-semibold text-brand-green hover:underline focus:outline-none"
+                      >
+                        {isDescriptionExpanded ? (
+                          <>
+                            Ver menos <ChevronUp className="w-4 h-4 ml-1" />
+                          </>
+                        ) : (
+                          <>
+                            Ver descrição completa <ChevronDown className="w-4 h-4 ml-1" />
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <p className="italic text-gray-400">Nenhuma descrição detalhada informada pelo anunciante.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Bloco 3: Características e Comodidades (Features) */}
+            {featuresList.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Comodidades e Características</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {featuresList.map((feat, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
+                      <div className="w-5 h-5 rounded-full bg-emerald-100 text-brand-green flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="truncate">{feat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bloco 4: Mapa e Localização (FASE 3) */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Localização</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {locationString}
+                  </p>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationString)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-xs font-semibold text-brand-green hover:underline"
+                >
+                  Abrir no Google Maps <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                </a>
+              </div>
+
+              {/* Caixa representativa de mapa aproximado */}
+              <div className="relative aspect-[16/7] w-full bg-slate-100 rounded-xl overflow-hidden border border-gray-200 flex flex-col items-center justify-center text-center p-6">
+                <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg mb-2 animate-bounce">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-semibold text-gray-800">{property.location}</p>
+                <p className="text-xs text-gray-500 mt-1 max-w-sm">
+                  Por motivos de segurança e privacidade do proprietário, o endereço residencial exato é compartilhado após o primeiro contacto.
+                </p>
+              </div>
+            </div>
+
+            {/* Bloco 5: Ação de Denúncia (FASE 14) */}
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setIsReportDialogOpen(true)}
+                className="inline-flex items-center text-xs text-gray-500 hover:text-red-600 transition-colors py-1 px-2 rounded-md hover:bg-red-50 focus:outline-none"
+              >
+                <Flag className="w-3.5 h-3.5 mr-1.5" />
+                Denunciar anúncio incorreto ou fraudulento
+              </button>
+            </div>
+          </div>
+
+          {/* COLUNA DIREITA: ANUNCIANTE E CAPTURA DE LEADS (FASE 5, 6, 12) */}
+          <div className="space-y-6 lg:sticky lg:top-6">
+            
+            {/* Cartão de Contacto e Anunciante */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 block mb-4">
+                Publicado por
+              </span>
+
+              {/* Perfil do Anunciante */}
+              <div className="flex items-center gap-3 pb-5 border-b border-gray-100">
+                <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center text-lg font-bold text-gray-700">
+                  {property.agent?.avatar ? (
+                    <img 
+                      src={property.agent.avatar} 
+                      alt={property.agent.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    (property.agent?.name || 'A').charAt(0).toUpperCase()
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-bold text-gray-900 truncate">
+                      {property.agent?.name || 'Corretor MeuPlace'}
+                    </h3>
+                    {property.agent?.isVerified && (
+                      <span title="Corretor Verificado">
+                        <BadgeCheck className="w-4 h-4 text-brand-green flex-shrink-0" />
+                      </span>
+                    )}
+                  </div>
+
+                  {property.agent?.agency ? (
+                    <p className="text-xs text-gray-500 truncate">
+                      {property.agent.agency}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500">
+                      Anunciante credenciado
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Botões Principais de Conversão */}
+              <div className="pt-5 space-y-3">
+                {/* 1. WhatsApp */}
+                <Button
+                  onClick={handleWhatsAppClick}
+                  className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"
+                >
+                  <MessageCircle className="w-5 h-5 fill-current" />
+                  Conversar no WhatsApp
+                </Button>
+
+                {/* 2. Ligar Agora / Ver Telefone */}
+                <Button
+                  variant="outline"
+                  onClick={handlePhoneClick}
+                  className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all"
+                >
+                  <Phone className="w-4 h-4 text-brand-green" />
+                  {showPhone ? (
+                    <a 
+                      href={`tel:${property.agent?.phone || property.agent?.whatsapp}`} 
+                      className="text-brand-green hover:underline font-bold"
+                    >
+                      {property.agent?.phone || property.agent?.whatsapp || 'Sem número'}
+                    </a>
+                  ) : (
+                    'Ver Telefone / Ligar'
+                  )}
+                </Button>
+
+                {/* 3. Formulário de Mensagem */}
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsMessageDialogOpen(true)}
+                  className="w-full h-11 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl flex items-center justify-center gap-2"
+                >
+                  <Mail className="w-4 h-4 text-gray-600" />
+                  Enviar Mensagem por Formulário
+                </Button>
+
+                {/* 4. Agendar Visita (FASE 12) */}
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsViewingDialogOpen(true)}
+                  className="w-full h-11 text-brand-green hover:bg-emerald-50 hover:text-emerald-800 font-semibold rounded-xl flex items-center justify-center gap-2 border border-dashed border-emerald-300"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Solicitar Agendamento de Visita
+                </Button>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-gray-100 text-center">
+                <span className="inline-flex items-center text-[11px] text-gray-400">
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                  Seus dados são protegidos e enviados apenas ao anunciante oficial.
+                </span>
+              </div>
+            </div>
+
+            {/* Dicas de Segurança para o Utilizador */}
+            <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-200 text-xs text-amber-900 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                <Shield className="w-4 h-4 text-amber-700" />
+                Dica de Segurança MeuPlace
+              </div>
+              <p className="text-amber-800/90 leading-normal">
+                Nunca realize pagamentos de sinal ou transferências antes de visitar o imóvel pessoalmente e verificar os documentos com o anunciante.
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* BARRA STICKY INFERIOR PARA MOBILE (FASE 17) */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-3 py-2.5 shadow-2xl flex items-center gap-2">
+        <Button
+          onClick={handleWhatsAppClick}
+          className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+        >
+          <MessageCircle className="w-4 h-4 fill-current" />
+          WhatsApp
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={handlePhoneClick}
+          className="flex-1 h-11 border-gray-300 text-gray-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
+        >
+          <Phone className="w-4 h-4 text-brand-green" />
+          {showPhone ? (property.agent?.phone || 'Ligar') : 'Telefone'}
+        </Button>
+
+        <Button
+          onClick={() => setIsMessageDialogOpen(true)}
+          className="h-11 px-4 bg-brand-green hover:bg-brand-green/90 text-white font-bold rounded-xl text-xs flex items-center justify-center"
+        >
+          Mensagem
+        </Button>
+      </div>
+
+      {/* MODAL 1: FORMULÁRIO DE CAPTURA DE LEAD (FASE 6, 7, 10, 11) */}
+      <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Contactar Anunciante</DialogTitle>
+            <DialogDescription>
+              Envie uma mensagem direta sobre o imóvel &quot;{property.title}&quot;.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleLeadSubmit} className="space-y-4 pt-2">
+            {/* Anti-Bot Honeypot Field */}
+            <input
+              type="text"
+              name="hp_website_contact"
+              value={leadForm.honeypot}
+              onChange={(e) => setLeadForm({ ...leadForm, honeypot: e.target.value })}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="hidden"
+              style={{ display: 'none' }}
+            />
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                O seu Nome Completo *
+              </label>
+              <Input
+                required
+                value={leadForm.name}
+                onChange={(e) => setLeadForm({ ...leadForm, name: e.target.value })}
+                placeholder="Ex: Carlos Mondlane"
+                maxLength={100}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Contacto Telefónico *
+                </label>
+                <Input
+                  required
+                  type="tel"
+                  value={leadForm.phone}
+                  onChange={(e) => setLeadForm({ ...leadForm, phone: e.target.value })}
+                  placeholder="+258 84 123 4567"
+                  maxLength={25}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Email (Opcional)
+                </label>
+                <Input
+                  type="email"
+                  value={leadForm.email}
+                  onChange={(e) => setLeadForm({ ...leadForm, email: e.target.value })}
+                  placeholder="carlos@exemplo.co.mz"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Preferência de Contacto
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'whatsapp', label: 'WhatsApp' },
+                  { id: 'phone', label: 'Ligação' },
+                  { id: 'email', label: 'Email' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setLeadForm({ ...leadForm, contactPreference: opt.id as any })}
+                    className={`py-2 px-3 text-xs font-medium rounded-lg border text-center transition-all ${
+                      leadForm.contactPreference === opt.id
+                        ? 'border-brand-green bg-emerald-50 text-emerald-800 font-semibold'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Mensagem *
+              </label>
+              <Textarea
+                required
+                rows={4}
+                value={leadForm.message}
+                onChange={(e) => setLeadForm({ ...leadForm, message: e.target.value })}
+                maxLength={2000}
+                placeholder="Olá, tenho interesse neste imóvel..."
+              />
+              <span className="text-[11px] text-gray-400 block text-right mt-1">
+                {leadForm.message.length} / 2000 caracteres
+              </span>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsMessageDialogOpen(false)}
+                disabled={isSubmittingLead}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingLead}
+                className="bg-brand-green hover:bg-brand-green/90 text-white font-semibold"
+              >
+                {isSubmittingLead ? 'A enviar...' : 'Enviar Contacto'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 2: AGENDAMENTO DE VISITA (FASE 12) */}
+      <Dialog open={isViewingDialogOpen} onOpenChange={setIsViewingDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Solicitar Agendamento de Visita</DialogTitle>
+            <DialogDescription>
+              Escolha as melhores datas para conhecer pessoalmente o imóvel.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleViewingSubmit} className="space-y-4 pt-2">
+            {/* Anti-Bot Honeypot Field */}
+            <input
+              type="text"
+              name="hp_website_viewing"
+              value={viewingForm.honeypot}
+              onChange={(e) => setViewingForm({ ...viewingForm, honeypot: e.target.value })}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="hidden"
+              style={{ display: 'none' }}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Seu Nome *
+                </label>
+                <Input
+                  required
+                  value={viewingForm.name}
+                  onChange={(e) => setViewingForm({ ...viewingForm, name: e.target.value })}
+                  placeholder="Seu nome"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Telefone para confirmação *
+                </label>
+                <Input
+                  required
+                  type="tel"
+                  value={viewingForm.phone}
+                  onChange={(e) => setViewingForm({ ...viewingForm, phone: e.target.value })}
+                  placeholder="+258 84..."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Data Pretendida *
+                </label>
+                <Input
+                  required
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={viewingForm.preferredDate}
+                  onChange={(e) => setViewingForm({ ...viewingForm, preferredDate: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Horário Preferido *
+                </label>
+                <select
+                  required
+                  value={viewingForm.preferredTime}
+                  onChange={(e) => setViewingForm({ ...viewingForm, preferredTime: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                >
+                  <option value="09:00 - 11:00">Manhã (09:00 - 11:00)</option>
+                  <option value="11:00 - 13:00">Meio-dia (11:00 - 13:00)</option>
+                  <option value="14:00 - 16:00">Tarde (14:00 - 16:00)</option>
+                  <option value="16:00 - 18:00">Fim de tarde (16:00 - 18:00)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Observações ou Restrições (Opcional)
+              </label>
+              <Textarea
+                rows={3}
+                value={viewingForm.notes}
+                onChange={(e) => setViewingForm({ ...viewingForm, notes: e.target.value })}
+                placeholder="Ex: Gostaria de saber se o condomínio aceita animais de estimação durante a visita."
+                maxLength={1000}
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsViewingDialogOpen(false)}
+                disabled={isSubmittingViewing}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingViewing}
+                className="bg-brand-green hover:bg-brand-green/90 text-white font-semibold"
+              >
+                {isSubmittingViewing ? 'A agendar...' : 'Solicitar Visita'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: DENÚNCIA DE IMÓVEL (FASE 14) */}
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-700 flex items-center gap-1.5">
+              <AlertTriangle className="w-5 h-5" />
+              Denunciar Anúncio
+            </DialogTitle>
+            <DialogDescription>
+              Ajude-nos a manter o MeuPlace confiável e livre de fraudes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleReportSubmit} className="space-y-4 pt-2">
+            {/* Anti-Bot Honeypot Field */}
+            <input
+              type="text"
+              name="hp_website_report"
+              value={reportForm.honeypot}
+              onChange={(e) => setReportForm({ ...reportForm, honeypot: e.target.value })}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="hidden"
+              style={{ display: 'none' }}
+            />
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Motivo da Denúncia *
+              </label>
+              <select
+                value={reportForm.reason}
+                onChange={(e) => setReportForm({ ...reportForm, reason: e.target.value as any })}
+                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+              >
+                <option value="wrong_price">Preço incorreto ou enganoso</option>
+                <option value="inexistent">Imóvel já vendido ou inexistente</option>
+                <option value="fraud">Suspeita de fraude ou golpe</option>
+                <option value="wrong_location">Localização errada</option>
+                <option value="duplicate">Anúncio duplicado</option>
+                <option value="inappropriate">Conteúdo ou fotos inadequadas</option>
+                <option value="other">Outro motivo</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Detalhes da Ocorrência *
+              </label>
+              <Textarea
+                required
+                rows={4}
+                value={reportForm.description}
+                onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
+                placeholder="Por favor explique com detalhes o motivo pelo qual este anúncio deve ser revisado pela moderação."
+                maxLength={2000}
+              />
+              <span className="text-[11px] text-gray-400 block text-right mt-1">
+                Mínimo 10 caracteres
+              </span>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                Seu Email para retorno (Opcional)
+              </label>
+              <Input
+                type="email"
+                value={reportForm.reporterEmail}
+                onChange={(e) => setReportForm({ ...reportForm, reporterEmail: e.target.value })}
+                placeholder="seu.email@exemplo.com"
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsReportDialogOpen(false)}
+                disabled={isSubmittingReport}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingReport}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+              >
+                {isSubmittingReport ? 'A enviar...' : 'Enviar Denúncia'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 4: COMPARTILHAMENTO */}
+      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Partilhar Imóvel</DialogTitle>
+            <DialogDescription>
+              Partilhe este imóvel com a sua família, amigos ou contactos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2">
+              <Input 
+                readOnly 
+                value={window.location.href} 
+                className="bg-gray-50 text-xs font-mono select-all" 
+              />
+              <Button 
+                onClick={copyToClipboard} 
+                className="bg-brand-green hover:bg-brand-green/90 text-white flex-shrink-0"
+              >
+                <Copy className="w-4 h-4 mr-1.5" />
+                {isCopied ? 'Copiado' : 'Copiar'}
+              </Button>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`${property.title} - ${window.location.href}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-emerald-100 transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
+              </a>
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-blue-50 text-blue-800 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-100 transition-colors"
+              >
+                <Facebook className="w-4 h-4" />
+                Facebook
+              </a>
+              <a
+                href={`mailto:?subject=${encodeURIComponent(property.title)}&body=${encodeURIComponent(`Confira este imóvel no MeuPlace: ${window.location.href}`)}`}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-gray-100 text-gray-800 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-200 transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Email
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 5: ZOOM / LIGHTBOX FULLSCREEN */}
+      {isZoomModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 backdrop-blur-sm"
+          onClick={() => setIsZoomModalOpen(false)}
+        >
+          <div className="flex items-center justify-between text-white py-2 px-4">
+            <span className="text-sm font-medium">
+              Foto {currentImageIndex + 1} de {validImages.length}
+            </span>
+            <button
+              onClick={() => setIsZoomModalOpen(false)}
+              className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
+              aria-label="Fechar ecrã inteiro"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div 
+            className="relative flex-1 flex items-center justify-center p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={imageErrorIndices.has(currentImageIndex) ? '/images/placeholder-property.jpg' : validImages[currentImageIndex]} 
+              alt={property.title} 
+              className="max-h-[80vh] max-w-[95vw] object-contain rounded-lg shadow-2xl"
+              onError={() => handleImageError(currentImageIndex)}
+            />
+
+            {validImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all"
+                  aria-label="Foto anterior"
+                >
+                  <ChevronLeft className="w-8 h-8" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all"
+                  aria-label="Próxima foto"
+                >
+                  <ChevronRight className="w-8 h-8" />
+                </button>
+              </>
+            )}
+          </div>
+
+          <div 
+            className="flex justify-center gap-2 overflow-x-auto py-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {validImages.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentImageIndex(idx)}
+                className={`w-14 h-10 rounded overflow-hidden border-2 transition-all flex-shrink-0 ${
+                  idx === currentImageIndex ? 'border-brand-green scale-110' : 'border-transparent opacity-50 hover:opacity-100'
+                }`}
+              >
+                <img 
+                  src={imageErrorIndices.has(idx) ? '/images/placeholder-property.jpg' : img} 
+                  alt="" 
+                  className="w-full h-full object-cover" 
+                />
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
 }
+export default PropertyDetails;

@@ -6,6 +6,7 @@ import { playNotificationSound } from '@/utils/sound';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { SEO } from '@/components/SEO';
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -104,8 +105,14 @@ export function Contact() {
       return;
     }
 
-    // Simulate API call
+    // Execute API call
     console.log('Form submitted:', formData);
+    
+    // Call the emailService to store the mail in Firestore targeting the admin
+    import('@/services/emailService').then(async ({ emailService }) => {
+      await emailService.sendAdminContactNotification(formData.name, formData.email, (formData as any).phone || '', formData.message);
+    });
+
     setIsSubmitted(true);
     playNotificationSound();
     
@@ -118,6 +125,10 @@ export function Contact() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <SEO 
+        title="Fale Conosco" 
+        description="Entre em contacto com o MeuPlace. Estamos aqui para ajudar com qualquer dúvida, sugestão ou suporte."
+      />
       <div className="text-center mb-12">
         <h1 className="text-2xl font-bold text-gray-900">Fale Conosco</h1>
         <p className="mt-4 text-lg text-gray-600">

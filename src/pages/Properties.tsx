@@ -1,15 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, Navigate, useNavigate } from 'react-router-dom';
 import { Property, LOCATIONS, CATEGORIES } from '@/types';
-import { PropertyCard } from '@/components/PropertyCard';
-import { PropertyMap } from '@/components/PropertyMap';
+import { PropertyCard, PropertyCardSkeleton } from '@/components/PropertyCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useNotifications } from '@/context/NotificationContext';
 import { useAuth } from '@/context/AuthContext';
-import { collection, query, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 import {
   Dialog,
   DialogContent,
@@ -20,122 +17,175 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { LoadingScreen } from '@/components/LoadingScreen';
-import { Search, Filter, X, Bell, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Map as MapIcon, List, Star } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  X,
+  Bell,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  RefreshCw,
+  SlidersHorizontal,
+  Home as HomeIcon,
+  Tag
+} from 'lucide-react';
 import { SEO } from '@/components/SEO';
+import {
+  PropertyFilters,
+  searchParamsToFilters,
+  filtersToSearchParams,
+  executePropertySearch,
+  DEFAULT_PAGE_SIZE
+} from '@/services/propertyQueryService';
+import { DocumentSnapshot } from 'firebase/firestore';
 
 export function Properties() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const { userProfile, loading: authLoading } = useAuth();
-  
+
+  // 1. Estado derivado da URL (Single Source of Truth)
+  const currentFilters: PropertyFilters = searchParamsToFilters(searchParams);
+
+  // Estados locais para inputs que necessitam de digitação contínua
+  const [locationInput, setLocationInput] = useState(currentFilters.location || '');
+  const [minPriceInput, setMinPriceInput] = useState(currentFilters.minPrice ? String(currentFilters.minPrice) : '');
+  const [maxPriceInput, setMaxPriceInput] = useState(currentFilters.maxPrice ? String(currentFilters.maxPrice) : '');
+  const [minAreaInput, setMinAreaInput] = useState(currentFilters.minArea ? String(currentFilters.minArea) : '');
+
+  // Sincronizar inputs locais quando os parâmetros da URL mudarem externamente (ex: botão voltar)
+  useEffect(() => {
+    setLocationInput(currentFilters.location || '');
+    setMinPriceInput(currentFilters.minPrice ? String(currentFilters.minPrice) : '');
+    setMaxPriceInput(currentFilters.maxPrice ? String(currentFilters.maxPrice) : '');
+    setMinAreaInput(currentFilters.minArea ? String(currentFilters.minArea) : '');
+  }, [searchParams]);
+
+  // Estados de dados e paginação
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProperties = async () => {
-      try {
-        const q = query(collection(db, 'properties'));
-        const querySnapshot = await getDocs(q);
-        const fetchedProperties: Property[] = [];
-        querySnapshot.forEach((doc) => {
-          fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
-        });
-        
-        setProperties(fetchedProperties);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, 'properties');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProperties();
-  }, []);
-
-  if (authLoading) {
-    return <LoadingScreen />;
-  }
-
-  if (userProfile?.role === 'admin') {
-    return <Navigate to="/admin" replace />;
-  }
-
-  const [filters, setFilters] = useState({
-    location: searchParams.get('location') || '',
-    category: searchParams.get('category') || '',
-    type: searchParams.get('type') || '',
-    minPrice: searchParams.get('minPrice') || '',
-    maxPrice: searchParams.get('maxPrice') || '',
-    bedrooms: searchParams.get('bedrooms') || '',
-    minArea: searchParams.get('minArea') || '',
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const pageParam = Number(searchParams.get('page'));
+    return pageParam && pageParam > 0 ? pageParam : 1;
   });
-  
-  const [sortOrder, setSortOrder] = useState('newest');
-  const [showFilters, setShowFilters] = useState(true);
-  const navigate = useNavigate();
-  
-  // Pagination state
-  const [featuredCurrentPage, setFeaturedCurrentPage] = useState(1);
-  const [freeCurrentPage, setFreeCurrentPage] = useState(1);
-  const itemsPerPage = 6;
-  
-  // Autocomplete state
+
+  // Armazenamento de cursores por página para navegação reversa segura no Firestore
+  const [cursorMap, setCursorMap] = useState<Map<number, DocumentSnapshot | null>>(new Map());
+
+  // UI States
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+  const [showFiltersDesktop, setShowFiltersDesktop] = useState(true);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const locationWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Notification state
-  const [email, setEmail] = useState('');
-  const [isNotifyOpen, setIsNotifyOpen] = useState(false);
+  // Alerta por email
+  const [alertEmail, setAlertEmail] = useState('');
+  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
 
-  const handleNotifySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Request browser notification permission
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      try {
-        await Notification.requestPermission();
-      } catch (error) {
-        console.error('Error requesting notification permission:', error);
-      }
-    }
-    
-    // Simulate API call and success
-    addNotification({
-      title: 'Alerta Criado com Sucesso!',
-      message: `Você receberá notificações no email ${email} quando novos imóveis corresponderem aos seus filtros.`,
-      type: 'success'
-    });
+  // Executar busca no Firestore com base nos filtros da URL
+  const runSearch = useCallback(async (targetPage: number) => {
+    setLoading(true);
+    setError(null);
 
-    // Simulate finding a match shortly after (for demo purposes)
-    setTimeout(() => {
-      addNotification({
-        title: 'Novo Imóvel Encontrado!',
-        message: 'Um novo imóvel que corresponde aos seus critérios foi adicionado.',
-        type: 'info',
-        link: `/properties/${properties[0]?.id}` // Just linking to the first one for demo
+    try {
+      const cursor = targetPage > 1 ? cursorMap.get(targetPage - 1) || null : null;
+      const result = await executePropertySearch(currentFilters, {
+        pageSize: DEFAULT_PAGE_SIZE,
+        cursor
       });
-    }, 5000);
 
-    setIsNotifyOpen(false);
-    setEmail('');
+      setProperties(result.properties);
+      setHasMore(result.hasMore);
+
+      if (result.lastDoc) {
+        setCursorMap(prev => new Map(prev).set(targetPage, result.lastDoc));
+      }
+    } catch (err: any) {
+      console.error('[Properties] Erro ao carregar imóveis:', err);
+      setError('Ocorreu um erro ao carregar os imóveis do servidor. Por favor, tente novamente.');
+      setProperties([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchParams, cursorMap]);
+
+  // Executa busca sempre que a URL ou página mudar
+  useEffect(() => {
+    runSearch(currentPage);
+  }, [searchParams, currentPage]);
+
+  // Atualizar URL com novos filtros
+  const applyFilters = (newPartialFilters: Partial<PropertyFilters>, resetPage = true) => {
+    const updatedFilters: PropertyFilters = {
+      ...currentFilters,
+      ...newPartialFilters
+    };
+
+    const newParams = filtersToSearchParams(updatedFilters);
+    if (!resetPage && currentPage > 1) {
+      newParams.set('page', String(currentPage));
+    } else {
+      setCurrentPage(1);
+      setCursorMap(new Map());
+    }
+
+    setSearchParams(newParams, { replace: true });
   };
 
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (filters.location) params.set('location', filters.location);
-    if (filters.category) params.set('category', filters.category);
-    if (filters.type) params.set('type', filters.type);
-    if (filters.minPrice) params.set('minPrice', filters.minPrice);
-    if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
-    if (filters.bedrooms) params.set('bedrooms', filters.bedrooms);
-    if (filters.minArea) params.set('minArea', filters.minArea);
-    setSearchParams(params);
-    setFeaturedCurrentPage(1);
-    setFreeCurrentPage(1); // Reset to first page on filter change
-  }, [filters, setSearchParams]);
+  // Remover um filtro específico
+  const removeFilter = (key: keyof PropertyFilters) => {
+    const updated = { ...currentFilters };
+    delete updated[key];
+    const newParams = filtersToSearchParams(updated);
+    setCurrentPage(1);
+    setCursorMap(new Map());
+    setSearchParams(newParams, { replace: true });
+  };
 
-  // Handle click outside for autocomplete
+  // Limpar todos os filtros
+  const resetAllFilters = () => {
+    setLocationInput('');
+    setMinPriceInput('');
+    setMaxPriceInput('');
+    setMinAreaInput('');
+    setCurrentPage(1);
+    setCursorMap(new Map());
+    setSearchParams({}, { replace: true });
+  };
+
+  // Navegar para próxima página
+  const handleNextPage = () => {
+    if (!hasMore || loading) return;
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', String(nextPage));
+    setSearchParams(newParams, { replace: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Navegar para página anterior
+  const handlePrevPage = () => {
+    if (currentPage <= 1 || loading) return;
+    const prevPage = currentPage - 1;
+    setCurrentPage(prevPage);
+    const newParams = new URLSearchParams(searchParams);
+    if (prevPage === 1) {
+      newParams.delete('page');
+    } else {
+      newParams.set('page', String(prevPage));
+    }
+    setSearchParams(newParams, { replace: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Autocomplete de cidades
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (locationWrapperRef.current && !locationWrapperRef.current.contains(event.target as Node)) {
@@ -148,445 +198,644 @@ export function Properties() {
     };
   }, [locationWrapperRef]);
 
-  const filteredProperties = properties.filter(p => {
-    // Filter out unapproved properties unless admin or owner
-    if (!p.isApproved && userProfile?.role !== 'admin' && p.agentId !== userProfile?.uid) return false;
-
-    // Case insensitive location search
-    if (filters.location && !p.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
-    if (filters.category && p.category !== filters.category) return false;
-    if (filters.type && p.type !== filters.type) return false;
-    if (filters.minPrice && p.price < Number(filters.minPrice)) return false;
-    if (filters.maxPrice && p.price > Number(filters.maxPrice)) return false;
-    if (filters.bedrooms && p.bedrooms < Number(filters.bedrooms)) return false;
-    if (filters.minArea && p.area < Number(filters.minArea)) return false;
-    return true;
-  }).sort((a, b) => {
-    // Always show promoted properties first
-    if (a.isPromoted && !b.isPromoted) return -1;
-    if (!a.isPromoted && b.isPromoted) return 1;
-
-    if (sortOrder === 'newest') {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    } else if (sortOrder === 'oldest') {
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    } else if (sortOrder === 'price_asc') {
-      return a.price - b.price;
-    } else if (sortOrder === 'price_desc') {
-      return b.price - a.price;
-    }
-    return 0;
-  });
-
-  // Separate featured and free properties
-  const featuredProperties = filteredProperties.filter(p => p.isPromoted);
-  const freeProperties = filteredProperties.filter(p => !p.isPromoted);
-
-  // Pagination logic applies to both
-  const totalFeaturedPages = Math.ceil(featuredProperties.length / itemsPerPage);
-  const paginatedFeaturedProperties = featuredProperties.slice(
-    (featuredCurrentPage - 1) * itemsPerPage,
-    featuredCurrentPage * itemsPerPage
+  const filteredLocations = LOCATIONS.filter(l =>
+    l.toLowerCase().includes(locationInput.toLowerCase())
   );
 
-  const totalFreePages = Math.ceil(freeProperties.length / itemsPerPage);
-  const paginatedFreeProperties = freeProperties.slice(
-    (freeCurrentPage - 1) * itemsPerPage,
-    freeCurrentPage * itemsPerPage
-  );
+  // Submissão de alerta
+  const handleCreateAlert = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!alertEmail) return;
 
-  const filteredLocations = LOCATIONS.filter(l => 
-    l.toLowerCase().includes(filters.location.toLowerCase())
-  );
+    addNotification({
+      title: 'Alerta Ativado com Sucesso!',
+      message: `Você receberá atualizações em ${alertEmail} quando surgirem imóveis com estes critérios.`,
+      type: 'success'
+    });
+
+    setIsAlertDialogOpen(false);
+    setAlertEmail('');
+  };
+
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (userProfile?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  // Contagem de filtros ativos
+  const activeFiltersCount = [
+    currentFilters.type,
+    currentFilters.category,
+    currentFilters.location,
+    currentFilters.minPrice,
+    currentFilters.maxPrice,
+    currentFilters.currency,
+    currentFilters.bedrooms,
+    currentFilters.minArea,
+    currentFilters.verifiedOnly
+  ].filter(val => val !== undefined && val !== '' && val !== false).length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <SEO 
-        title="Imóveis" 
-        description="Encontre os melhores imóveis para comprar, vender ou arrendar em Moçambique." 
+        title="Imóveis em Moçambique | MeuPlace" 
+        description="Pesquise apartamentos, moradias e terrenos para compra e arrendamento em Maputo, Matola, Beira e todo Moçambique." 
       />
-      
-      <div className="mb-6">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate(-1)} 
-          className="flex items-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 -ml-2"
-        >
-          <ChevronLeft className="h-5 w-5 mr-1" />
-          Voltar
-        </Button>
+
+      {/* Header com Navegação e Título */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate(-1)} 
+              className="text-gray-500 hover:text-gray-900 -ml-2 px-2"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Voltar
+            </Button>
+            <span className="text-gray-300">/</span>
+            <span className="text-xs font-semibold text-brand-purple uppercase tracking-wider">Catálogo Oficial</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Imóveis Disponíveis
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Anúncios aprovados e verificados em todo o território moçambicano.
+          </p>
+        </div>
+
+        {/* Botão de Filtro Mobile & Ordenação */}
+        <div className="flex items-center gap-2 sm:gap-3 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFiltersMobile(!showFiltersMobile)}
+            className="md:hidden flex items-center gap-1.5 border-gray-300"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-brand-purple" />
+            <span>Filtros</span>
+            {activeFiltersCount > 0 && (
+              <span className="ml-1 bg-brand-purple text-white text-xs px-1.5 py-0.2 rounded-full font-bold">
+                {activeFiltersCount}
+              </span>
+            )}
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="sort" className="text-xs font-medium text-gray-500 hidden sm:inline-block">
+              Ordenar por:
+            </label>
+            <select
+              id="sort"
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-700 shadow-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+              value={currentFilters.sort || 'newest'}
+              onChange={(e) => applyFilters({ sort: e.target.value as any }, false)}
+            >
+              <option value="newest">Mais Recentes</option>
+              <option value="price_asc">Menor Preço</option>
+              <option value="price_desc">Maior Preço</option>
+              <option value="area_desc">Maior Área</option>
+              <option value="oldest">Mais Antigos</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar Filters */}
-        <div className="w-full md:w-64 flex-shrink-0 space-y-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-gray-900 font-semibold">
-                <Filter className="h-5 w-5" />
-                Filtros
-              </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowFilters(!showFilters)}
-                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-              >
-                {showFilters ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </Button>
+      {/* Tabs Rápidas de Tipo de Transação */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-gray-200 pb-3">
+        <button
+          onClick={() => applyFilters({ type: '' })}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            !currentFilters.type
+              ? 'bg-brand-purple text-white shadow-sm'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Todos os Tipos
+        </button>
+        <button
+          onClick={() => applyFilters({ type: 'Venda' })}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            currentFilters.type === 'Venda'
+              ? 'bg-brand-purple text-white shadow-sm'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Para Comprar (Venda)
+        </button>
+        <button
+          onClick={() => applyFilters({ type: 'Arrendamento' })}
+          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            currentFilters.type === 'Arrendamento'
+              ? 'bg-brand-purple text-white shadow-sm'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Para Arrendar
+        </button>
+
+        <button
+          onClick={() => applyFilters({ verifiedOnly: !currentFilters.verifiedOnly })}
+          className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+            currentFilters.verifiedOnly
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          <ShieldCheck className={`h-3.5 w-3.5 ${currentFilters.verifiedOnly ? 'text-emerald-600 fill-emerald-100' : 'text-gray-400'}`} />
+          Apenas Verificados
+        </button>
+      </div>
+
+      {/* Chips / Pills de Filtros Ativos */}
+      {activeFiltersCount > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+          <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
+            <Tag className="h-3.5 w-3.5 text-gray-400" />
+            Filtros Ativos:
+          </span>
+
+          {currentFilters.type && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              Tipo: {currentFilters.type}
+              <button onClick={() => removeFilter('type')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.category && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              {currentFilters.category}
+              <button onClick={() => removeFilter('category')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.location && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              {currentFilters.location}
+              <button onClick={() => removeFilter('location')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.minPrice && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              Min: {Number(currentFilters.minPrice).toLocaleString()} {currentFilters.currency || 'MZN'}
+              <button onClick={() => removeFilter('minPrice')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.maxPrice && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              Max: {Number(currentFilters.maxPrice).toLocaleString()} {currentFilters.currency || 'MZN'}
+              <button onClick={() => removeFilter('maxPrice')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.bedrooms && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              {currentFilters.bedrooms}+ Quartos
+              <button onClick={() => removeFilter('bedrooms')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.minArea && (
+            <span className="inline-flex items-center gap-1 bg-white px-2.5 py-1 rounded-md text-xs font-medium text-gray-800 border border-gray-200 shadow-2xs">
+              ≥ {currentFilters.minArea} m²
+              <button onClick={() => removeFilter('minArea')} className="text-gray-400 hover:text-gray-700">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {currentFilters.verifiedOnly && (
+            <span className="inline-flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-md text-xs font-medium text-emerald-800 border border-emerald-200 shadow-2xs">
+              Verificados
+              <button onClick={() => removeFilter('verifiedOnly')} className="text-emerald-500 hover:text-emerald-800">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          <button
+            onClick={resetAllFilters}
+            className="text-xs font-medium text-brand-purple hover:underline ml-auto"
+          >
+            Limpar Todos
+          </button>
+        </div>
+      )}
+
+      {/* Grid Principal: Sidebar de Filtros + Resultados */}
+      <div className="flex flex-col md:flex-row gap-6 lg:gap-8 items-start">
+        
+        {/* Painel Lateral de Filtros (Desktop & Mobile Drawer) */}
+        <aside
+          className={`w-full md:w-68 lg:w-72 shrink-0 bg-white p-5 rounded-xl border border-gray-200 shadow-xs ${
+            showFiltersMobile ? 'block' : 'hidden md:block'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
+              <Filter className="h-4 w-4 text-brand-purple" />
+              Refinar Pesquisa
             </div>
-            
-            {showFilters && (
-              <div className="space-y-4">
-                <div ref={locationWrapperRef} className="relative">
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Localização</label>
-                  <div className="relative">
-                    <Input 
-                      placeholder="Pesquisar cidade..."
-                      value={filters.location}
-                      onChange={(e) => {
-                        setFilters({...filters, location: e.target.value});
-                        setShowLocationSuggestions(true);
+            <button
+              onClick={() => setShowFiltersDesktop(!showFiltersDesktop)}
+              className="text-gray-400 hover:text-gray-600 hidden md:block"
+            >
+              {showFiltersDesktop ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          </div>
+
+          {(showFiltersDesktop || showFiltersMobile) && (
+            <div className="space-y-4">
+              
+              {/* Localização com Autocomplete */}
+              <div ref={locationWrapperRef} className="relative">
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Localização / Cidade</label>
+                <div className="relative">
+                  <Input 
+                    placeholder="Ex: Maputo, Matola, Beira..."
+                    value={locationInput}
+                    onChange={(e) => {
+                      setLocationInput(e.target.value);
+                      setShowLocationSuggestions(true);
+                    }}
+                    onFocus={() => setShowLocationSuggestions(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        applyFilters({ location: locationInput.trim() });
+                        setShowLocationSuggestions(false);
+                      }
+                    }}
+                    className="text-xs pr-8"
+                  />
+                  {locationInput ? (
+                    <button 
+                      onClick={() => {
+                        setLocationInput('');
+                        applyFilters({ location: '' });
                       }}
-                      onFocus={() => setShowLocationSuggestions(true)}
-                      className="pr-8"
-                    />
-                    {filters.location && (
-                      <button 
-                        onClick={() => setFilters({...filters, location: ''})}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {showLocationSuggestions && (filters.location.length > 0 || filteredLocations.length > 0) && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                      {filteredLocations.length > 0 ? (
-                        filteredLocations.map(l => (
-                          <div
-                            key={l}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
-                            onClick={() => {
-                              setFilters({...filters, location: l});
-                              setShowLocationSuggestions(false);
-                            }}
-                          >
-                            {l}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2 text-gray-500 text-sm">Nenhuma localização encontrada</div>
-                      )}
-                    </div>
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <Search className="h-3.5 w-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   )}
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Categoria</label>
-                  <select 
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={filters.category}
-                    onChange={(e) => setFilters({...filters, category: e.target.value})}
-                  >
-                    <option value="">Todas</option>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Tipo de Transação</label>
-                  <select 
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={filters.type}
-                    onChange={(e) => setFilters({...filters, type: e.target.value})}
-                  >
-                    <option value="">Todos</option>
-                    <option value="Venda">Venda</option>
-                    <option value="Arrendamento">Arrendamento</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Quartos (Mín)</label>
-                  <select 
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={filters.bedrooms}
-                    onChange={(e) => setFilters({...filters, bedrooms: e.target.value})}
-                  >
-                    <option value="">Qualquer</option>
-                    <option value="1">1+</option>
-                    <option value="2">2+</option>
-                    <option value="3">3+</option>
-                    <option value="4">4+</option>
-                    <option value="5">5+</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Área Mín (m²)</label>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    value={filters.minArea}
-                    onChange={(e) => setFilters({...filters, minArea: e.target.value})}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Preço Mín (MZN)</label>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    value={filters.minPrice}
-                    onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
-                  />
-                </div>
-
-                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Preço Máx (MZN)</label>
-                  <Input 
-                    type="number" 
-                    placeholder="Sem limite" 
-                    value={filters.maxPrice}
-                    onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
-                  />
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-2 text-brand-purple border-brand-purple hover:bg-brand-purple/10"
-                  onClick={() => {
-                    setFilters({
-                      location: '', 
-                      category: '', 
-                      type: '', 
-                      minPrice: '', 
-                      maxPrice: '',
-                      bedrooms: '',
-                      minArea: ''
-                    });
-                    setSortOrder('newest');
-                    setFeaturedCurrentPage(1);
-                    setFreeCurrentPage(1);
-                    setSearchParams({});
-                  }}
-                >
-                  Limpar Filtros
-                </Button>
-
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <Dialog open={isNotifyOpen} onOpenChange={setIsNotifyOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full gap-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10">
-                        <Bell className="h-4 w-4" />
-                        Criar Alerta
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Receber alertas de novos imóveis</DialogTitle>
-                        <DialogDescription>
-                          Enviaremos um email quando novos imóveis corresponderem à sua pesquisa atual.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleNotifySubmit} className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <label htmlFor="email" className="text-sm font-medium">Email</label>
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="seu@email.com"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                          />
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-md text-sm">
-                          <p className="font-medium text-gray-700 mb-2">Filtros ativos:</p>
-                          <ul className="list-disc pl-4 space-y-1 text-gray-600">
-                            {filters.location && <li>Localização: {filters.location}</li>}
-                            {filters.category && <li>Categoria: {filters.category}</li>}
-                            {filters.type && <li>Tipo: {filters.type}</li>}
-                            {filters.minPrice && <li>Preço Mín: {filters.minPrice}</li>}
-                            {filters.maxPrice && <li>Preço Máx: {filters.maxPrice}</li>}
-                            {filters.bedrooms && <li>Quartos: {filters.bedrooms}+</li>}
-                            {filters.minArea && <li>Área Mín: {filters.minArea} m²</li>}
-                            {!filters.location && !filters.category && !filters.type && !filters.minPrice && !filters.maxPrice && !filters.bedrooms && !filters.minArea && (
-                              <li>Todos os imóveis (sem filtros)</li>
-                            )}
-                          </ul>
-                        </div>
-                        <DialogFooter>
-                          <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white">
-                            Ativar Notificações
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+                {showLocationSuggestions && (
+                  <div className="absolute z-20 w-full bg-white border border-gray-200 mt-1 rounded-md shadow-lg max-h-52 overflow-y-auto">
+                    <div
+                      className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-xs font-medium text-brand-purple border-b border-gray-100"
+                      onClick={() => {
+                        setLocationInput('');
+                        applyFilters({ location: '' });
+                        setShowLocationSuggestions(false);
+                      }}
+                    >
+                      Todas as Cidades
+                    </div>
+                    {filteredLocations.map(l => (
+                      <div
+                        key={l}
+                        className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer text-xs text-gray-700"
+                        onClick={() => {
+                          setLocationInput(l);
+                          applyFilters({ location: l });
+                          setShowLocationSuggestions(false);
+                        }}
+                      >
+                        {l}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* Results */}
-        <div className="flex-1">
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Imóveis Disponíveis</h1>
-              <p className="text-gray-500">
-                {filteredProperties.length} resultados encontrados
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <select
-                  id="sort"
-                  className="rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
+              {/* Categoria */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Categoria de Imóvel</label>
+                <select 
+                  className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-700 focus:border-brand-purple focus:outline-none"
+                  value={currentFilters.category || ''}
+                  onChange={(e) => applyFilters({ category: e.target.value })}
                 >
-                  <option value="newest">Mais Recentes</option>
-                  <option value="oldest">Mais Antigos</option>
-                  <option value="price_asc">Preço: Menor para Maior</option>
-                  <option value="price_desc">Preço: Maior para Menor</option>
+                  <option value="">Todas as Categorias</option>
+                  {CATEGORIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
-            </div>
-          </div>
 
-          <div className="space-y-10">
-            {filteredProperties.length > 0 ? (
-              <>
-                {/* Featured Properties Section */}
-                  {paginatedFeaturedProperties.length > 0 && (
-                    <div className="mb-12">
-                      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                        <Star className="h-6 w-6 text-amber-500 fill-current" />
-                        Imóveis em Destaque
-                      </h2>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                        {paginatedFeaturedProperties.map(property => (
-                          <PropertyCard key={property.id} property={property} />
-                        ))}
-                      </div>
-                      
-                      {/* Featured Pagination Controls */}
-                      {totalFeaturedPages > 1 && (
-                        <div className="mt-8 flex justify-center items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setFeaturedCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={featuredCurrentPage === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          
-                          {Array.from({ length: totalFeaturedPages }, (_, i) => i + 1).map(page => (
-                            <Button
-                              key={`feat-${page}`}
-                              variant={featuredCurrentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setFeaturedCurrentPage(page)}
-                              className={featuredCurrentPage === page ? "bg-brand-green hover:bg-brand-green-hover" : ""}
-                            >
-                              {page}
-                            </Button>
-                          ))}
-
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setFeaturedCurrentPage(prev => Math.min(prev + 1, totalFeaturedPages))}
-                            disabled={featuredCurrentPage === totalFeaturedPages}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Free Properties Section */}
-                  {paginatedFreeProperties.length > 0 && (
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900 mb-6">
-                        Imóveis Publicados Gratuitamente
-                      </h2>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                        {paginatedFreeProperties.map(property => (
-                          <PropertyCard key={property.id} property={property} />
-                        ))}
-                      </div>
-                      
-                      {/* Free Pagination Controls */}
-                      {totalFreePages > 1 && (
-                        <div className="mt-8 flex justify-center items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setFreeCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={freeCurrentPage === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          
-                          {Array.from({ length: totalFreePages }, (_, i) => i + 1).map(page => (
-                            <Button
-                              key={`free-${page}`}
-                              variant={freeCurrentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setFreeCurrentPage(page)}
-                              className={freeCurrentPage === page ? "bg-brand-green hover:bg-brand-green-hover" : ""}
-                            >
-                              {page}
-                            </Button>
-                          ))}
-
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setFreeCurrentPage(prev => Math.min(prev + 1, totalFreePages))}
-                            disabled={freeCurrentPage === totalFreePages}
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-24 bg-white rounded-2xl border border-dashed border-gray-300 flex flex-col items-center justify-center">
-                  <div className="bg-gray-50 p-6 rounded-full mb-6">
-                    <Search className="h-12 w-12 text-gray-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Ops! Nenhum imóvel encontrado</h3>
-                  <p className="text-gray-500 max-w-md mx-auto mb-6">
-                    Não encontrámos nenhum imóvel com os filtros selecionados. Tente remover alguns filtros ou procurar numa localização diferente.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setFilters({ location: '', category: '', type: '', minPrice: '', maxPrice: '', bedrooms: '', minArea: '' });
-                      setSortOrder('newest');
-                      setFeaturedCurrentPage(1);
-                      setFreeCurrentPage(1);
-                      setSearchParams({});
-                    }}
-                    className="text-brand-purple border-brand-purple hover:bg-brand-purple/10"
+              {/* Moeda */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Moeda</label>
+                <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1 rounded-md text-xs">
+                  <button
+                    onClick={() => applyFilters({ currency: '' })}
+                    className={`py-1 text-center font-medium rounded ${
+                      !currentFilters.currency ? 'bg-white shadow-2xs text-gray-900' : 'text-gray-600'
+                    }`}
                   >
-                    Limpar Filtros
-                  </Button>
+                    Todas
+                  </button>
+                  <button
+                    onClick={() => applyFilters({ currency: 'MZN' })}
+                    className={`py-1 text-center font-medium rounded ${
+                      currentFilters.currency === 'MZN' ? 'bg-white shadow-2xs text-brand-purple font-bold' : 'text-gray-600'
+                    }`}
+                  >
+                    MZN
+                  </button>
+                  <button
+                    onClick={() => applyFilters({ currency: 'USD' })}
+                    className={`py-1 text-center font-medium rounded ${
+                      currentFilters.currency === 'USD' ? 'bg-white shadow-2xs text-brand-purple font-bold' : 'text-gray-600'
+                    }`}
+                  >
+                    USD
+                  </button>
                 </div>
+              </div>
+
+              {/* Faixa de Preço */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  Faixa de Preço ({currentFilters.currency || 'MZN'})
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input 
+                    type="number" 
+                    placeholder="Mínimo" 
+                    value={minPriceInput}
+                    onChange={(e) => setMinPriceInput(e.target.value)}
+                    onBlur={() => {
+                      const num = minPriceInput ? Number(minPriceInput) : undefined;
+                      applyFilters({ minPrice: num });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const num = minPriceInput ? Number(minPriceInput) : undefined;
+                        applyFilters({ minPrice: num });
+                      }
+                    }}
+                    className="text-xs"
+                  />
+                  <Input 
+                    type="number" 
+                    placeholder="Máximo" 
+                    value={maxPriceInput}
+                    onChange={(e) => setMaxPriceInput(e.target.value)}
+                    onBlur={() => {
+                      const num = maxPriceInput ? Number(maxPriceInput) : undefined;
+                      applyFilters({ maxPrice: num });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const num = maxPriceInput ? Number(maxPriceInput) : undefined;
+                        applyFilters({ maxPrice: num });
+                      }
+                    }}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Quartos (Mínimo) */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Quartos Mínimos</label>
+                <div className="grid grid-cols-5 gap-1 text-xs">
+                  {['', '1', '2', '3', '4'].map(q => {
+                    const isSelected = q === '' ? !currentFilters.bedrooms : currentFilters.bedrooms === Number(q);
+                    return (
+                      <button
+                        key={q || 'any'}
+                        onClick={() => applyFilters({ bedrooms: q ? Number(q) : undefined })}
+                        className={`py-1.5 rounded border text-center font-medium transition-colors ${
+                          isSelected
+                            ? 'bg-brand-purple text-white border-brand-purple'
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        {q ? `${q}+` : 'Todos'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Área Mínima */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Área Mínima (m²)</label>
+                <Input 
+                  type="number" 
+                  placeholder="Ex: 80" 
+                  value={minAreaInput}
+                  onChange={(e) => setMinAreaInput(e.target.value)}
+                  onBlur={() => {
+                    const num = minAreaInput ? Number(minAreaInput) : undefined;
+                    applyFilters({ minArea: num });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const num = minAreaInput ? Number(minAreaInput) : undefined;
+                      applyFilters({ minArea: num });
+                    }
+                  }}
+                  className="text-xs"
+                />
+              </div>
+
+              {/* Ações da Sidebar */}
+              <div className="pt-2 space-y-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full text-xs text-gray-700 border-gray-300 hover:bg-gray-50"
+                  onClick={resetAllFilters}
+                >
+                  Limpar Todos os Filtros
+                </Button>
+
+                {/* Dialog de Alerta de Pesquisa */}
+                <Dialog open={isAlertDialogOpen} onOpenChange={setIsAlertDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="w-full text-xs gap-1.5 border-brand-purple/40 text-brand-purple hover:bg-brand-purple/5"
+                    >
+                      <Bell className="h-3.5 w-3.5" />
+                      Criar Alerta desta Busca
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg">Ativar Alertas de Novos Imóveis</DialogTitle>
+                      <DialogDescription className="text-xs text-gray-500">
+                        Receba uma notificação por email quando novos imóveis correspondentes a estes filtros forem adicionados.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateAlert} className="space-y-4 py-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1">Seu Email</label>
+                        <Input 
+                          type="email" 
+                          placeholder="exemplo@email.com" 
+                          required
+                          value={alertEmail}
+                          onChange={(e) => setAlertEmail(e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-md text-xs text-gray-600 space-y-1">
+                        <div className="font-semibold text-gray-800">Critérios salvos:</div>
+                        <div>• Tipo: {currentFilters.type || 'Qualquer'}</div>
+                        <div>• Categoria: {currentFilters.category || 'Todas'}</div>
+                        <div>• Localização: {currentFilters.location || 'Moçambique inteiro'}</div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit" className="w-full bg-brand-green hover:bg-brand-green-hover text-white text-sm">
+                          Confirmar Alerta
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+            </div>
+          )}
+        </aside>
+
+        {/* Área de Resultados */}
+        <main className="flex-1 w-full min-w-0">
+          
+          {/* Header com Status da Busca */}
+          <div className="mb-4 flex items-center justify-between text-xs text-gray-500">
+            <div>
+              {loading ? (
+                <span>A consultar base de dados do Firestore...</span>
+              ) : (
+                <span>
+                  A mostrar <strong className="text-gray-900">{properties.length}</strong> {properties.length === 1 ? 'imóvel' : 'imóveis'} nesta página
+                </span>
               )}
             </div>
-        </div>
+            {currentPage > 1 && (
+              <span className="font-medium text-brand-purple bg-brand-purple/10 px-2 py-0.5 rounded">
+                Página {currentPage}
+              </span>
+            )}
+          </div>
+
+          {/* Estado de Carregamento (Skeleton Shimmer) */}
+          {loading && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <PropertyCardSkeleton key={i} />
+              ))}
+            </div>
+          )}
+
+          {/* Estado de Erro */}
+          {!loading && error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+              <p className="text-sm text-red-800 font-medium mb-3">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => runSearch(currentPage)} 
+                className="gap-1.5 text-xs text-red-700 border-red-300 hover:bg-red-100"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Tentar Novamente
+              </Button>
+            </div>
+          )}
+
+          {/* Grid de Imóveis Reais */}
+          {!loading && !error && properties.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {properties.map(property => (
+                  <PropertyCard key={property.id} property={property} />
+                ))}
+              </div>
+
+              {/* Controles de Paginação com Cursor do Firestore */}
+              <div className="mt-10 pt-6 border-t border-gray-200 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevPage}
+                  disabled={currentPage <= 1 || loading}
+                  className="gap-1 text-xs"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Página Anterior
+                </Button>
+
+                <div className="text-xs text-gray-500 font-medium">
+                  Página {currentPage}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={!hasMore || loading}
+                  className="gap-1 text-xs bg-brand-purple text-white hover:bg-brand-purple/90 hover:text-white border-transparent disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Próxima Página
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Estado Vazio (Nenhum Imóvel Encontrado) */}
+          {!loading && !error && properties.length === 0 && (
+            <div className="text-center py-16 px-4 bg-white rounded-2xl border border-dashed border-gray-300 flex flex-col items-center justify-center">
+              <div className="bg-purple-50 p-4 rounded-full mb-4">
+                <Search className="h-10 w-10 text-brand-purple" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                Nenhum imóvel encontrado
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-500 max-w-sm mx-auto mb-5">
+                Não encontramos imóveis aprovados com os filtros atuais. Tente expandir a faixa de preço ou selecionar outra cidade.
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={resetAllFilters}
+                className="text-xs font-semibold text-brand-purple border-brand-purple hover:bg-brand-purple/10"
+              >
+                Limpar Todos os Filtros
+              </Button>
+            </div>
+          )}
+
+        </main>
       </div>
     </div>
   );

@@ -15,6 +15,9 @@ export interface SubscriptionPlan {
   description: string;
   features: string[];
   order?: number;
+  originalPrice?: number;
+  isPromo?: boolean;
+  badge?: string;
 }
 
 export function SubscriptionPlansAdmin() {
@@ -232,6 +235,38 @@ export function SubscriptionPlansAdmin() {
                 onChange={(e) => setEditingPlan({...editingPlan, order: parseInt(e.target.value) || 0})}
                 className="w-full p-2 border border-gray-300 rounded-md"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Preço Original / De Risco (MT - Opcional)</label>
+              <input 
+                type="number" 
+                value={editingPlan.originalPrice || ''} 
+                onChange={(e) => setEditingPlan({...editingPlan, originalPrice: parseFloat(e.target.value) || undefined})}
+                placeholder="Ex: 1500"
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Etiqueta Promocional / Badge (Opcional)</label>
+              <input 
+                type="text" 
+                value={editingPlan.badge || ''} 
+                onChange={(e) => setEditingPlan({...editingPlan, badge: e.target.value})}
+                placeholder="Ex: 🚀 Pré-Lançamento • 500 MT"
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <input 
+                type="checkbox"
+                id="isPromo"
+                checked={!!editingPlan.isPromo}
+                onChange={(e) => setEditingPlan({...editingPlan, isPromo: e.target.checked})}
+                className="h-4 w-4 rounded border-gray-300 text-brand-green focus:ring-brand-green"
+              />
+              <label htmlFor="isPromo" className="text-sm font-medium text-gray-700">
+                Marcar como Plano Promocional / Destaque de Pré-Lançamento
+              </label>
             </div>
           </div>
 

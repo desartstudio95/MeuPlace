@@ -226,12 +226,9 @@ export function AddProperty() {
         documentUrls.push(docUrl);
       }
 
-      const isAutoApproved = 
-        userProfile?.role === 'admin' || 
-        userProfile?.isApproved === true || 
-        (userProfile?.agencyName && imageUrls.length >= 3 && formData.description.length > 50);
+      const isPropertyApproved = userProfile?.role === 'admin';
 
-        const newProperty = {
+      const newProperty = {
         title: formData.title,
         description: formData.description,
         price: Number(formData.price),
@@ -262,19 +259,19 @@ export function AddProperty() {
           bio: userProfile?.bio || '',
           instagram: userProfile?.instagram || '',
           facebook: userProfile?.facebook || '',
-          isVerified: true
+          isVerified: userProfile?.isApproved || false
         },
         createdAt: new Date().toISOString(),
-        status: isAutoApproved ? 'Disponível' : 'Pendente',
+        status: isPropertyApproved ? 'Disponível' : 'Pendente',
         isPromoted: false,
-        isApproved: isAutoApproved,
+        isApproved: isPropertyApproved,
         ...(selectedPackage && { requestedPackage: selectedPackage })
       };
 
       await propertyService.createProperty(newProperty as any);
 
       setIsSubmitted(true);
-      setIsAutoApprovedMsg(isAutoApproved);
+      setIsAutoApprovedMsg(isPropertyApproved);
       playNotificationSound();
     } catch (error) {
       console.error("Error adding property:", error);

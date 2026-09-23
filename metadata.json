@@ -1,5 +1,6 @@
 {
   "name": "MeuPlace",
-  "description": "O maior marketplace imobiliário digital de Moçambique. Compra, venda e arrendamento de imóveis com segurança e facilidade.",
-  "requestFramePermissions": []
+  "description": "O Maior Marketplace imobiliário de Moçambique. Compra, venda e arrendamento de imóveis com segurança e facilidade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

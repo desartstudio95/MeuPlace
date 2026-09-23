@@ -2,10 +2,11 @@ import { useParams } from 'react-router-dom';
 import { PropertyCard } from '@/components/PropertyCard';
 import { Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Property } from '@/types';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { SEO } from '@/components/SEO';
 
 export function CategoryPage() {
   const { type } = useParams<{ type: string }>();
@@ -30,7 +31,12 @@ export function CategoryPage() {
     const fetchProperties = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, 'properties'), where('category', '==', filterCategory));
+        const q = query(
+          collection(db, 'properties'),
+          where('isApproved', '==', true),
+          where('category', '==', filterCategory),
+          limit(40)
+        );
         const querySnapshot = await getDocs(q);
         const fetchedProperties: Property[] = [];
         querySnapshot.forEach((doc) => {
@@ -51,6 +57,10 @@ export function CategoryPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <SEO 
+        title={`${filterCategory || 'Categoria'}s`} 
+        description={`Encontre as melhores opções de ${filterCategory ? filterCategory.toLowerCase() : 'imóvel'}s para venda ou arrendamento em Moçambique no MeuPlace.`} 
+      />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{filterCategory}s</h1>
         <p className="text-gray-600">
