@@ -15,6 +15,8 @@ interface LeadFilterBarProps {
   onStatusChange: (status: LeadStatus | 'all') => void;
   selectedPriority: LeadPriority | 'all';
   onPriorityChange: (priority: LeadPriority | 'all') => void;
+  attentionFilter?: 'all' | 'attention' | 'stale' | 'healthy';
+  onAttentionFilterChange?: (filter: 'all' | 'attention' | 'stale' | 'healthy') => void;
   searchTerm: string;
   onSearchChange: (search: string) => void;
   onResetFilters: () => void;
@@ -29,12 +31,14 @@ export function LeadFilterBar({
   onStatusChange,
   selectedPriority,
   onPriorityChange,
+  attentionFilter = 'all',
+  onAttentionFilterChange,
   searchTerm,
   onSearchChange,
   onResetFilters,
   totalLoaded
 }: LeadFilterBarProps) {
-  const hasActiveFilters = selectedStatus !== 'all' || selectedPriority !== 'all' || searchTerm.length > 0;
+  const hasActiveFilters = selectedStatus !== 'all' || selectedPriority !== 'all' || attentionFilter !== 'all' || searchTerm.length > 0;
 
   return (
     <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-2xs space-y-4">
@@ -145,6 +149,26 @@ export function LeadFilterBar({
             <option value="low">Baixa</option>
           </select>
         </div>
+
+        {/* Filtro Operacional de Saúde / Inteligência CRM */}
+        {onAttentionFilterChange && (
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="filter-attention" className="text-xs text-gray-500">Saúde do Lead:</label>
+            <select
+              id="filter-attention"
+              value={attentionFilter}
+              onChange={(e) => {
+                onAttentionFilterChange(e.target.value as 'all' | 'attention' | 'stale' | 'healthy');
+              }}
+              className="text-xs font-medium h-8 px-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand-green"
+            >
+              <option value="all">Todas as Condições</option>
+              <option value="attention">Atenção Necessária</option>
+              <option value="stale">Parados (Stale &gt;7d)</option>
+              <option value="healthy">Ativos e Saudáveis</option>
+            </select>
+          </div>
+        )}
 
         {/* Botão Limpar Filtros */}
         {hasActiveFilters && (

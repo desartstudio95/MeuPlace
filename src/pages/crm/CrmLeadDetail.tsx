@@ -18,6 +18,8 @@ import {
 import { DocumentSnapshot } from 'firebase/firestore';
 import { LeadStatusBadge } from '@/components/crm/LeadStatusBadge';
 import { LeadPriorityBadge } from '@/components/crm/LeadPriorityBadge';
+import { LeadScoreBadge } from '@/components/crm/LeadScoreBadge';
+import { LeadHealthBadge } from '@/components/crm/LeadHealthBadge';
 import { LeadStatusModal } from '@/components/crm/LeadStatusModal';
 import { LeadPriorityModal } from '@/components/crm/LeadPriorityModal';
 import { LeadContactModal } from '@/components/crm/LeadContactModal';
@@ -25,6 +27,13 @@ import { LeadAssignModal } from '@/components/crm/LeadAssignModal';
 import { LeadTaskCreateModal } from '@/components/crm/LeadTaskCreateModal';
 import { LeadTimelineItem, formatActivityDate } from '@/components/crm/LeadTimelineItem';
 import { deriveLeadNextAction } from '@/utils/crmNextAction';
+import { 
+  calculateLeadScore, 
+  determineLeadHealth, 
+  calculateStaleInfo, 
+  calculateLeadSla,
+  FIRST_CONTACT_SLA_HOURS 
+} from '@/utils/crmIntelligence';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,7 +58,10 @@ import {
   CalendarCheck,
   RefreshCw,
   Copy,
-  Plus
+  Plus,
+  Award,
+  Timer,
+  AlertOctagon
 } from 'lucide-react';
 
 export function CrmLeadDetail() {
@@ -268,6 +280,11 @@ export function CrmLeadDetail() {
     );
   }
 
+  const scoreResult = calculateLeadScore(lead, tasks, viewings, activities);
+  const healthInfo = determineLeadHealth(lead, scoreResult.score, tasks, activities);
+  const staleInfo = calculateStaleInfo(lead, activities);
+  const slaInfo = calculateLeadSla(lead, activities);
+
   const rawPhone = (lead.customerPhone || '').replace(/\D/g, '');
   const waUrl = rawPhone ? `https://wa.me/${rawPhone}?text=Olá%20${encodeURIComponent(lead.customerName)},%20sou%20o%20corretor%20do%20MeuPlace%20a%20respeito%20do%20imóvel%20${encodeURIComponent(lead.propertyTitle || '')}.` : null;
 
@@ -284,12 +301,18 @@ export function CrmLeadDetail() {
               >
                 <ArrowLeft className="w-4 h-4" /> Voltar à Inbox de Leads
               </Link>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
                   {lead.customerName}
                 </h1>
                 <LeadStatusBadge status={lead.status} size="lg" />
                 <LeadPriorityBadge priority={lead.priority} size="md" />
+                <LeadHealthBadge healthInfo={healthInfo} size="md" />
+                <LeadScoreBadge 
+                  score={scoreResult.score} 
+                  breakdown={scoreResult.breakdown} 
+                  size="md" 
+                />
               </div>
               <p className="text-xs text-gray-400 font-mono flex items-center gap-2">
                 <span>Lead ID: {lead.id}</span>
@@ -371,9 +394,40 @@ export function CrmLeadDetail() {
 
       {/* Grid Principal */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Alerta de Inatividade Crítica (Stale Lead) */}
+        {staleInfo.isStale && lead.status !== 'won' && lead.status !== 'archived' && (
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex items-center justify-between text-xs text-rose-800 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <AlertOctagon className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>
+                <strong>Atenção — Oportunidade Parada (Stale):</strong> Sem nenhuma interação comercial há {staleInfo.daysInactive} dias. Recomenda-se reativar contacto telefónico ou agendar follow-up.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Alerta de Descumprimento de SLA de Primeiro Atendimento */}
+        {slaInfo.isBreached && lead.status === 'new' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center justify-between text-xs text-amber-900 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <Timer className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>SLA Expirado:</strong> Este lead novo está aguardando primeiro contacto comercial há mais de {FIRST_CONTACT_SLA_HOURS} horas ({slaInfo.hoursElapsedSinceCreation}h decorridas).
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setIsContactModalOpen(true)}
+              className="text-xs bg-amber-600 hover:bg-amber-700 text-white shrink-0 ml-3"
+            >
+              Contactar Agora
+            </Button>
+          </div>
+        )}
+
         {/* Card Operacional: Próxima Ação Comercial (Next Action) */}
         {(() => {
-          const nextAction = deriveLeadNextAction(lead, tasks, viewings);
+          const nextAction = deriveLeadNextAction(lead, tasks, viewings, activities);
           return (
             <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start sm:items-center gap-3">
@@ -448,6 +502,75 @@ export function CrmLeadDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Esquerda: Contexto do Cliente, Imóvel e Custódia */}
           <div className="space-y-6">
+            {/* Card de Inteligência Comercial (Fase 5.5) */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <Award className="w-4 h-4 text-brand-green" /> Inteligência Comercial V1
+                </h3>
+                <span className="text-[10px] font-mono text-gray-400">Zero IA</span>
+              </div>
+
+              {/* Score com Breakdown */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-gray-700">Lead Score:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-sm text-gray-900">{scoreResult.score}/100</span>
+                    <LeadScoreBadge score={scoreResult.score} breakdown={scoreResult.breakdown} size="sm" />
+                  </div>
+                </div>
+                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-300 ${
+                      scoreResult.score >= 75 ? 'bg-emerald-500' :
+                      scoreResult.score >= 50 ? 'bg-blue-500' :
+                      scoreResult.score >= 25 ? 'bg-amber-500' : 'bg-rose-500'
+                    }`}
+                    style={{ width: `${scoreResult.score}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Saúde Operacional */}
+              <div className="pt-2 border-t border-gray-100 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-700">Saúde do Lead:</span>
+                  <LeadHealthBadge healthInfo={healthInfo} size="sm" />
+                </div>
+                <p className="text-[11px] text-gray-500">{healthInfo.reason}</p>
+              </div>
+
+              {/* SLA de Atendimento */}
+              <div className="pt-2 border-t border-gray-100 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-700">SLA 1º Contacto ({FIRST_CONTACT_SLA_HOURS}h):</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    slaInfo.slaVariant === 'emerald' ? 'bg-emerald-100 text-emerald-800' :
+                    slaInfo.slaVariant === 'amber' ? 'bg-amber-100 text-amber-800' :
+                    'bg-rose-100 text-rose-800'
+                  }`}>
+                    {slaInfo.slaStatusText}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500">
+                  {slaInfo.hasContact && slaInfo.responseTimeHours !== null
+                    ? `Atendido em ${slaInfo.responseTimeHours}h após a criação.`
+                    : `${slaInfo.hoursElapsedSinceCreation}h decorridas desde a criação.`}
+                </p>
+              </div>
+
+              {/* Inatividade (Stale) */}
+              <div className="pt-2 border-t border-gray-100 space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-700">Inatividade:</span>
+                  <span className={`font-medium ${staleInfo.isStale ? 'text-rose-600 font-bold' : 'text-gray-600'}`}>
+                    {staleInfo.daysInactive === 0 ? 'Ativo hoje' : `${staleInfo.daysInactive} dia(s) sem ação`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Cartão de Contacto do Comprador */}
             <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs space-y-4">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">

@@ -53,6 +53,7 @@ import { AdminLogin } from '@/pages/admin/AdminLogin';
 import { AdminTools } from '@/pages/admin/Tools';
 
 // CRM V1 Pages
+import { CrmDashboard } from '@/pages/crm/CrmDashboard';
 import { CrmLeadsInbox } from '@/pages/crm/CrmLeadsInbox';
 import { CrmLeadDetail } from '@/pages/crm/CrmLeadDetail';
 
@@ -203,6 +204,7 @@ export default function App() {
                   
                   {/* CRM V1 Routes (Protected: Owner, Agent, Agency, Moderator, Admin, Resort) */}
                   <Route element={<ProtectedRoute requireRole={['admin', 'agent', 'agency', 'owner', 'resort', 'moderator']} />}>
+                    <Route path="/crm/dashboard" element={<CrmDashboard />} />
                     <Route path="/crm/leads" element={<CrmLeadsInbox />} />
                     <Route path="/crm/leads/:leadId" element={<CrmLeadDetail />} />
                   </Route>

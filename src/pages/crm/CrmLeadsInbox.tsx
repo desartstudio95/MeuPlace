@@ -9,8 +9,17 @@ import { Lead, LeadStatus, LeadPriority } from '@/types';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { LeadStatusBadge } from '@/components/crm/LeadStatusBadge';
 import { LeadPriorityBadge } from '@/components/crm/LeadPriorityBadge';
+import { LeadScoreBadge } from '@/components/crm/LeadScoreBadge';
+import { LeadHealthBadge } from '@/components/crm/LeadHealthBadge';
 import { LeadFilterBar, LeadScope } from '@/components/crm/LeadFilterBar';
 import { LeadTasksQueueTab } from '@/components/crm/LeadTasksQueueTab';
+import { 
+  calculateLeadScore, 
+  determineLeadHealth, 
+  calculateStaleInfo, 
+  calculateLeadSla,
+  FIRST_CONTACT_SLA_HOURS 
+} from '@/utils/crmIntelligence';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -26,7 +35,8 @@ import {
   ExternalLink,
   MessageCircle,
   Clock,
-  CheckSquare
+  CheckSquare,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -41,6 +51,7 @@ export function CrmLeadsInbox() {
   const [scope, setScope] = useState<LeadScope>('assigned');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<LeadPriority | 'all'>('all');
+  const [attentionFilter, setAttentionFilter] = useState<'all' | 'attention' | 'stale' | 'healthy'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Estados de Dados e Paginação
@@ -125,14 +136,23 @@ export function CrmLeadsInbox() {
     }
   };
 
-  // Filtragem local pelo campo de pesquisa
+  // Filtragem local pelo campo de pesquisa e saúde do lead
   const filteredLeads = leads.filter(lead => {
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    const nameMatch = (lead.customerName || '').toLowerCase().includes(term);
-    const phoneMatch = (lead.customerPhone || '').includes(term);
-    const titleMatch = (lead.propertyTitle || '').toLowerCase().includes(term);
-    return nameMatch || phoneMatch || titleMatch;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      const nameMatch = (lead.customerName || '').toLowerCase().includes(term);
+      const phoneMatch = (lead.customerPhone || '').includes(term);
+      const titleMatch = (lead.propertyTitle || '').toLowerCase().includes(term);
+      if (!nameMatch && !phoneMatch && !titleMatch) return false;
+    }
+
+    if (attentionFilter !== 'all') {
+      const scoreRes = calculateLeadScore(lead);
+      const health = determineLeadHealth(lead, scoreRes.score);
+      if (health.status !== attentionFilter) return false;
+    }
+
+    return true;
   });
 
   // Métricas rápidas dos leads carregados
@@ -166,6 +186,12 @@ export function CrmLeadsInbox() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Link to="/crm/dashboard">
+                <Button variant="outline" size="sm" className="gap-2 text-xs border-brand-green/30 text-brand-green hover:bg-brand-green/10">
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Dashboard Comercial
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
@@ -251,24 +277,27 @@ export function CrmLeadsInbox() {
           <>
             {/* Barra de Filtros */}
             <LeadFilterBar
-          currentScope={scope}
-          onScopeChange={(s) => {
-            setScope(s);
-          }}
-          canViewAll={isAdmin}
-          selectedStatus={statusFilter}
-          onStatusChange={setStatusFilter}
-          selectedPriority={priorityFilter}
-          onPriorityChange={setPriorityFilter}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onResetFilters={() => {
-            setStatusFilter('all');
-            setPriorityFilter('all');
-            setSearchTerm('');
-          }}
-          totalLoaded={filteredLeads.length}
-        />
+              currentScope={scope}
+              onScopeChange={(s) => {
+                setScope(s);
+              }}
+              canViewAll={isAdmin}
+              selectedStatus={statusFilter}
+              onStatusChange={setStatusFilter}
+              selectedPriority={priorityFilter}
+              onPriorityChange={setPriorityFilter}
+              attentionFilter={attentionFilter}
+              onAttentionFilterChange={setAttentionFilter}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onResetFilters={() => {
+                setStatusFilter('all');
+                setPriorityFilter('all');
+                setAttentionFilter('all');
+                setSearchTerm('');
+              }}
+              totalLoaded={filteredLeads.length}
+            />
 
         {/* Estado de Erro */}
         {error && (
@@ -352,7 +381,8 @@ export function CrmLeadsInbox() {
                     <th scope="col" className="px-6 py-3.5">Cliente / Contacto</th>
                     <th scope="col" className="px-6 py-3.5">Imóvel de Interesse</th>
                     <th scope="col" className="px-6 py-3.5">Estado Comercial</th>
-                    <th scope="col" className="px-6 py-3.5">Prioridade</th>
+                    <th scope="col" className="px-6 py-3.5">Prioridade & Saúde</th>
+                    <th scope="col" className="px-6 py-3.5">Score</th>
                     <th scope="col" className="px-6 py-3.5">Custódia / Responsável</th>
                     <th scope="col" className="px-6 py-3.5">Entrada</th>
                     <th scope="col" className="px-6 py-3.5 text-right">Ação</th>
@@ -362,6 +392,10 @@ export function CrmLeadsInbox() {
                   {filteredLeads.map((lead) => {
                     const rawPhone = (lead.customerPhone || '').replace(/\D/g, '');
                     const waLink = rawPhone ? `https://wa.me/${rawPhone}` : null;
+                    const scoreRes = calculateLeadScore(lead);
+                    const health = determineLeadHealth(lead, scoreRes.score);
+                    const stale = calculateStaleInfo(lead);
+                    const sla = calculateLeadSla(lead);
 
                     return (
                       <tr 
@@ -403,9 +437,33 @@ export function CrmLeadsInbox() {
                           <LeadStatusBadge status={lead.status} size="md" />
                         </td>
 
-                        {/* Prioridade */}
+                        {/* Prioridade & Saúde */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <LeadPriorityBadge priority={lead.priority} size="md" />
+                          <div className="flex flex-col gap-1 items-start">
+                            <div className="flex items-center gap-1.5">
+                              <LeadPriorityBadge priority={lead.priority} size="sm" />
+                              <LeadHealthBadge healthInfo={health} size="sm" />
+                            </div>
+                            {sla.isBreached && lead.status === 'new' && (
+                              <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                SLA Expirado ({sla.hoursElapsedSinceCreation}h)
+                              </span>
+                            )}
+                            {stale.isStale && lead.status !== 'won' && lead.status !== 'archived' && (
+                              <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                Parado {stale.daysInactive}d
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Score */}
+                        <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <LeadScoreBadge 
+                            score={scoreRes.score} 
+                            breakdown={scoreRes.breakdown} 
+                            size="sm" 
+                          />
                         </td>
 
                         {/* Custódia */}
@@ -464,6 +522,8 @@ export function CrmLeadsInbox() {
               {filteredLeads.map((lead) => {
                 const rawPhone = (lead.customerPhone || '').replace(/\D/g, '');
                 const waLink = rawPhone ? `https://wa.me/${rawPhone}` : null;
+                const scoreRes = calculateLeadScore(lead);
+                const health = determineLeadHealth(lead, scoreRes.score);
 
                 return (
                   <div 
@@ -479,12 +539,16 @@ export function CrmLeadsInbox() {
                       <LeadStatusBadge status={lead.status} size="sm" />
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+                    <div className="flex flex-wrap items-center justify-between text-xs text-gray-500 pt-1 gap-2">
                       <div className="flex items-center gap-1.5 font-mono">
                         <Phone className="w-3 h-3 text-gray-400" />
                         {lead.customerPhone}
                       </div>
-                      <LeadPriorityBadge priority={lead.priority} size="sm" />
+                      <div className="flex items-center gap-1.5">
+                        <LeadPriorityBadge priority={lead.priority} size="sm" />
+                        <LeadHealthBadge healthInfo={health} size="sm" />
+                        <LeadScoreBadge score={scoreRes.score} size="sm" showExplanationModal={false} />
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
