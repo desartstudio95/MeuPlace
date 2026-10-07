@@ -41,6 +41,7 @@ import { handleFirestoreError, OperationType } from '@/lib/firestoreUtils';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminDashboard } from '@/pages/admin/Dashboard';
 import { AdminProperties } from '@/pages/admin/Properties';
+import { MarketplaceQualityDashboard } from '@/pages/admin/MarketplaceQualityDashboard';
 import { AdminAgents } from '@/pages/admin/Agents';
 import { AdminAgencies } from '@/pages/admin/Agencies';
 import { AdminResorts } from '@/pages/admin/Resorts';
@@ -164,6 +165,7 @@ export default function App() {
             <Route element={<ProtectedRoute requireRole="admin" />}>
               <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
               <Route path="/admin/properties" element={<AdminLayout><AdminProperties /></AdminLayout>} />
+              <Route path="/admin/quality" element={<AdminLayout><MarketplaceQualityDashboard /></AdminLayout>} />
               <Route path="/admin/agents" element={<AdminLayout><AdminAgents /></AdminLayout>} />
               <Route path="/admin/agencies" element={<AdminLayout><AdminAgencies /></AdminLayout>} />
               <Route path="/admin/resorts" element={<AdminLayout><AdminResorts /></AdminLayout>} />

@@ -58,6 +58,7 @@ import { leadService } from '@/services/leadService';
 import { viewingService } from '@/services/viewingService';
 import { reportService } from '@/services/reportService';
 import { trackLeadEvent } from '@/services/leadEventService';
+import { PropertyTrustTransparencyCard } from '@/components/trust/PropertyTrustTransparencyCard';
 import { toast } from 'sonner';
 
 export function PropertyDetails() {
@@ -936,16 +937,11 @@ export function PropertyDetails() {
               </div>
             </div>
 
-            {/* Dicas de Segurança para o Utilizador */}
-            <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-200 text-xs text-amber-900 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-bold text-amber-950">
-                <Shield className="w-4 h-4 text-amber-700" />
-                Dica de Segurança MeuPlace
-              </div>
-              <p className="text-amber-800/90 leading-normal">
-                Nunca realize pagamentos de sinal ou transferências antes de visitar o imóvel pessoalmente e verificar os documentos com o anunciante.
-              </p>
-            </div>
+            {/* Card de Transparência & Confiança MeuPlace (Fase 6.0) */}
+            <PropertyTrustTransparencyCard 
+              property={property} 
+              onOpenReportModal={() => setIsReportDialogOpen(true)} 
+            />
           </div>
         </div>
       </main>

@@ -117,6 +117,22 @@ export interface Property {
   boostedUntil?: any; // Firestore Timestamp
   documentUrls?: string[]; // Para verificação de propriedades
   verificationStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+
+  // Phase 6.0 Trust & Marketplace Quality fields
+  availabilityStatus?: 'available' | 'reserved' | 'sold' | 'rented' | 'unavailable' | 'expired' | 'pending_confirmation';
+  lastAvailabilityConfirmationAt?: any;
+  nextAvailabilityCheckAt?: any;
+  availabilityConfirmedBy?: string;
+  availabilityConfirmationMethod?: 'manual_confirmation' | 'whatsapp_verified' | 'agent_inspection' | 'commercial_activity' | 'system_check';
+  availabilityExpirationAt?: any;
+  qualityScore?: number;
+  qualityTier?: 'excellent' | 'good' | 'fair' | 'poor';
+  healthStatus?: 'optimal' | 'healthy' | 'attention' | 'critical';
+  healthScore?: number;
+  duplicateCandidateIds?: string[];
+  moderationStatus?: 'pending' | 'in_review' | 'approved' | 'rejected' | 'changes_requested';
+  inPersonInspected?: boolean;
+  inPersonInspectedAt?: any;
 }
 
 export interface Favorite {
@@ -497,3 +513,5 @@ export interface FirestoreErrorInfo {
     }[];
   };
 }
+
+export * from './trustQuality';

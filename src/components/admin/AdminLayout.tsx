@@ -13,7 +13,8 @@ import {
   CreditCard,
   BarChart,
   FileText,
-  Database
+  Database,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -38,6 +39,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Imóveis', path: '/admin/properties', icon: Home },
+    { name: 'Qualidade & Confiança', path: '/admin/quality', icon: ShieldCheck },
     { name: 'Agentes', path: '/admin/agents', icon: Users },
     { name: 'Agências Premium', path: '/admin/agencies', icon: Building2 },
     { name: 'Resorts e Hotéis', path: '/admin/resorts', icon: Home },

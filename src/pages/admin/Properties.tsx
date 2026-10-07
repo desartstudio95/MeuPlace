@@ -16,6 +16,9 @@ import { Property } from '@/types';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNotifications } from '@/context/NotificationContext';
+import { PropertyFreshnessBadge } from '@/components/trust/PropertyFreshnessBadge';
+import { PropertyQualityBadge } from '@/components/trust/PropertyQualityBadge';
+import { propertyFreshnessService } from '@/services/propertyFreshnessService';
 
 export function AdminProperties() {
   const { properties, loading, approveProperty, rejectProperty, deleteProperty } = useProperties();
@@ -92,6 +95,9 @@ export function AdminProperties() {
                   Verificação (Docs)
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Frescura & Qualidade
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Aprovação
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -141,6 +147,12 @@ export function AdminProperties() {
                     ) : (
                       <span className="text-sm text-gray-400">Não solicitado</span>
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1 items-start">
+                      <PropertyFreshnessBadge property={property} />
+                      <PropertyQualityBadge property={property} />
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {property.isApproved ? (

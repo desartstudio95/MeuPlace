@@ -112,7 +112,9 @@ service cloud.firestore {
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'isApproved', 'isPromoted', 'boostedUntil', 'verificationStatus',
           'agentId', 'ownerId', 'agencyId', 'createdBy', 'userId',
-          'views', 'impressions', 'whatsappClicks'
+          'views', 'impressions', 'whatsappClicks',
+          'moderationStatus', 'qualityScore', 'healthStatus', 'healthScore',
+          'inPersonInspected', 'duplicateCandidateIds'
         ])
       );
 
@@ -425,6 +427,27 @@ service cloud.firestore {
                         request.resource.data.reporterId == request.auth.uid ||
                         request.resource.data.reporterId.matches('^anon_.*'));
       
+      allow update: if isAdmin() || isModerator();
+      allow delete: if isAdmin();
+    }
+
+    // Verification Records (Fase 6.0: Centro de Verificação)
+    match /verification_records/{recordId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || isModerator() ||
+        resource.data.entityId == request.auth.uid
+      );
+      allow create: if isAuthenticated() &&
+                       request.resource.data.entityType in ['property', 'agent', 'user'] &&
+                       request.resource.data.status == 'pending';
+      allow update: if isAdmin() || isModerator();
+      allow delete: if isAdmin();
+    }
+
+    // Duplicate Candidates (Fase 6.0: Detecção de Duplicados)
+    match /duplicate_candidates/{candidateId} {
+      allow read: if isAdmin() || isModerator();
+      allow create: if isAuthenticated() && request.resource.data.status == 'pending_review';
       allow update: if isAdmin() || isModerator();
       allow delete: if isAdmin();
     }
