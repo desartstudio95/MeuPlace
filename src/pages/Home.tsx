@@ -160,7 +160,7 @@ export function Home() {
         description={settings.heroSubtitle || "A forma mais simples e segura de comprar, vender ou arrendar o teu place."} 
       />
       {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-brand-purple">
+      <section className="relative min-h-[58vh] sm:min-h-[520px] lg:min-h-[560px] flex items-center justify-center overflow-hidden bg-brand-purple">
         <div className="absolute inset-0 z-0">
           <motion.img
             initial={{ scale: 1.1 }}
@@ -177,65 +177,65 @@ export function Home() {
             <motion.div 
               animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-[15%] left-[10%] text-white/10"
+              className="absolute top-[12%] left-[8%] text-white/10"
             >
-              <HomeIcon size={120} />
+              <HomeIcon size={100} />
             </motion.div>
             <motion.div 
               animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }}
               transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute bottom-[20%] right-[15%] text-white/10"
+              className="absolute bottom-[16%] right-[12%] text-white/10"
             >
-              <Key size={100} />
+              <Key size={80} />
             </motion.div>
             <motion.div 
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute top-[40%] right-[10%] text-white/5"
+              className="absolute top-[35%] right-[8%] text-white/5"
             >
-              <Heart size={80} />
+              <Heart size={65} />
             </motion.div>
           </div>
         </div>
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-14 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.7 }}
           >
-            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium">
+            <div className="flex flex-wrap items-center justify-center gap-2.5 mb-4 sm:mb-5">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs sm:text-sm font-medium">
                 <Crown className="h-4 w-4 text-amber-400" />
                 <span>O Maior Shopping de Imóveis em Moçambique</span>
               </div>
               <Link 
                 to="/plans"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-green text-gray-950 text-xs sm:text-sm font-extrabold shadow-lg hover:bg-brand-green-hover transition-all hover:scale-105"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-green text-gray-950 text-xs sm:text-sm font-extrabold shadow-lg hover:bg-brand-green-hover transition-all hover:scale-105"
               >
                 <span className="flex h-2 w-2 rounded-full bg-gray-950 animate-ping" />
                 <span>🚀 Pré-Lançamento: Agentes anunciam por 500 MT/mês →</span>
               </Link>
             </div>
             
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-6 leading-tight" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green drop-shadow-[0_0_15px_rgba(114,227,49,0.5)]">Moçambique</span>') }}>
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-3 sm:mb-4 leading-tight" dangerouslySetInnerHTML={{ __html: settings.heroTitle.replace('Moçambique', '<span class="text-brand-green drop-shadow-[0_0_15px_rgba(114,227,49,0.5)]">Moçambique</span>') }}>
             </h1>
-            <p className="text-lg sm:text-2xl text-gray-200 max-w-3xl mx-auto mb-12 font-medium">
+            <p className="text-sm sm:text-lg md:text-xl text-gray-200 max-w-2xl mx-auto mb-6 sm:mb-8 font-medium">
               {settings.heroSubtitle}
             </p>
           </motion.div>
 
           {/* Search Box */}
           <motion.div 
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            transition={{ duration: 0.7, delay: 0.15 }}
             className="max-w-5xl mx-auto bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-white/20 transition-all duration-300"
           >
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/80">
-              <div className="flex items-center gap-3 text-gray-800 font-semibold">
-                <div className="p-2 bg-brand-green/10 rounded-lg">
-                  <Search className="h-5 w-5 text-brand-green" />
+            <div className="flex items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5 border-b border-gray-100 bg-gray-50/80">
+              <div className="flex items-center gap-2.5 text-gray-800 font-semibold text-sm sm:text-base">
+                <div className="p-1.5 bg-brand-green/10 rounded-lg">
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-brand-green" />
                 </div>
                 <span>Encontre seu imóvel ideal</span>
               </div>
@@ -243,20 +243,20 @@ export function Home() {
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-                className="h-10 w-10 p-0 text-gray-500 hover:text-brand-purple hover:bg-brand-purple/10 rounded-full"
+                className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-gray-500 hover:text-brand-purple hover:bg-brand-purple/10 rounded-full"
               >
-                {isSearchExpanded ? <ChevronUp className="h-6 w-6" /> : <ChevronDown className="h-6 w-6" />}
+                {isSearchExpanded ? <ChevronUp className="h-5 w-5 sm:h-6 sm:w-6" /> : <ChevronDown className="h-5 w-5 sm:h-6 sm:w-6" />}
               </Button>
             </div>
             
             {isSearchExpanded && (
-              <div className="p-4 sm:p-6 animate-in slide-in-from-top-2 duration-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="p-3.5 sm:p-5 animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-3.5">
                   <div className="col-span-1 sm:col-span-2 relative">
                     <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <Input 
                       placeholder="O que procura? (ex: Apartamento T3)" 
-                      className="pl-10 h-12 text-base"
+                      className="pl-10 h-11 sm:h-12 text-sm sm:text-base"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -264,7 +264,7 @@ export function Home() {
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
                     <select 
-                      className="w-full h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                      className="w-full h-11 sm:h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                     >
@@ -278,7 +278,7 @@ export function Home() {
                   <div className="relative">
                     <HomeIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
                     <select 
-                      className="w-full h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                      className="w-full h-11 sm:h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
@@ -291,13 +291,13 @@ export function Home() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <Input 
                       type="number"
                       placeholder="Preço Máx (MZN)" 
-                      className="pl-10 h-12 text-base"
+                      className="pl-10 h-11 sm:h-12 text-sm sm:text-base"
                       value={maxPrice}
                       onChange={(e) => setMaxPrice(e.target.value)}
                     />
@@ -305,7 +305,7 @@ export function Home() {
                   <div className="relative">
                     <Bed className="absolute left-3 top-3 h-5 w-5 text-gray-400 pointer-events-none" />
                     <select 
-                      className="w-full h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
+                      className="w-full h-11 sm:h-12 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none"
                       value={bedrooms}
                       onChange={(e) => setBedrooms(e.target.value)}
                     >
@@ -323,21 +323,21 @@ export function Home() {
                     <Input 
                       type="number"
                       placeholder="Área Mín (m²)" 
-                      className="pl-10 h-12 text-base"
+                      className="pl-10 h-11 sm:h-12 text-sm sm:text-base"
                       value={minArea}
                       onChange={(e) => setMinArea(e.target.value)}
                     />
                   </div>
                   <Button 
-                    className="h-12 bg-brand-green hover:bg-brand-green-hover text-lg font-medium w-full"
+                    className="h-11 sm:h-12 bg-brand-green hover:bg-brand-green-hover text-base sm:text-lg font-medium w-full"
                     onClick={handleSearch}
                   >
                     Pesquisar
                   </Button>
                 </div>
                 
-                <div className="mt-4 text-center">
-                  <Link to="/map" className="inline-flex items-center gap-2 text-brand-purple hover:text-brand-purple-hover font-bold transition-colors">
+                <div className="mt-3.5 text-center">
+                  <Link to="/map" className="inline-flex items-center gap-2 text-sm sm:text-base text-brand-purple hover:text-brand-purple-hover font-bold transition-colors">
                     <MapPin className="h-4 w-4" />
                     Abrir Pesquisa no Mapa Interativo
                   </Link>
@@ -351,13 +351,13 @@ export function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 1 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50"
+            className="hidden md:flex absolute bottom-2 left-1/2 -translate-x-1/2 flex-col items-center gap-1 text-white/50"
           >
             <motion.div
-              animate={{ y: [0, 10, 0] }}
+              animate={{ y: [0, 6, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             >
-              <ChevronDown size={20} />
+              <ChevronDown size={18} />
             </motion.div>
           </motion.div>
         </div>
