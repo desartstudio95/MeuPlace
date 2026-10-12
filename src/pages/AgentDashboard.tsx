@@ -964,7 +964,15 @@ export function AgentDashboard() {
                               <img className="h-10 w-10 rounded-md object-cover" src={property.images?.[0] || 'https://placehold.co/100'} alt="" />
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900 truncate max-w-[200px]">{property.title}</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-medium text-gray-900 truncate max-w-[180px]">{property.title}</span>
+                                {property.isPromoted && (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-green/95 text-gray-950 border border-brand-green-hover" title="Imóvel em destaque no topo pelo Administrador">
+                                    <Star className="h-2.5 w-2.5 fill-current" />
+                                    Topo
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-sm text-gray-500">{property.location}</div>
                             </div>
                           </div>

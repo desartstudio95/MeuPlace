@@ -38,9 +38,9 @@ export const PropertyQualityBadge: React.FC<PropertyQualityBadgeProps> = ({
 
   const tierColors = {
     excellent: 'bg-emerald-50 text-emerald-800 border-emerald-300',
-    good: 'bg-blue-50 text-blue-800 border-blue-300',
-    fair: 'bg-amber-50 text-amber-800 border-amber-300',
-    poor: 'bg-rose-50 text-rose-800 border-rose-300'
+    good: 'bg-purple-50 text-purple-800 border-purple-300',
+    fair: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    poor: 'bg-purple-50 text-purple-800 border-purple-200'
   };
 
   const categoryIcons: Record<string, React.ElementType> = {
@@ -94,9 +94,7 @@ export const PropertyQualityBadge: React.FC<PropertyQualityBadgeProps> = ({
             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
               <div 
                 className={`h-full transition-all duration-300 ${
-                  result.score >= 80 ? 'bg-emerald-500' :
-                  result.score >= 60 ? 'bg-blue-500' :
-                  result.score >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                  result.score >= 70 ? 'bg-emerald-600' : 'bg-brand-purple'
                 }`}
                 style={{ width: `${result.score}%` }}
               />
@@ -124,7 +122,7 @@ export const PropertyQualityBadge: React.FC<PropertyQualityBadgeProps> = ({
                       </div>
                     </div>
                     <div className="shrink-0 font-semibold text-right">
-                      <span className={item.points > 0 ? 'text-emerald-700' : item.points < 0 ? 'text-rose-600' : 'text-gray-400'}>
+                      <span className={item.points > 0 ? 'text-emerald-700' : item.points < 0 ? 'text-purple-700' : 'text-gray-400'}>
                         {item.points > 0 ? `+${item.points}` : item.points}
                       </span>
                       {item.maxPoints > 0 && (
@@ -140,13 +138,13 @@ export const PropertyQualityBadge: React.FC<PropertyQualityBadgeProps> = ({
           {/* Penalidades se houver */}
           {result.penaltyItems.length > 0 && (
             <div className="pt-3 border-t border-gray-100 space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-rose-600">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-purple-700">
                 Penalidades Aplicadas
               </h4>
               {result.penaltyItems.map((p, idx) => (
-                <div key={idx} className="flex justify-between text-xs bg-rose-50 p-2 rounded border border-rose-200">
-                  <span className="text-rose-800">{p.description}</span>
-                  <span className="font-bold text-rose-700">{p.penalty} pts</span>
+                <div key={idx} className="flex justify-between text-xs bg-purple-50 p-2 rounded border border-purple-200">
+                  <span className="text-purple-900">{p.description}</span>
+                  <span className="font-bold text-purple-800">{p.penalty} pts</span>
                 </div>
               ))}
             </div>

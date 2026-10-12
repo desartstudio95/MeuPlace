@@ -99,6 +99,20 @@ export const propertyService = {
     }
   },
 
+  async togglePromoteProperty(id: string, currentPromoted: boolean) {
+    const path = `properties/${id}`;
+    try {
+      const docRef = doc(db, 'properties', id);
+      await updateDoc(docRef, { 
+        isPromoted: !currentPromoted,
+        promotedAt: !currentPromoted ? new Date().toISOString() : null
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+      throw error;
+    }
+  },
+
   async deleteProperty(id: string) {
     const path = `properties/${id}`;
     try {

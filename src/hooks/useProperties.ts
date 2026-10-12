@@ -89,6 +89,27 @@ export function useProperties() {
     }
   };
 
+  const togglePromoteProperty = async (id: string, currentPromoted: boolean) => {
+    try {
+      await propertyService.togglePromoteProperty(id, currentPromoted);
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, isPromoted: !currentPromoted } : p));
+      addNotification({
+        title: 'Sucesso',
+        message: !currentPromoted 
+          ? 'Imóvel destacado no topo com sucesso!' 
+          : 'Destaque do imóvel removido.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error toggling promote status:', err);
+      addNotification({
+        title: 'Erro',
+        message: 'Não foi possível alterar o destaque do imóvel.',
+        type: 'error'
+      });
+    }
+  };
+
   return {
     properties,
     loading,
@@ -96,6 +117,7 @@ export function useProperties() {
     refreshProperties: fetchProperties,
     approveProperty,
     rejectProperty,
-    deleteProperty
+    deleteProperty,
+    togglePromoteProperty
   };
 }

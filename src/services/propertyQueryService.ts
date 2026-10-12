@@ -255,6 +255,13 @@ export async function executePropertySearch(
       activeLocalRefinements.push(...pendingLocalFilters);
     }
 
+    // Priorizar SEMPRE os imóveis em destaque (isPromoted) no topo da listagem
+    properties.sort((a, b) => {
+      const aPromoted = a.isPromoted ? 1 : 0;
+      const bPromoted = b.isPromoted ? 1 : 0;
+      return bPromoted - aPromoted;
+    });
+
     return {
       properties,
       lastDoc,
@@ -306,6 +313,13 @@ export async function executePropertySearch(
       } else if (filters.sort === 'area_desc') {
         properties.sort((a, b) => (b.area || 0) - (a.area || 0));
       }
+
+      // Priorizar SEMPRE os imóveis em destaque (isPromoted) no topo da listagem
+      properties.sort((a, b) => {
+        const aPromoted = a.isPromoted ? 1 : 0;
+        const bPromoted = b.isPromoted ? 1 : 0;
+        return bPromoted - aPromoted;
+      });
 
       return {
         properties,

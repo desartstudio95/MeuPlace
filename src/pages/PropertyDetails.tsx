@@ -449,11 +449,11 @@ export function PropertyDetails() {
   if (error || !property) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 py-16">
-        <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mb-4 border border-amber-200">
-          <ShieldCheck className="w-8 h-8 text-amber-600" />
+        <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-4 border border-purple-200">
+          <ShieldCheck className="w-8 h-8 text-brand-purple" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Imóvel Indisponível</h1>
-        <p className="text-gray-600 max-w-md mb-6">{error || 'Imóvel não encontrado.'}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Imóvel Indisponível</h1>
+        <p className="text-gray-600 max-w-md text-sm mb-6">{error || 'Imóvel não encontrado.'}</p>
         <Button 
           onClick={() => navigate('/properties')} 
           className="bg-brand-green hover:bg-brand-green/90 text-white font-medium"
@@ -503,7 +503,7 @@ export function PropertyDetails() {
                   addToCompare(property);
                 }
               }}
-              className={`h-9 text-xs font-medium ${isComp ? 'bg-amber-50 text-amber-700 border-amber-300' : 'text-gray-700'}`}
+              className={`h-9 text-xs font-medium transition-colors ${isComp ? 'bg-purple-50 text-purple-800 border-purple-300' : 'text-gray-700 hover:bg-gray-50'}`}
               title={isComp ? 'Remover da comparação' : 'Adicionar para comparar'}
             >
               <Scale className="w-3.5 h-3.5 mr-1.5" />
@@ -515,10 +515,10 @@ export function PropertyDetails() {
               variant="outline"
               size="sm"
               onClick={() => doToggleFavorite(property.id)}
-              className={`h-9 text-xs font-medium ${isFav ? 'bg-red-50 text-red-600 border-red-200' : 'text-gray-700'}`}
+              className={`h-9 text-xs font-medium transition-colors ${isFav ? 'bg-purple-50 text-purple-800 border-purple-300' : 'text-gray-700 hover:bg-gray-50'}`}
               title={isFav ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
             >
-              <Heart className={`w-3.5 h-3.5 mr-1.5 ${isFav ? 'fill-current text-red-500' : ''}`} />
+              <Heart className={`w-3.5 h-3.5 mr-1.5 ${isFav ? 'fill-brand-purple text-brand-purple' : 'text-gray-600'}`} />
               {isFav ? 'Salvo' : 'Salvar'}
             </Button>
 
@@ -567,7 +567,7 @@ export function PropertyDetails() {
                 </span>
               )}
               <span className={`px-3 py-1 text-xs font-semibold rounded-full shadow-sm text-white ${
-                transactionLabel === 'Venda' ? 'bg-emerald-600' : 'bg-blue-600'
+                transactionLabel === 'Arrendamento' ? 'bg-brand-purple' : 'bg-emerald-600'
               }`}>
                 {transactionLabel}
               </span>
@@ -653,28 +653,38 @@ export function PropertyDetails() {
           <div className="lg:col-span-2 space-y-8">
             
             {/* Bloco 1: Título, Localização e Preço */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-gray-100 pb-6 mb-6">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-2">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-5">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug mb-1.5">
                     {property.title}
                   </h1>
                   <div className="flex items-center text-gray-600 text-sm">
                     <MapPin className="w-4 h-4 mr-1.5 text-brand-green flex-shrink-0" />
-                    <span>{locationString}</span>
+                    <span className="truncate">{locationString}</span>
                   </div>
                 </div>
 
-                {/* Preço em destaque */}
-                <div className="sm:text-right bg-emerald-50/70 sm:bg-transparent p-4 sm:p-0 rounded-xl border border-emerald-100 sm:border-0">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-0.5">
+                {/* Preço em destaque compacto, elegante e organizado */}
+                <div className={`p-3.5 sm:p-4 rounded-xl border transition-colors shrink-0 text-center sm:text-right ${
+                  transactionLabel === 'Arrendamento'
+                    ? 'bg-brand-purple/10 border-brand-purple/25'
+                    : 'bg-emerald-50/80 border-emerald-200/80'
+                }`}>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider block mb-0.5 ${
+                    transactionLabel === 'Arrendamento' ? 'text-purple-800' : 'text-emerald-800'
+                  }`}>
                     Valor de {transactionLabel}
                   </span>
-                  <div className="text-2xl sm:text-3xl font-extrabold text-brand-green">
+                  <div className={`font-extrabold ${
+                    transactionLabel === 'Arrendamento'
+                      ? 'text-lg sm:text-xl text-purple-900'
+                      : 'text-xl sm:text-2xl text-emerald-800'
+                  }`}>
                     {formattedPrice}
                   </div>
                   {property.condominiumFee ? (
-                    <span className="text-xs text-gray-500 block mt-1">
+                    <span className="text-[11px] text-gray-500 block mt-0.5">
                       Condomínio: {property.currency || 'MZN'} {property.condominiumFee.toLocaleString('pt-MZ')}/mês
                     </span>
                   ) : null}
@@ -683,65 +693,57 @@ export function PropertyDetails() {
 
               {/* FASE 2: Selo de Verificação Documental */}
               {isVerifiedProperty && (
-                <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
-                  <ShieldCheck className="w-5 h-5 text-emerald-700 flex-shrink-0 mt-0.5" />
+                <div className="mb-5 p-3.5 sm:p-4 rounded-xl bg-emerald-50/80 border border-emerald-200/80 flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-700 flex-shrink-0" />
                   <div>
-                    <h3 className="text-sm font-semibold text-emerald-900">
+                    <h3 className="text-xs sm:text-sm font-semibold text-emerald-900">
                       Imóvel com Verificação Aprovada
                     </h3>
-                    <p className="text-xs text-emerald-700 mt-0.5">
+                    <p className="text-[11px] sm:text-xs text-emerald-700 mt-0.5">
                       A documentação deste imóvel e a autorização de divulgação foram submetidas e validadas pela moderação do MeuPlace.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Grid de Atributos Físicos (Quartos, Banheiros, Área, Vagas) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Grid de Atributos Físicos (Centralizados e Equilibrados em Verde e Lilás) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {property.bedrooms !== undefined && property.bedrooms !== null && (
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-100/60 flex items-center justify-center text-emerald-800">
+                  <div className="p-3 sm:p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50 hover:border-gray-200">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100/70 flex items-center justify-center text-emerald-800 mb-1.5 shadow-xs">
                       <Bed className="w-5 h-5" />
                     </div>
-                    <div>
-                      <span className="text-xs text-gray-500 block">Quartos</span>
-                      <span className="text-base font-bold text-gray-900">{property.bedrooms}</span>
-                    </div>
+                    <span className="text-xs text-gray-500 block font-medium">Quartos</span>
+                    <span className="text-sm sm:text-base font-bold text-gray-900 mt-0.5">{property.bedrooms}</span>
                   </div>
                 )}
 
                 {property.bathrooms !== undefined && property.bathrooms !== null && (
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100/60 flex items-center justify-center text-blue-800">
+                  <div className="p-3 sm:p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50 hover:border-gray-200">
+                    <div className="w-10 h-10 rounded-full bg-purple-100/70 flex items-center justify-center text-purple-800 mb-1.5 shadow-xs">
                       <Bath className="w-5 h-5" />
                     </div>
-                    <div>
-                      <span className="text-xs text-gray-500 block">Banheiros</span>
-                      <span className="text-base font-bold text-gray-900">{property.bathrooms}</span>
-                    </div>
+                    <span className="text-xs text-gray-500 block font-medium">Banheiros</span>
+                    <span className="text-sm sm:text-base font-bold text-gray-900 mt-0.5">{property.bathrooms}</span>
                   </div>
                 )}
 
                 {property.area !== undefined && property.area !== null && property.area > 0 && (
-                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-amber-100/60 flex items-center justify-center text-amber-800">
+                  <div className="p-3 sm:p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50 hover:border-gray-200">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100/70 flex items-center justify-center text-emerald-800 mb-1.5 shadow-xs">
                       <Maximize className="w-5 h-5" />
                     </div>
-                    <div>
-                      <span className="text-xs text-gray-500 block">Área Útil</span>
-                      <span className="text-base font-bold text-gray-900">{property.area} m²</span>
-                    </div>
+                    <span className="text-xs text-gray-500 block font-medium">Área Útil</span>
+                    <span className="text-sm sm:text-base font-bold text-gray-900 mt-0.5">{property.area} m²</span>
                   </div>
                 )}
 
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-100/60 flex items-center justify-center text-purple-800">
+                <div className="p-3 sm:p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-center transition-all hover:bg-gray-50 hover:border-gray-200">
+                  <div className="w-10 h-10 rounded-full bg-purple-100/70 flex items-center justify-center text-purple-800 mb-1.5 shadow-xs">
                     <Building2 className="w-5 h-5" />
                   </div>
-                  <div>
-                    <span className="text-xs text-gray-500 block">Tipo</span>
-                    <span className="text-base font-bold text-gray-900">{property.category || 'Residencial'}</span>
-                  </div>
+                  <span className="text-xs text-gray-500 block font-medium">Tipo</span>
+                  <span className="text-sm sm:text-base font-bold text-gray-900 mt-0.5 truncate max-w-full px-1">{property.category || 'Residencial'}</span>
                 </div>
               </div>
             </div>
@@ -834,9 +836,9 @@ export function PropertyDetails() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setIsReportDialogOpen(true)}
-                className="inline-flex items-center text-xs text-gray-500 hover:text-red-600 transition-colors py-1 px-2 rounded-md hover:bg-red-50 focus:outline-none"
+                className="inline-flex items-center text-xs text-gray-500 hover:text-purple-700 transition-colors py-1 px-2 rounded-md hover:bg-purple-50 focus:outline-none"
               >
-                <Flag className="w-3.5 h-3.5 mr-1.5" />
+                <Flag className="w-3.5 h-3.5 mr-1.5 text-brand-purple" />
                 Denunciar anúncio incorreto ou fraudulento
               </button>
             </div>
@@ -853,7 +855,7 @@ export function PropertyDetails() {
 
               {/* Perfil do Anunciante */}
               <div className="flex items-center gap-3 pb-5 border-b border-gray-100">
-                <div className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center text-lg font-bold text-gray-700">
+                <div className="w-13 h-13 rounded-full bg-purple-50 text-purple-800 border border-purple-200 overflow-hidden flex-shrink-0 flex items-center justify-center text-base font-bold shadow-xs">
                   {property.agent?.avatar ? (
                     <img 
                       src={property.agent.avatar} 
@@ -867,7 +869,7 @@ export function PropertyDetails() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="font-bold text-gray-900 truncate">
+                    <h3 className="font-bold text-gray-900 truncate text-sm sm:text-base">
                       {property.agent?.name || 'Corretor MeuPlace'}
                     </h3>
                     {property.agent?.isVerified && (
@@ -889,22 +891,22 @@ export function PropertyDetails() {
                 </div>
               </div>
 
-              {/* Botões Principais de Conversão */}
+              {/* Botões Principais de Conversão - Organizados com Paleta Lilás e Verde */}
               <div className="pt-5 space-y-3">
-                {/* 1. WhatsApp */}
+                {/* 1. WhatsApp - Lilás Oficial MeuPlace */}
                 <Button
                   onClick={handleWhatsAppClick}
-                  className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"
+                  className="w-full h-11 sm:h-12 bg-brand-purple hover:bg-brand-purple-hover text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.99]"
                 >
                   <MessageCircle className="w-5 h-5 fill-current" />
                   Conversar no WhatsApp
                 </Button>
 
-                {/* 2. Ligar Agora / Ver Telefone */}
+                {/* 2. Ligar Agora / Ver Telefone - Borda Verde */}
                 <Button
                   variant="outline"
                   onClick={handlePhoneClick}
-                  className="w-full h-12 border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all"
+                  className="w-full h-11 sm:h-12 border-gray-200 hover:border-brand-green hover:bg-emerald-50/50 text-gray-800 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all"
                 >
                   <Phone className="w-4 h-4 text-brand-green" />
                   {showPhone ? (
@@ -919,23 +921,21 @@ export function PropertyDetails() {
                   )}
                 </Button>
 
-                {/* 3. Formulário de Mensagem */}
+                {/* 3. Formulário de Mensagem - Verde Suave */}
                 <Button
-                  variant="secondary"
                   onClick={() => setIsMessageDialogOpen(true)}
-                  className="w-full h-11 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl flex items-center justify-center gap-2"
+                  className="w-full h-11 bg-emerald-50 hover:bg-emerald-100/90 text-emerald-900 border border-emerald-200 font-medium rounded-xl flex items-center justify-center gap-2 transition-all"
                 >
-                  <Mail className="w-4 h-4 text-gray-600" />
+                  <Mail className="w-4 h-4 text-emerald-700" />
                   Enviar Mensagem por Formulário
                 </Button>
 
-                {/* 4. Agendar Visita (FASE 12) */}
+                {/* 4. Agendar Visita - Lilás Suave */}
                 <Button
-                  variant="ghost"
                   onClick={() => setIsViewingDialogOpen(true)}
-                  className="w-full h-11 text-brand-green hover:bg-emerald-50 hover:text-emerald-800 font-semibold rounded-xl flex items-center justify-center gap-2 border border-dashed border-emerald-300"
+                  className="w-full h-11 text-purple-900 bg-purple-50/70 hover:bg-purple-100/90 font-medium rounded-xl flex items-center justify-center gap-2 border border-purple-200 transition-all"
                 >
-                  <Calendar className="w-4 h-4" />
+                  <Calendar className="w-4 h-4 text-brand-purple" />
                   Solicitar Agendamento de Visita
                 </Button>
               </div>
@@ -961,7 +961,7 @@ export function PropertyDetails() {
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-3 py-2.5 shadow-2xl flex items-center gap-2">
         <Button
           onClick={handleWhatsAppClick}
-          className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+          className="flex-1 h-11 bg-brand-purple hover:bg-brand-purple-hover text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
         >
           <MessageCircle className="w-4 h-4 fill-current" />
           WhatsApp
@@ -1232,8 +1232,8 @@ export function PropertyDetails() {
       <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-red-700 flex items-center gap-1.5">
-              <AlertTriangle className="w-5 h-5" />
+            <DialogTitle className="text-purple-900 flex items-center gap-1.5">
+              <AlertTriangle className="w-5 h-5 text-brand-purple" />
               Denunciar Anúncio
             </DialogTitle>
             <DialogDescription>
@@ -1314,7 +1314,7 @@ export function PropertyDetails() {
               <Button
                 type="submit"
                 disabled={isSubmittingReport}
-                className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+                className="bg-brand-purple hover:bg-brand-purple-hover text-white font-semibold"
               >
                 {isSubmittingReport ? 'A enviar...' : 'Enviar Denúncia'}
               </Button>
@@ -1354,25 +1354,25 @@ export function PropertyDetails() {
                 href={`https://wa.me/?text=${encodeURIComponent(`${property.title} - ${window.location.href}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-emerald-100 transition-colors"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-purple-50 text-purple-900 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-purple-100 transition-colors"
               >
-                <MessageCircle className="w-4 h-4" />
+                <MessageCircle className="w-4 h-4 text-brand-purple" />
                 WhatsApp
               </a>
               <a
                 href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 px-3 rounded-xl bg-blue-50 text-blue-800 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-blue-100 transition-colors"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-purple-50 text-purple-900 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-purple-100 transition-colors"
               >
-                <Facebook className="w-4 h-4" />
+                <Facebook className="w-4 h-4 text-brand-purple" />
                 Facebook
               </a>
               <a
                 href={`mailto:?subject=${encodeURIComponent(property.title)}&body=${encodeURIComponent(`Confira este imóvel no MeuPlace: ${window.location.href}`)}`}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-gray-100 text-gray-800 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-200 transition-colors"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 text-emerald-900 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-emerald-100 transition-colors"
               >
-                <Mail className="w-4 h-4" />
+                <Mail className="w-4 h-4 text-brand-green" />
                 Email
               </a>
             </div>

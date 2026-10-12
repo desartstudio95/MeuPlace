@@ -42,6 +42,12 @@ export function CategoryPage() {
         querySnapshot.forEach((doc) => {
           fetchedProperties.push({ id: doc.id, ...doc.data() } as Property);
         });
+        // Priorizar imóveis em destaque sempre no topo
+        fetchedProperties.sort((a, b) => {
+          const aPromoted = a.isPromoted ? 1 : 0;
+          const bPromoted = b.isPromoted ? 1 : 0;
+          return bPromoted - aPromoted;
+        });
         setFilteredProperties(fetchedProperties);
       } catch (error) {
         console.error("Error fetching properties:", error);

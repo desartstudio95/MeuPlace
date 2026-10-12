@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Property } from '@/types';
 import { Navbar } from '@/components/layout/Navbar';
@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 export function PromoteProperty() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,6 +85,35 @@ export function PromoteProperty() {
       ]
     }
   ];
+
+  const isAdmin = userProfile?.role === 'admin' || 
+    currentUser?.email === 'desartstudiopro@gmail.com' || 
+    currentUser?.email === 'ruiisacmugabe@gmail.com';
+
+  const handleAdminTogglePromote = async () => {
+    if (!property || !isAdmin) return;
+    try {
+      setIsSubmitting(true);
+      const current = Boolean(property.isPromoted);
+      await updateDoc(doc(db, 'properties', property.id), {
+        isPromoted: !current,
+        promotedAt: !current ? new Date().toISOString() : null
+      });
+      setProperty(prev => prev ? ({ ...prev, isPromoted: !current }) : null);
+      addNotification({
+        title: 'Sucesso',
+        message: !current 
+          ? 'Imóvel colocado em Destaque no topo imediatamente pelo Administrador.' 
+          : 'Destaque removido com sucesso.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error(err);
+      addNotification({ title: 'Erro', message: 'Erro ao alterar destaque.', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handlePayment = async () => {
     if (!selectedPlan) {
@@ -158,19 +187,45 @@ export function PromoteProperty() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-6 items-center">
-            <img 
-              src={property.images?.[0] || 'https://placehold.co/400x300'} 
-              alt={property.title} 
-              className="w-full sm:w-48 h-32 object-cover rounded-xl"
-            />
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">{property.title}</h2>
-              <p className="text-gray-500">{property.location}</p>
-              <div className="mt-2 text-brand-green font-bold text-lg">
-                {property.currency} {property.price.toLocaleString()}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-6 items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-6 items-center">
+              <img 
+                src={property.images?.[0] || 'https://placehold.co/400x300'} 
+                alt={property.title} 
+                className="w-full sm:w-48 h-32 object-cover rounded-xl"
+              />
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{property.title}</h2>
+                <p className="text-gray-500">{property.location}</p>
+                <div className="mt-2 text-brand-green font-bold text-lg">
+                  {property.currency} {property.price.toLocaleString()}
+                </div>
+                {property.isPromoted && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-green/95 text-gray-950 font-extrabold text-xs">
+                    <Star className="h-3.5 w-3.5 fill-current" />
+                    Atualmente em Destaque no Topo
+                  </div>
+                )}
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col items-center sm:items-end gap-2 shrink-0">
+                <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Ação de Administrador</span>
+                <Button
+                  onClick={handleAdminTogglePromote}
+                  disabled={isSubmitting}
+                  className={property.isPromoted 
+                    ? "bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+                    : "bg-brand-green hover:bg-brand-green-hover text-gray-950 font-extrabold text-xs"
+                  }
+                >
+                  <Star className={`h-4 w-4 mr-1.5 ${property.isPromoted ? "fill-white" : "fill-gray-950"}`} />
+                  {property.isPromoted ? 'Remover do Topo' : 'Destacar no Topo Agora'}
+                </Button>
+                <span className="text-[11px] text-gray-500">Exclusivo do Admin: ativação direta sem pagamento</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

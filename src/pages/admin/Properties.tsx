@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProperties } from '@/hooks/useProperties';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Trash2, Eye, Search, Ban, ShieldCheck, Download, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, Eye, Search, Ban, ShieldCheck, Download, FileText, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import {
@@ -21,7 +21,7 @@ import { PropertyQualityBadge } from '@/components/trust/PropertyQualityBadge';
 import { propertyFreshnessService } from '@/services/propertyFreshnessService';
 
 export function AdminProperties() {
-  const { properties, loading, approveProperty, rejectProperty, deleteProperty } = useProperties();
+  const { properties, loading, approveProperty, rejectProperty, deleteProperty, togglePromoteProperty } = useProperties();
   const [searchTerm, setSearchTerm] = useState('');
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null);
   const [propertyToView, setPropertyToView] = useState<Property | null>(null);
@@ -92,6 +92,9 @@ export function AdminProperties() {
                   Status
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Destaque (Topo)
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Verificação (Docs)
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -132,6 +135,16 @@ export function AdminProperties() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    {property.isPromoted ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-brand-green/95 text-gray-950 border border-brand-green-hover shadow-xs">
+                        <Star className="h-3.5 w-3.5 fill-current" />
+                        No Topo
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-medium">Normal</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {property.verificationStatus === 'approved' ? (
                       <span className="flex items-center text-sm text-green-600 font-medium">
                         <ShieldCheck className="h-4 w-4 mr-1" /> Verificado
@@ -167,6 +180,19 @@ export function AdminProperties() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant={property.isPromoted ? "default" : "outline"}
+                        size="sm"
+                        className={property.isPromoted 
+                          ? "bg-brand-green text-gray-950 hover:bg-brand-green-hover border-brand-green font-bold text-xs" 
+                          : "text-amber-600 border-amber-300 hover:bg-amber-50 text-xs font-semibold"
+                        }
+                        onClick={() => togglePromoteProperty(property.id, Boolean(property.isPromoted))}
+                        title={property.isPromoted ? "Remover Destaque do Topo" : "Destacar no Topo (Admin)"}
+                      >
+                        <Star className={`h-4 w-4 mr-1 ${property.isPromoted ? "fill-gray-950" : ""}`} />
+                        {property.isPromoted ? "Destacado" : "Destacar"}
+                      </Button>
                       {!property.isApproved && (
                         <Button 
                           variant="outline" 

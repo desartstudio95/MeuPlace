@@ -116,12 +116,12 @@ export const PropertyTrustTransparencyCard: React.FC<PropertyTrustTransparencyCa
           </div>
         </div>
 
-        {/* Alerta de Segurança e Boas Práticas em Moçambique */}
-        <div className="bg-amber-50 rounded-lg p-3.5 border border-amber-200 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-900 space-y-1">
-            <span className="font-semibold block">Dica de Segurança MeuPlace</span>
-            <p className="text-amber-800 leading-relaxed">
+        {/* Alerta de Segurança e Boas Práticas em Moçambique - Em tom lilás suave */}
+        <div className="bg-purple-50/80 rounded-xl p-3.5 border border-purple-200/80 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-purple-700 shrink-0 mt-0.5" />
+          <div className="text-xs text-purple-950 space-y-1">
+            <span className="font-semibold block text-purple-900">Dica de Segurança MeuPlace</span>
+            <p className="text-purple-800/90 leading-relaxed">
               Agende sempre uma visita presencial ao imóvel antes de efetuar qualquer pagamento ou sinal financeiro via M-Pesa, e-Mola ou transferência bancária. Em caso de dúvidas, utilize o canal de denúncias abaixo.
             </p>
           </div>
@@ -136,9 +136,9 @@ export const PropertyTrustTransparencyCard: React.FC<PropertyTrustTransparencyCa
               variant="ghost"
               size="sm"
               onClick={onOpenReportModal}
-              className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8 px-2 flex items-center gap-1.5"
+              className="text-xs text-purple-700 hover:text-purple-900 hover:bg-purple-50 h-8 px-2 flex items-center gap-1.5 transition-colors"
             >
-              <Flag className="w-3.5 h-3.5" />
+              <Flag className="w-3.5 h-3.5 text-brand-purple" />
               <span>Reportar Anúncio</span>
             </Button>
           </div>
