@@ -149,7 +149,7 @@ export function MapSearch() {
                   
                   <Link 
                     to={`/properties/${property.id}`}
-                    className="mt-3 block w-full text-center bg-brand-green hover:bg-brand-green-hover text-white py-1.5 rounded text-xs font-bold transition-colors"
+                    className="mt-3 block w-full text-center bg-brand-purple/15 hover:bg-brand-purple/25 text-brand-purple py-1.5 rounded text-xs font-bold border border-brand-purple/30 transition-colors"
                   >
                     Ver Imóvel
                   </Link>

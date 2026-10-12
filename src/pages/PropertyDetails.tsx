@@ -21,6 +21,7 @@ import {
   ZoomIn, 
   X, 
   ShieldCheck, 
+  Star,
   ArrowLeft, 
   Shield, 
   AlertTriangle,
@@ -554,7 +555,17 @@ export function PropertyDetails() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
 
             {/* Badges de Destaque no Topo da Imagem */}
-            <div className="absolute top-4 left-4 flex flex-wrap gap-2 pointer-events-none z-10">
+            <div className="absolute top-4 left-4 flex flex-wrap gap-2 pointer-events-none z-10 items-center">
+              {property.isPromoted && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-extrabold rounded-full bg-brand-green/95 text-gray-950 border border-brand-green-hover shadow-lg animate-pulse-glow-green">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-800"></span>
+                  </span>
+                  <Star className="w-3.5 h-3.5 fill-current text-gray-950" />
+                  <span>Destaque</span>
+                </span>
+              )}
               <span className={`px-3 py-1 text-xs font-semibold rounded-full shadow-sm text-white ${
                 transactionLabel === 'Venda' ? 'bg-emerald-600' : 'bg-blue-600'
               }`}>

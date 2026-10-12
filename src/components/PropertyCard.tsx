@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Property } from '@/types';
 import {
   MapPin,
@@ -41,6 +41,13 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Swipe / Drag touch and mouse handlers for carousel
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const isDragging = useRef<boolean>(false);
+  const dragStartX = useRef<number | null>(null);
+  const hasDragged = useRef<boolean>(false);
+
   // Contextos centralizados (Sem N+1 reads)
   const { addToCompare, removeFromCompare, isComparing } = useCompare();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -56,9 +63,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     ? FALLBACK_IMAGE
     : images[currentImageIndex] || FALLBACK_IMAGE;
 
-  const nextImage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const nextImage = (e?: React.MouseEvent | Event) => {
+    if (e && 'preventDefault' in e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (images.length > 1) {
       setImageLoaded(false);
       setImageError(false);
@@ -66,14 +75,87 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     }
   };
 
-  const prevImage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const prevImage = (e?: React.MouseEvent | Event) => {
+    if (e && 'preventDefault' in e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (images.length > 1) {
       setImageLoaded(false);
       setImageError(false);
       setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
     }
+  };
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (images.length <= 1) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (images.length <= 1 || touchStartX.current === null) return;
+    const diffX = touchStartX.current - e.changedTouches[0].clientX;
+    const diffY = touchStartY.current !== null ? touchStartY.current - e.changedTouches[0].clientY : 0;
+    
+    // Check if horizontal swipe was dominant and exceeds threshold (35px)
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 35) {
+      if (diffX > 0) {
+        nextImage();
+      } else {
+        prevImage();
+      }
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  // Mouse drag handlers for desktop swipe/drag
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (images.length <= 1) return;
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    hasDragged.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || dragStartX.current === null) return;
+    const diffX = dragStartX.current - e.clientX;
+    if (Math.abs(diffX) > 10) {
+      hasDragged.current = true;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    if (dragStartX.current !== null && images.length > 1) {
+      const diffX = dragStartX.current - e.clientX;
+      if (Math.abs(diffX) > 35) {
+        if (diffX > 0) {
+          nextImage();
+        } else {
+          prevImage();
+        }
+      }
+    }
+    isDragging.current = false;
+    dragStartX.current = null;
+  };
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    if (hasDragged.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      hasDragged.current = false;
+      return;
+    }
+    trackPropertyEvent({
+      eventType: 'property_open',
+      propertyId: property.id,
+      source: 'property_card_image'
+    });
+    navigate(`/properties/${property.id}`);
   };
 
   const handleCompareClick = (e: React.MouseEvent) => {
@@ -147,25 +229,35 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       } ${className}`}
     >
       {/* Realce nos cantos com degradê lilás e verde */}
-      <div className="absolute top-0 left-0 w-16 h-16 pointer-events-none rounded-tl-2xl bg-gradient-to-br from-[#cb6ce6]/25 to-transparent z-10" />
-      <div className="absolute bottom-0 right-0 w-16 h-16 pointer-events-none rounded-br-2xl bg-gradient-to-tl from-[#c1ff72]/30 to-transparent z-10" />
+      <div className="absolute top-0 left-0 w-14 h-14 pointer-events-none rounded-tl-2xl bg-gradient-to-br from-[#cb6ce6]/25 to-transparent z-10" />
+      <div className="absolute bottom-0 right-0 w-14 h-14 pointer-events-none rounded-br-2xl bg-gradient-to-tl from-[#c1ff72]/30 to-transparent z-10" />
 
-      {/* Corpo do Cartão com degradê cinza e branco */}
+      {/* Corpo do Cartão com degradê cinza e branco - altura compacta e harmoniosa */}
       <div className="flex flex-col h-full w-full rounded-[14px] bg-gradient-to-b from-gray-100 via-gray-50 to-white overflow-hidden relative">
-        {/* Imagem e Carrossel */}
-        <div className="relative w-full aspect-[16/10] bg-gray-100 overflow-hidden select-none">
+        {/* Imagem e Carrossel Interativo com Suporte a Arrastar/Swipe */}
+        <div
+          className="relative w-full aspect-[16/10] bg-gray-100 overflow-hidden select-none cursor-grab active:cursor-grabbing"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => { isDragging.current = false; }}
+        >
           {!imageLoaded && (
             <Skeleton className="absolute inset-0 w-full h-full rounded-none" />
           )}
 
-          <Link
-            to={`/properties/${property.id}`}
-            onClick={() => trackPropertyEvent({
-              eventType: 'property_open',
-              propertyId: property.id,
-              source: 'property_card_image'
-            })}
-            className="block w-full h-full cursor-pointer"
+          <div
+            onClick={handleImageClick}
+            className="block w-full h-full select-none"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                navigate(`/properties/${property.id}`);
+              }
+            }}
             aria-label={`Ver detalhes de ${property.title}`}
           >
             <img
@@ -173,71 +265,76 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               alt={property.title || 'Imóvel no MeuPlace'}
               loading="lazy"
               decoding="async"
+              draggable={false}
               onError={() => setImageError(true)}
               onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out ${
+              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out select-none pointer-events-none ${
                 imageLoaded ? 'opacity-100' : 'opacity-0'
               }`}
             />
-          </Link>
+          </div>
 
           {/* Gradiente sutil para legibilidade dos badges e botões */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none" />
 
           {/* Badges Flutuantes (Superior Esquerdo) */}
-          <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1.5 max-w-[70%] pointer-events-none">
+          <div className="absolute top-2.5 left-2.5 z-10 flex flex-wrap gap-1 max-w-[72%] pointer-events-none">
             {freshness.freshnessState === 'fresh' && (
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-700/90 backdrop-blur-xs text-white text-[11px] font-medium rounded-md shadow-xs"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-medium rounded shadow-xs"
                 title={freshness.reason}
               >
-                <Check className="w-3 h-3 text-white" />
-                {freshness.daysSinceConfirmation === 0 ? 'Disponível Hoje' : `Confirmado há ${freshness.daysSinceConfirmation}d`}
+                <Check className="w-2.5 h-2.5 text-white" />
+                {freshness.daysSinceConfirmation === 0 ? 'Hoje' : `${freshness.daysSinceConfirmation}d`}
               </span>
             )}
 
             {isVerified && (
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-600/95 backdrop-blur-xs text-white text-[11px] font-semibold rounded-md shadow-xs"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-600/95 backdrop-blur-xs text-white text-[10px] font-semibold rounded shadow-xs"
                 title="Imóvel com documentação verificada pela equipa do MeuPlace"
               >
-                <BadgeCheck className="w-3.5 h-3.5 text-white" />
+                <BadgeCheck className="w-3 h-3 text-white" />
                 Verificado
               </span>
             )}
 
             {isPromoted && (
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/95 backdrop-blur-xs text-white text-[11px] font-bold rounded-md shadow-xs"
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-brand-green/95 text-gray-950 text-[10px] font-extrabold rounded shadow-md border border-brand-green-hover animate-pulse-glow-green"
               >
-                <Star className="w-3 h-3 fill-current" />
-                Destaque
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-800"></span>
+                </span>
+                <Star className="w-2.5 h-2.5 fill-current text-gray-950" />
+                <span>Destaque</span>
               </span>
             )}
 
             {isNew && (
-              <span className="inline-flex items-center px-2 py-0.5 bg-blue-600/95 backdrop-blur-xs text-white text-[11px] font-bold rounded-md shadow-xs">
+              <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-600/95 backdrop-blur-xs text-white text-[10px] font-bold rounded shadow-xs">
                 Novo
               </span>
             )}
 
             {statusLabel && (
-              <span className="inline-flex items-center px-2 py-0.5 bg-gray-900/90 backdrop-blur-xs text-white text-[11px] font-bold uppercase tracking-wider rounded-md shadow-xs">
+              <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-900/90 backdrop-blur-xs text-white text-[10px] font-bold uppercase tracking-wider rounded shadow-xs">
                 {statusLabel}
               </span>
             )}
           </div>
 
           {/* Botão de Favorito (Superior Direito) */}
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute top-2.5 right-2.5 z-10">
             <button
               type="button"
               onClick={handleFavoriteClick}
               aria-label={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-              className="p-2 rounded-full bg-white/95 hover:bg-white text-gray-700 hover:text-red-500 shadow-md backdrop-blur-xs transition-all duration-200 active:scale-90 focus:outline-none focus:ring-2 focus:ring-brand-green"
+              className="p-1.5 rounded-full bg-white/95 hover:bg-white text-gray-700 hover:text-red-500 shadow-md backdrop-blur-xs transition-all duration-200 active:scale-90 focus:outline-none focus:ring-2 focus:ring-brand-green"
             >
               <Heart
-                className={`w-4 h-4 transition-colors ${
+                className={`w-3.5 h-3.5 transition-colors ${
                   isFav
                     ? 'fill-red-500 text-red-500'
                     : 'text-gray-700 hover:text-red-500'
@@ -246,55 +343,61 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             </button>
           </div>
 
-          {/* Navegação do Carrossel de Imagens */}
+          {/* Navegação do Carrossel de Imagens e Dica de Arrastar */}
           {images.length > 1 && (
             <>
+              {/* Botões de seta para desktop / clique direto */}
               <button
                 type="button"
                 onClick={prevImage}
                 aria-label="Imagem anterior"
-                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:opacity-100"
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/45 hover:bg-black/75 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:opacity-100"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
                 onClick={nextImage}
                 aria-label="Próxima imagem"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:opacity-100"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/45 hover:bg-black/75 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:opacity-100"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
 
-              {/* Indicadores de Paginação do Carrossel */}
-              <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 pointer-events-none">
+              {/* Indicadores de Paginação do Carrossel com contador */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none bg-black/35 px-2 py-0.5 rounded-full backdrop-blur-xs">
                 {images.slice(0, 5).map((_, idx) => (
                   <div
                     key={idx}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                    className={`h-1 rounded-full transition-all duration-300 ${
                       idx === currentImageIndex
-                        ? 'w-4 bg-white shadow-xs'
-                        : 'w-1.5 bg-white/60'
+                        ? 'w-3.5 bg-brand-green shadow-xs'
+                        : 'w-1 bg-white/70'
                     }`}
                   />
                 ))}
+                {images.length > 5 && (
+                  <span className="text-[9px] text-white/90 font-medium ml-0.5">
+                    +{images.length - 5}
+                  </span>
+                )}
               </div>
             </>
           )}
         </div>
 
-        {/* Conteúdo do Imóvel com degradê cinza e branco */}
-        <div className="p-4 flex flex-col flex-grow justify-between gap-3 bg-gradient-to-b from-gray-100/70 via-slate-50/80 to-white">
+        {/* Conteúdo do Imóvel com degradê cinza e branco - Design mais compacto */}
+        <div className="p-3 sm:p-3.5 flex flex-col flex-grow justify-between gap-2 bg-gradient-to-b from-gray-100/70 via-slate-50/80 to-white">
           <div>
             {/* Categoria e Tipo de Transação */}
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-              <span className="font-semibold text-brand-purple uppercase tracking-wider text-[10px]">
+            <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+              <span className="font-bold text-brand-purple uppercase tracking-wider text-[10px]">
                 {property.category || 'Imóvel'} • {formatTransactionType(property.type)}
               </span>
             </div>
 
             {/* Título com Link Semântico */}
-            <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2 group-hover:text-brand-green transition-colors mb-1">
+            <h3 className="font-bold text-gray-900 text-sm sm:text-[15px] leading-snug line-clamp-1 group-hover:text-brand-green transition-colors mb-1">
               <Link
                 to={`/properties/${property.id}`}
                 onClick={() => trackPropertyEvent({
@@ -309,35 +412,35 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             </h3>
 
             {/* Localização */}
-            <div className="flex items-center text-gray-500 text-xs mb-3">
-              <MapPin className="w-3.5 h-3.5 mr-1 text-gray-400 flex-shrink-0" />
+            <div className="flex items-center text-gray-500 text-xs mb-2">
+              <MapPin className="w-3 h-3 mr-1 text-gray-400 flex-shrink-0" />
               <span className="truncate">{property.location || 'Moçambique'}</span>
             </div>
 
-            {/* Características Reais (Omitidas se não informadas) */}
+            {/* Características Reais (Compactas e Omitidas se não informadas) */}
             {hasAnyCharacteristics && (
-              <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-gray-600 pt-2 border-t border-gray-200/60">
+              <div className="flex flex-wrap items-center gap-y-1 gap-x-2.5 text-[11px] text-gray-600 pt-1.5 border-t border-gray-200/60">
                 {hasBedrooms && (
-                  <span className="inline-flex items-center gap-1">
-                    <Bed className="w-3.5 h-3.5 text-gray-400" />
-                    {property.bedrooms} {property.bedrooms === 1 ? 'quarto' : 'quartos'}
+                  <span className="inline-flex items-center gap-0.5">
+                    <Bed className="w-3 h-3 text-gray-400" />
+                    {property.bedrooms} {property.bedrooms === 1 ? 'qto' : 'qtos'}
                   </span>
                 )}
                 {hasBathrooms && (
-                  <span className="inline-flex items-center gap-1">
-                    <Bath className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="inline-flex items-center gap-0.5">
+                    <Bath className="w-3 h-3 text-gray-400" />
                     {property.bathrooms} WC
                   </span>
                 )}
                 {hasArea && (
-                  <span className="inline-flex items-center gap-1">
-                    <Maximize className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="inline-flex items-center gap-0.5">
+                    <Maximize className="w-3 h-3 text-gray-400" />
                     {property.area} m²
                   </span>
                 )}
                 {hasParking && (
-                  <span className="inline-flex items-center gap-1">
-                    <Car className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="inline-flex items-center gap-0.5">
+                    <Car className="w-3 h-3 text-gray-400" />
                     Estac.
                   </span>
                 )}
@@ -345,25 +448,25 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             )}
           </div>
 
-          {/* Rodapé: Preço e Ações de Conversão */}
-          <div className="pt-3 border-t border-gray-200/60 flex flex-col gap-2.5 mt-auto">
+          {/* Rodapé: Preço e Ações de Conversão Otimizadas */}
+          <div className="pt-2 border-t border-gray-200/60 flex flex-col gap-2 mt-auto">
             {/* Preço Formatado */}
             <div className="flex items-baseline justify-between">
               <div className="flex flex-col">
-                <span className="text-[11px] text-gray-400 uppercase font-medium">Preço</span>
-                <span className="text-lg font-extrabold text-gray-900 tracking-tight">
+                <span className="text-[10px] text-gray-400 uppercase font-medium">Preço</span>
+                <span className="text-base sm:text-[17px] font-extrabold text-gray-900 tracking-tight leading-tight">
                   {formatPropertyPrice(property.price, property.currency, property.type)}
                 </span>
               </div>
             </div>
 
-            {/* Barra de Ações: [Comparar] e [Ver imóvel] */}
-            <div className="flex items-center gap-2 pt-1">
+            {/* Barra de Ações Compacta: [Comparar] e [Ver imóvel] */}
+            <div className="flex items-center gap-1.5 pt-0.5">
               <button
                 type="button"
                 onClick={handleCompareClick}
                 aria-label={comparing ? 'Remover este imóvel da comparação' : 'Comparar este imóvel'}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green ${
+                className={`flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green ${
                   comparing
                     ? 'bg-brand-green/10 border-brand-green/40 text-brand-green hover:bg-brand-green/20'
                     : 'bg-white/80 border-gray-200 text-gray-700 hover:bg-white hover:border-gray-300'
@@ -371,7 +474,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               >
                 {comparing ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-brand-green stroke-[2.5]" />
+                    <Check className="w-3 h-3 text-brand-green stroke-[2.5]" />
                     <span>Comparando</span>
                   </>
                 ) : (
@@ -383,10 +486,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 type="button"
                 onClick={handleCardNavigate}
                 aria-label={`Ver detalhes do imóvel ${property.title}`}
-                className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-bold text-white bg-brand-green hover:bg-brand-green-hover rounded-xl shadow-xs hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-brand-green"
+                className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-purple bg-brand-purple/10 hover:bg-brand-purple/20 border border-brand-purple/30 rounded-lg shadow-xs hover:shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-brand-purple"
               >
-                <span>Ver imóvel</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span className="text-brand-purple font-extrabold">Ver imóvel</span>
+                <ArrowUpRight className="w-3 h-3 text-brand-purple stroke-[2.5]" />
               </button>
             </div>
           </div>
@@ -410,23 +513,23 @@ export const PropertyCardSkeleton: React.FC<{ className?: string }> = ({ classNa
         </div>
 
         {/* Corpo Shimmer com degradê cinza e branco */}
-        <div className="p-4 flex flex-col flex-grow justify-between gap-3 bg-gradient-to-b from-gray-100/70 via-slate-50/80 to-white">
-          <div className="space-y-2.5">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-5 w-4/5" />
-            <Skeleton className="h-3.5 w-1/2" />
-            <div className="flex gap-2 pt-2 border-t border-gray-200/60">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-14" />
-              <Skeleton className="h-4 w-14" />
+        <div className="p-3 sm:p-3.5 flex flex-col flex-grow justify-between gap-2 bg-gradient-to-b from-gray-100/70 via-slate-50/80 to-white">
+          <div className="space-y-2">
+            <Skeleton className="h-2.5 w-24" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-3 w-1/2" />
+            <div className="flex gap-2 pt-1.5 border-t border-gray-200/60">
+              <Skeleton className="h-3.5 w-14" />
+              <Skeleton className="h-3.5 w-12" />
+              <Skeleton className="h-3.5 w-12" />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-gray-200/60 space-y-2.5 mt-auto">
-            <Skeleton className="h-6 w-32" />
-            <div className="flex gap-2 pt-1">
-              <Skeleton className="h-8 flex-1 rounded-xl" />
-              <Skeleton className="h-8 flex-1 rounded-xl" />
+          <div className="pt-2 border-t border-gray-200/60 space-y-2 mt-auto">
+            <Skeleton className="h-5 w-28" />
+            <div className="flex gap-1.5 pt-0.5">
+              <Skeleton className="h-7 flex-1 rounded-lg" />
+              <Skeleton className="h-7 flex-1 rounded-lg" />
             </div>
           </div>
         </div>

@@ -18,6 +18,32 @@
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }
   }
+
+  @keyframes pulseGlowGreen {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 0 0 rgba(193, 255, 114, 0.7);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.04);
+      box-shadow: 0 0 12px 3px rgba(193, 255, 114, 0.85);
+    }
+  }
+
+  @keyframes flashBadge {
+    0%, 100% { opacity: 1; filter: brightness(1); }
+    50% { opacity: 0.65; filter: brightness(1.25); }
+  }
+}
+
+.animate-pulse-glow-green {
+  animation: pulseGlowGreen 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-flash-badge {
+  animation: flashBadge 1.5s ease-in-out infinite;
 }
 
 .animate-marquee {

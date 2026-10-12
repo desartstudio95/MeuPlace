@@ -205,10 +205,6 @@ export function Home() {
             transition={{ duration: 0.7 }}
           >
             <div className="flex flex-wrap items-center justify-center gap-2.5 mb-4 sm:mb-5">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs sm:text-sm font-medium">
-                <Crown className="h-4 w-4 text-amber-400" />
-                <span>O Maior Shopping de Imóveis em Moçambique</span>
-              </div>
               <Link 
                 to="/plans"
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-green text-gray-950 text-xs sm:text-sm font-extrabold shadow-lg hover:bg-brand-green-hover transition-all hover:scale-105"
@@ -481,9 +477,9 @@ export function Home() {
             className="flex flex-col md:flex-row justify-between items-center md:items-end mb-10 gap-6"
           >
             <div className="text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/10 text-brand-green text-[10px] font-bold uppercase tracking-widest mb-3 border border-brand-green/20">
-                <Sparkles className="h-3 w-3" />
-                <span>Oportunidades Únicas</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#cb6ce6]/15 to-[#c1ff72]/25 text-purple-950 text-[10px] font-black uppercase tracking-widest mb-3 border border-[#cb6ce6]/30">
+                <Sparkles className="h-3 w-3 text-brand-purple" />
+                <span>Oportunidades Únicas • Destaques</span>
               </div>
               <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Destaques da Semana</h2>
               <p className="mt-2 text-base text-gray-600 max-w-xl">Imóveis selecionados pela nossa equipa pela sua excelente relação qualidade-preço.</p>
